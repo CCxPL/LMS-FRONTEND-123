@@ -1,0 +1,153 @@
+/* Calendar Styles - Black & White Theme */
+
+/* Colors */
+:root {
+  --color-class: #3B82F6;    /* Blue for classes */
+  --color-test: #EF4444;     /* Red for tests */
+  --color-primary: #000000;  /* Black */
+  --color-secondary: #FFFFFF; /* White */
+  --color-gray: #6B7280;
+  --color-border: #E5E7EB;
+  --color-bg: #F9FAFB;
+}
+
+/* Event Colors */
+.event-class {
+  background-color: var(--color-class);
+  color: white;
+}
+
+.event-test {
+  background-color: var(--color-test);
+  color: white;
+}
+
+/* Calendar Day Styles */
+.calendar-day {
+  min-height: 90px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.calendar-day:hover {
+  background-color: var(--color-bg);
+}
+
+.calendar-day.today {
+  border-color: var(--color-primary);
+  border-width: 2px;
+}
+
+.calendar-day.other-month {
+  background-color: var(--color-bg);
+  opacity: 0.6;
+}
+
+/* Event Badge */
+.event-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.event-badge.class {
+  background-color: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.event-badge.test {
+  background-color: #FEE2E2;
+  color: #DC2626;
+}
+
+/* Live Indicator */
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: #D1FAE5;
+  color: #059669;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.live-indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background-color: #10B981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.95); }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Drag and Drop */
+.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+  cursor: grabbing;
+}
+
+.drop-target {
+  background-color: #EFF6FF;
+  border-color: var(--color-class);
+  border-style: dashed;
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .calendar-day {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .event-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
