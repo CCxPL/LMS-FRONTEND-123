@@ -200,3 +200,86 @@
 .dark ::-webkit-scrollbar-thumb {
   background-color: #ffffff; /* White Scrollbar in Dark Mode */
 }
+
+/* ============================================
+   GLOBAL THEME STYLES - ADD AT END OF FILE
+   ============================================ */
+
+:root {
+  --sidebar-bg: #000000;
+  --sidebar-text: #ffffff;
+  --content-bg: #f9fafb;
+  --content-text: #111827;
+  --font-family: 'Inter', sans-serif;
+}
+
+/* Global Font */
+* {
+  font-family: var(--font-family) !important;
+}
+
+/* Sidebar Styling */
+aside,
+.sidebar {
+  background-color: var(--sidebar-bg) !important;
+  color: var(--sidebar-text) !important;
+}
+
+aside *,
+.sidebar * {
+  color: var(--sidebar-text) !important;
+}
+
+aside a.active,
+.sidebar a.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Content Area Styling */
+main {
+  background-color: var(--content-bg) !important;
+  color: var(--content-text) !important;
+}
+
+main h1,
+main h2,
+main h3,
+main h4,
+main h5,
+main h6,
+main p,
+main span,
+main label,
+main td,
+main th,
+main li {
+  color: var(--content-text) !important;
+}
+
+/* Page titles */
+.page-title {
+  color: var(--content-text) !important;
+}
+
+.page-subtitle {
+  color: var(--content-text) !important;
+  opacity: 0.7;
+}
+
+/* Cards - keep white background */
+.card {
+  background-color: #ffffff !important;
+}
+
+.card h3,
+.card p,
+.card span {
+  color: var(--content-text) !important;
+}
+
+/* Muted text */
+.text-gray-500,
+.text-gray-400 {
+  color: var(--content-text) !important;
+  opacity: 0.6;
+}

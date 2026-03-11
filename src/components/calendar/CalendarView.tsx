@@ -43,7 +43,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const {  } = useAuth();
   const { canCreateEvent, canEditEvent } = usePermissions();
 
   // Calculate calendar days
@@ -128,7 +128,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <h2 className="text-xl font-bold text-gray-900 min-w-[180px] text-center">
+              <h2 className="text-xl font-bold text-gray-900 min-w-45 text-center">
                 {format(currentDate, 'MMMM yyyy')}
               </h2>
               
@@ -195,7 +195,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 >
                   <div
                     onClick={() => handleDateClick(day)}
-                    className={`min-h-[90px] cursor-pointer ${
+                    className={`min-h-22.5 cursor-pointer ${
                       canCreateEvent() ? 'hover:bg-gray-50' : ''
                     }`}
                   >

@@ -16,6 +16,7 @@ export const mockEvents: CalendarEvent[] = [
     createdAt: '2024-06-01T10:00:00Z',
     updatedAt: '2024-06-01T10:00:00Z',
     isActive: true,
+    isRecurring: false, // ✅ ADDED
   },
   {
     id: 'event-2',
@@ -32,6 +33,7 @@ export const mockEvents: CalendarEvent[] = [
     createdAt: '2024-06-01T10:00:00Z',
     updatedAt: '2024-06-01T10:00:00Z',
     isActive: true,
+    isRecurring: false, // ✅ ADDED
   },
   {
     id: 'event-3',
@@ -48,6 +50,7 @@ export const mockEvents: CalendarEvent[] = [
     createdAt: '2024-06-01T10:00:00Z',
     updatedAt: '2024-06-01T10:00:00Z',
     isActive: true,
+    isRecurring: false, // ✅ ADDED
   },
   {
     id: 'event-4',
@@ -64,5 +67,6 @@ export const mockEvents: CalendarEvent[] = [
     createdAt: '2024-06-01T10:00:00Z',
     updatedAt: '2024-06-01T10:00:00Z',
     isActive: true,
+    isRecurring: false, // ✅ ADDED
   },
 ];

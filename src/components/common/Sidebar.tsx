@@ -1,7 +1,9 @@
+// src/components/common/Sidebar.tsx
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { X, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../context/ThemeContext';
 import type { SidebarItem } from '../../types/common.types';
 
 interface SidebarProps {
@@ -12,8 +14,22 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ items, isOpen, onToggle }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   if (!user) return null;
+
+  // Inline styles for sidebar
+  const sidebarStyle: React.CSSProperties = {
+    backgroundColor: theme.sidebarBg,
+    color: theme.sidebarText,
+    fontFamily: `'${theme.fontFamily}', sans-serif`,
+  };
+
+  const navItemStyle = (isActive: boolean): React.CSSProperties => ({
+    backgroundColor: isActive ? `${theme.sidebarText}22` : 'transparent',
+    color: theme.sidebarText,
+    opacity: isActive ? 1 : 0.75,
+  });
 
   return (
     <>
@@ -27,23 +43,37 @@ const Sidebar: React.FC<SidebarProps> = ({ items, isOpen, onToggle }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full z-50 bg-black text-white transition-all duration-300 flex flex-col ${
+        className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 flex flex-col ${
           isOpen ? 'w-64' : 'w-0 lg:w-20'
         } shadow-xl`}
+        style={sidebarStyle}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 h-16 border-b border-gray-800">
+        <div 
+          className="flex items-center justify-between p-4 h-16"
+          style={{ borderBottom: `1px solid ${theme.sidebarText}33` }}
+        >
           <div className={`flex items-center gap-3 overflow-hidden ${!isOpen && 'lg:justify-center lg:w-full'}`}>
-            <div className="w-9 h-9 bg-white text-black rounded-lg flex items-center justify-center shrink-0">
+            <div 
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{ backgroundColor: theme.sidebarText, color: theme.sidebarBg }}
+            >
               <GraduationCap className="w-5 h-5" />
             </div>
-            <span className={`font-bold text-lg whitespace-nowrap transition-opacity duration-200 ${
-              isOpen ? 'opacity-100' : 'opacity-0 lg:hidden'
-            }`}>
+            <span 
+              className={`font-bold text-lg whitespace-nowrap transition-opacity duration-200 ${
+                isOpen ? 'opacity-100' : 'opacity-0 lg:hidden'
+              }`}
+              style={{ color: theme.sidebarText }}
+            >
               LMS Portal
             </span>
           </div>
-          <button onClick={onToggle} className="lg:hidden text-gray-400 hover:text-white p-1">
+          <button 
+            onClick={onToggle} 
+            className="lg:hidden p-1"
+            style={{ color: theme.sidebarText }}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -56,17 +86,19 @@ const Sidebar: React.FC<SidebarProps> = ({ items, isOpen, onToggle }) => {
               to={item.path}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-white text-black'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                } ${!isOpen ? 'lg:justify-center' : ''}`
+                  !isOpen ? 'lg:justify-center' : ''
+                }`
               }
+              style={({ isActive }) => navItemStyle(isActive)}
               title={!isOpen ? item.label : undefined}
             >
-              <span className="shrink-0">{item.icon}</span>
-              <span className={`transition-opacity duration-200 ${
-                isOpen ? 'opacity-100' : 'opacity-0 lg:hidden w-0'
-              }`}>
+              <span className="shrink-0" style={{ color: theme.sidebarText }}>{item.icon}</span>
+              <span 
+                className={`transition-opacity duration-200 ${
+                  isOpen ? 'opacity-100' : 'opacity-0 lg:hidden w-0'
+                }`}
+                style={{ color: theme.sidebarText }}
+              >
                 {item.label}
               </span>
             </NavLink>
@@ -74,10 +106,16 @@ const Sidebar: React.FC<SidebarProps> = ({ items, isOpen, onToggle }) => {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-800">
+        <div 
+          className="p-4"
+          style={{ borderTop: `1px solid ${theme.sidebarText}33` }}
+        >
           <div className={`flex items-center gap-3 ${!isOpen && 'justify-center'}`}>
             <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-            <span className={`text-xs text-gray-500 uppercase tracking-wider ${!isOpen && 'hidden'}`}>
+            <span 
+              className={`text-xs uppercase tracking-wider ${!isOpen && 'hidden'}`}
+              style={{ color: theme.sidebarText, opacity: 0.6 }}
+            >
               {user.role?.replace('-', ' ')}
             </span>
           </div>

@@ -21,13 +21,26 @@ export const useAttendance = (eventId: string) => {
 
     const now = new Date().toISOString();
 
+    // ✅ FIXED: Added all required properties
     const record: AttendanceRecord = {
       id: `attendance-${eventId}-${user.id}-${Date.now()}`,
       eventId,
       studentId: user.id,
       studentName: user.name,
+      studentEmail: user.email || '', // Added
+      courseId: '', // Added dummy
+      courseName: '', // Added dummy
+      eventTitle: '', // Added dummy
+      teacherId: '', // Added dummy
+      teacherName: '', // Added dummy
+      date: now.split('T')[0], // Added date
       isPresent: true,
       joinedAt: now,
+      joinTime: now, // Added to match type
+      leaveTime: null, // Added
+      duration: 0, // Added
+      status: 'present', // Added
+      createdAt: now, // Added
     };
 
     addAttendanceRecord(record);
@@ -63,6 +76,7 @@ export const useAttendance = (eventId: string) => {
 
       updateAttendanceRecord(record.id, {
         leftAt: now,
+        leaveTime: now, // Added update
         duration,
       });
     }

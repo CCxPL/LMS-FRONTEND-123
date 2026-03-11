@@ -6,9 +6,12 @@ import {
   RefreshCw,
   BarChart3,
   Clock,
-  Filter
+  Filter,
+  Repeat
 } from 'lucide-react';
 import CalendarView from '../../components/calendar/CalendarView';
+import EventModal from '../../components/calendar/EventModal';
+import RecurringEventDialog from '../../components/calendar/RecurringEventDialog';
 import TeacherLateAlert from '../../components/calendar/TeacherLateAlert';
 import ClassSummaryModal from '../../components/calendar/ClassSummaryModal';
 import CourseFilter from '../../components/calendar/CourseFilter';
@@ -17,7 +20,7 @@ import { useLateDetection } from '../../hooks/useLateDetection';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import type { CalendarEvent, EventFormData } from '../../types/calendar.types';
+import type { CalendarEvent, EventFormData, RecurringEditType } from '../../types/calendar.types';
 import type { Notification } from '../../types/notification.types';
 import type { ClassSummary } from '../../types/attendance.types';
 
@@ -27,12 +30,25 @@ const SuperAdminSchedule: React.FC = () => {
   const [selectedSummary, setSelectedSummary] = useState<ClassSummary | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // ============================================
+  // ✅ Event Modal & Recurring Dialog States
+  // ============================================
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [recurringAction, setRecurringAction] = useState<'EDIT' | 'DELETE'>('EDIT');
+
   const { 
     events, 
     loading, 
     createEvent, 
     updateEvent, 
-    deleteEvent 
+    deleteEvent,
+    updateRecurringEvent,
+    deleteRecurringEvent,
+    
   } = useCalendar();
   
   const { addNotification } = useNotifications();
@@ -52,11 +68,20 @@ const SuperAdminSchedule: React.FC = () => {
     addNotification(notification);
   }, { gracePeriodMinutes: 5 });
 
+  // ============================================
+  // ✅ EVENT HANDLERS - With Recurring Support
+  // ============================================
+
   const handleCreateEvent = async (formData: EventFormData): Promise<boolean> => {
     try {
       const success = await createEvent(formData);
       if (success) {
-        showToast('Event created successfully', 'success');
+        showToast(
+          formData.isRecurring 
+            ? 'Recurring events created successfully' 
+            : 'Event created successfully', 
+          'success'
+        );
       }
       return success;
     } catch (error) {
@@ -65,30 +90,99 @@ const SuperAdminSchedule: React.FC = () => {
     }
   };
 
-  const handleEditEvent = async (event: CalendarEvent) => {
-    try {
-      await updateEvent(event.id, event);
-      showToast('Event updated successfully', 'success');
-    } catch (error) {
-      showToast('Failed to update event', 'error');
+  // const handleDateClick = (date: Date) => {
+  //   const dateStr = date.toISOString().split('T')[0];
+  //   setSelectedDate(dateStr);
+  //   setEditingEvent(null);
+  //   setIsEventModalOpen(true);
+  // };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    
+    if (event.isRecurring) {
+      setRecurringAction('EDIT');
+      setRecurringDialogOpen(true);
+    } else {
+      setIsEventModalOpen(true);
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    try {
-      await deleteEvent(eventId);
+  const handleDeleteEvent = (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    setEditingEvent(event);
+
+    if (event.isRecurring) {
+      setRecurringAction('DELETE');
+      setRecurringDialogOpen(true);
+    } else {
+      deleteEvent(eventId);
       showToast('Event deleted successfully', 'success');
+      setIsEventModalOpen(false);
+      setEditingEvent(null);
+      setSelectedDate('');
+    }
+  };
+
+  const handleRecurringDialogConfirm = async (editType: RecurringEditType) => {
+    if (!editingEvent) return;
+
+    try {
+      if (recurringAction === 'DELETE') {
+        await deleteRecurringEvent(editingEvent.id, editType);
+        showToast(
+          editType === 'THIS_EVENT' 
+            ? 'Event deleted successfully' 
+            : 'Events deleted successfully', 
+          'success'
+        );
+        setIsEventModalOpen(false);
+      } else {
+        setIsEventModalOpen(true);
+      }
     } catch (error) {
-      showToast('Failed to delete event', 'error');
+      showToast('Operation failed', 'error');
+    }
+
+    setRecurringDialogOpen(false);
+  };
+
+  const handleSaveEvent = async (formData: EventFormData): Promise<boolean> => {
+    if (!editingEvent) {
+      return handleCreateEvent(formData);
+    }
+
+    try {
+      if (editingEvent.isRecurring && recurringAction === 'EDIT') {
+        await updateRecurringEvent(editingEvent.id, formData, 'THIS_EVENT');
+      } else {
+        await updateEvent(editingEvent.id, formData);
+      }
+      
+      showToast('Event updated successfully', 'success');
+      setIsEventModalOpen(false);
+      setEditingEvent(null);
+      setSelectedDate('');
+      return true;
+    } catch (error) {
+      showToast('Failed to update event', 'error');
+      return false;
     }
   };
 
   const handleRescheduleEvent = async (eventId: string, newDate: string) => {
-    try {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    if (event.isRecurring) {
+      setEditingEvent(event);
+      setRecurringAction('EDIT');
+      setRecurringDialogOpen(true);
+    } else {
       await updateEvent(eventId, { date: newDate });
       showToast('Event rescheduled successfully', 'success');
-    } catch (error) {
-      showToast('Failed to reschedule event', 'error');
     }
   };
 
@@ -102,7 +196,7 @@ const SuperAdminSchedule: React.FC = () => {
 
   const handleExportSchedule = () => {
     const csv = [
-      ['Title', 'Type', 'Course', 'Teacher', 'Date', 'Start Time', 'End Time'].join(','),
+      ['Title', 'Type', 'Course', 'Teacher', 'Date', 'Start Time', 'End Time', 'Recurring'].join(','),
       ...filteredEvents.map(e => [
         e.title,
         e.type,
@@ -110,7 +204,8 @@ const SuperAdminSchedule: React.FC = () => {
         e.teacherName,
         e.date,
         e.startTime,
-        e.endTime
+        e.endTime,
+        e.isRecurring ? 'Yes' : 'No'
       ].join(','))
     ].join('\n');
 
@@ -259,6 +354,10 @@ const SuperAdminSchedule: React.FC = () => {
           <div className="w-4 h-4 rounded bg-blue-400" />
           <span className="text-sm text-gray-600">Test</span>
         </div>
+        <div className="flex items-center gap-2">
+          <Repeat className="w-4 h-4 text-gray-400" />
+          <span className="text-sm text-gray-600">Recurring</span>
+        </div>
       </div>
 
       {/* Late Alerts Section */}
@@ -284,7 +383,10 @@ const SuperAdminSchedule: React.FC = () => {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <CalendarView
           events={filteredEvents}
-          onCreateEvent={handleCreateEvent}
+          onCreateEvent={async (formData) => {
+            const success = await handleCreateEvent(formData);
+            return success;
+          }}
           onEditEvent={handleEditEvent}
           onDeleteEvent={handleDeleteEvent}
           onRescheduleEvent={handleRescheduleEvent}
@@ -339,6 +441,35 @@ const SuperAdminSchedule: React.FC = () => {
             })}
           </div>
         </div>
+      )}
+
+      {/* Event Modal - ✅ FIXED */}
+      {isEventModalOpen && (
+        <EventModal
+          event={editingEvent || undefined}
+          date={selectedDate || new Date().toISOString().split('T')[0]}
+          onClose={() => {
+            setIsEventModalOpen(false);
+            setEditingEvent(null);
+            setSelectedDate('');
+          }}
+          onSave={handleSaveEvent}
+          onDelete={editingEvent ? () => handleDeleteEvent(editingEvent.id) : undefined}
+        />
+      )}
+
+      {/* ✅ Recurring Event Dialog */}
+      {editingEvent && (
+        <RecurringEventDialog
+          isOpen={recurringDialogOpen}
+          event={editingEvent}
+          actionType={recurringAction}
+          onConfirm={handleRecurringDialogConfirm}
+          onCancel={() => {
+            setRecurringDialogOpen(false);
+            setEditingEvent(null);
+          }}
+        />
       )}
 
       {/* Class Summary Modal */}

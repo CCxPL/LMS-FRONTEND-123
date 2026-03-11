@@ -1,14 +1,15 @@
+// src/App.tsx
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes/AppRoutes';
 import './App.css';
 import Toast from './components/common/Toast';
 import AIChatBot from './components/common/AIChatBot';
 
-// Auto Loader Component
 const AutoLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
@@ -36,19 +37,21 @@ const AutoLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <ToastProvider>
-        <Toast/>
-        <AuthProvider>
-          <DataProvider>
-            <AutoLoader> {/* ← Ye automatically har route change pe loader show karega */}
-              <AppRoutes />
-              <AIChatBot />
-            </AutoLoader>
-          </DataProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <ToastProvider>
+          <Toast/>
+          <AuthProvider>
+            <DataProvider>
+              <AutoLoader>
+                <AppRoutes />
+                <AIChatBot />
+              </AutoLoader>
+            </DataProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 };
 
