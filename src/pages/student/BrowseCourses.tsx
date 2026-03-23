@@ -145,7 +145,7 @@ const BrowseCourses: React.FC = () => {
                     </span>
                   </div>
                   <div className="font-bold text-gray-900">
-                    {course.price ? `$${course.price}` : 'Free'}
+                    {course.price ? `₹${course.price}` : 'Free'}
                   </div>
                 </div>
               </div>

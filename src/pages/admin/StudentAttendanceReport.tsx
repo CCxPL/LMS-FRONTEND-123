@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { FileText, CheckCircle, XCircle, Clock, TrendingUp, Calendar } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Clock, TrendingUp, Calendar, Umbrella } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useData } from '../../context/DataContext';
 import AttendanceFilters from '../../components/reports/AttendanceFilters';
 import AttendanceTable from '../../components/reports/AttendanceTable';
 import { generateAttendancePDF } from '../../utils/pdfGenerator';
 import type { AttendanceFilter, AttendanceRecord, AttendanceStats } from '../../types/attendance.types';
 
-// Mock Data
-// Mock Data - Add isPresent field
 const mockAttendanceRecords: AttendanceRecord[] = [
   {
     id: '1',
@@ -21,7 +20,7 @@ const mockAttendanceRecords: AttendanceRecord[] = [
     teacherId: 'teacher-1',
     teacherName: 'Sarah Teacher',
     date: '2024-01-15',
-    isPresent: true,  // ← ADD THIS
+    isPresent: true,
     joinTime: '2024-01-15T10:02:00',
     leaveTime: '2024-01-15T11:00:00',
     duration: 58,
@@ -40,7 +39,7 @@ const mockAttendanceRecords: AttendanceRecord[] = [
     teacherId: 'teacher-1',
     teacherName: 'Sarah Teacher',
     date: '2024-01-16',
-    isPresent: true,  // ← ADD THIS
+    isPresent: true,
     joinTime: '2024-01-16T10:15:00',
     leaveTime: '2024-01-16T11:00:00',
     duration: 45,
@@ -59,7 +58,7 @@ const mockAttendanceRecords: AttendanceRecord[] = [
     teacherId: 'teacher-1',
     teacherName: 'Sarah Teacher',
     date: '2024-01-17',
-    isPresent: false,  // ← ADD THIS
+    isPresent: false,
     joinTime: null,
     leaveTime: null,
     duration: 0,
@@ -78,7 +77,7 @@ const mockAttendanceRecords: AttendanceRecord[] = [
     teacherId: 'teacher-1',
     teacherName: 'Sarah Teacher',
     date: '2024-01-15',
-    isPresent: true,  // ← ADD THIS
+    isPresent: true,
     joinTime: '2024-01-15T10:00:00',
     leaveTime: '2024-01-15T11:00:00',
     duration: 60,
@@ -97,7 +96,7 @@ const mockAttendanceRecords: AttendanceRecord[] = [
     teacherId: 'teacher-1',
     teacherName: 'Sarah Teacher',
     date: '2024-01-18',
-    isPresent: true,  // ← ADD THIS
+    isPresent: true,
     joinTime: '2024-01-18T14:00:00',
     leaveTime: '2024-01-18T15:30:00',
     duration: 90,
@@ -105,6 +104,7 @@ const mockAttendanceRecords: AttendanceRecord[] = [
     createdAt: '2024-01-18T14:00:00'
   }
 ];
+
 const mockStudents = [
   { id: 'student-1', name: 'John Doe' },
   { id: 'student-2', name: 'Jane Smith' },
@@ -119,27 +119,49 @@ const mockCourses = [
 
 const StudentAttendanceReport: React.FC = () => {
   const { user } = useAuth();
+  const { leaves } = useData();
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<AttendanceFilter>({ dateRange: 'month' });
 
-  // Filter records
+  const isStudentOnLeave = (studentId: string, date: string) => {
+    return leaves.find(leave => 
+      leave.studentId === studentId &&
+      leave.status === 'approved' &&
+      leave.days.includes(date)
+    );
+  };
+
   const filteredRecords = useMemo(() => {
     let records = [...mockAttendanceRecords];
 
     if (filters.studentId) records = records.filter(r => r.studentId === filters.studentId);
     if (filters.courseId) records = records.filter(r => r.courseId === filters.courseId);
 
-    // Date filter logic here (simplified)
+    records = records.map(record => {
+      const leaveInfo = isStudentOnLeave(record.studentId, record.date);
+      if (leaveInfo) {
+        return {
+          ...record,
+          status: 'on-leave' as const,
+          leaveReason: leaveInfo.reason,
+          joinTime: null,
+          leaveTime: null,
+          duration: 0
+        };
+      }
+      return record;
+    });
+
     records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return records;
-  }, [filters]);
+  }, [filters, leaves]);
 
-  // Calculate stats
   const stats: AttendanceStats = useMemo(() => {
     const total = filteredRecords.length;
     const present = filteredRecords.filter(r => r.status === 'present').length;
     const absent = filteredRecords.filter(r => r.status === 'absent').length;
     const late = filteredRecords.filter(r => r.status === 'late').length;
+    const onLeave = filteredRecords.filter(r => r.status === 'on-leave').length;
     const totalDuration = filteredRecords.reduce((sum, r) => sum + r.duration, 0);
 
     return {
@@ -147,6 +169,7 @@ const StudentAttendanceReport: React.FC = () => {
       present,
       absent,
       late,
+      onLeave,
       attendancePercentage: total > 0 ? Math.round(((present + late) / total) * 100) : 0,
       totalDuration
     };
@@ -181,7 +204,6 @@ const StudentAttendanceReport: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 bg-gray-100 rounded-lg">
           <FileText className="w-6 h-6 text-gray-700" />
@@ -192,7 +214,6 @@ const StudentAttendanceReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
       <AttendanceFilters
         filters={filters}
         onFilterChange={setFilters}
@@ -202,8 +223,7 @@ const StudentAttendanceReport: React.FC = () => {
         isExporting={isExporting}
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gray-100 rounded-lg">
@@ -254,6 +274,18 @@ const StudentAttendanceReport: React.FC = () => {
 
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Umbrella className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-600">{stats.onLeave || 0}</p>
+              <p className="text-xs text-gray-500">On Leave</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <TrendingUp className="w-5 h-5 text-blue-600" />
             </div>
@@ -265,7 +297,6 @@ const StudentAttendanceReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
       <AttendanceTable 
         records={filteredRecords}
         showStudent={!filters.studentId}

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/components/calendar/CalendarView.tsx (COMPLETE FILE WITH DEBUG)
+import React, { useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
@@ -28,6 +29,7 @@ interface CalendarViewProps {
   onEditEvent?: (event: CalendarEvent) => void;
   onDeleteEvent?: (eventId: string) => void;
   onRescheduleEvent?: (eventId: string, newDate: string) => void;
+  leaveDays?: string[];
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -36,6 +38,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onEditEvent,
   onDeleteEvent,
   onRescheduleEvent,
+  leaveDays = [],
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -43,10 +46,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   
   const { showToast } = useToast();
-  const {  } = useAuth();
   const { canCreateEvent, canEditEvent } = usePermissions();
 
-  // Calculate calendar days
+  // ✅ Debug: Log whenever leaveDays changes
+  useEffect(() => {
+    console.log('📅 CalendarView received leaveDays:', leaveDays);
+  }, [leaveDays]);
+
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart);
@@ -92,6 +98,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return filterEventsByDate(events, dateStr);
   };
 
+  // ✅ Check if date is a leave day
+  const isLeaveDay = (date: Date): boolean => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const result = leaveDays.includes(dateStr);
+    if (result) {
+      console.log('🔴 Found leave day:', dateStr);
+    }
+    return result;
+  };
+
   const handleSaveEvent = async (formData: EventFormData) => {
     if (editingEvent && onEditEvent) {
       onEditEvent({ ...editingEvent, ...formData });
@@ -116,10 +132,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            {/* Month Navigation */}
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrevMonth}
@@ -147,7 +161,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               </button>
             </div>
 
-            {/* Add Event Button */}
             {canCreateEvent() && onCreateEvent && (
               <button
                 onClick={() => {
@@ -164,9 +177,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Calendar Grid */}
         <div className="p-4">
-          {/* Week Days Header */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekDays.map(day => (
               <div
@@ -178,12 +189,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             ))}
           </div>
 
-          {/* Days Grid */}
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map(day => {
               const dayEvents = getEventsForDate(day);
               const isToday = isSameDay(day, new Date());
               const isCurrentMonth = isSameMonth(day, currentDate);
+              const hasLeave = isLeaveDay(day);
 
               return (
                 <DroppableDay
@@ -195,22 +206,27 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 >
                   <div
                     onClick={() => handleDateClick(day)}
-                    className={`min-h-22.5 cursor-pointer ${
+                    className={`min-h-22.5 cursor-pointer relative p-2 ${
                       canCreateEvent() ? 'hover:bg-gray-50' : ''
+                    } ${
+                      hasLeave ? 'bg-red-100 border-2 border-red-400 rounded-lg shadow-sm' : ''
                     }`}
+                    style={hasLeave ? { backgroundColor: '#fee2e2', borderColor: '#f87171' } : {}}
                   >
-                    {/* Date Number */}
+                    {hasLeave && (
+                      <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></div>
+                    )}
+
                     <div className={`text-sm font-semibold mb-1 ${
                       isToday 
                         ? 'w-7 h-7 flex items-center justify-center bg-black text-white rounded-full' 
                         : isCurrentMonth 
-                          ? 'text-gray-900' 
+                          ? hasLeave ? 'text-red-700 font-bold' : 'text-gray-900'
                           : 'text-gray-400'
                     }`}>
                       {format(day, 'd')}
                     </div>
                     
-                    {/* Events */}
                     <div className="space-y-1">
                       {dayEvents.slice(0, 3).map(event => (
                         <div 
@@ -239,7 +255,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Event Modal */}
         {showEventModal && (
           <EventModal
             event={editingEvent || undefined}

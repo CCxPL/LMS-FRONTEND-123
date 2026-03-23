@@ -1,3 +1,4 @@
+// src/pages/teacher/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Users, ClipboardList, Star, Play, Eye, Calendar, MessageSquare, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import Loader from '../../components/common/Loader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+
 
 const TeacherDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +46,8 @@ const TeacherDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+     
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Welcome, {user?.name?.split(' ')[0] || 'Teacher'}!</h1>

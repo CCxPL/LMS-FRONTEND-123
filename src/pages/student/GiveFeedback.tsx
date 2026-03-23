@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { Star, Send, MessageSquare } from 'lucide-react';
+import React, { useState,} from 'react';
+import { Star, Send, MessageSquare, } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useData } from '../../context/DataContext';
+import { useFeedback } from '../../hooks/useFeedback';
 import { useToast } from '../../context/ToastContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 
 const GiveFeedback: React.FC = () => {
   const { user } = useAuth();
-  const { submitFeedback, getFeedbackByStudent } = useData();
+  const { submitFeedback, feedbacks } = useFeedback();
   const { showToast } = useToast();
 
   const [courseId, setCourseId] = useState('');
@@ -17,7 +17,8 @@ const GiveFeedback: React.FC = () => {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const myFeedbacks = getFeedbackByStudent(user?.id || '');
+  // ✅ FIXED: Filter from feedbacks array directly
+  const myFeedbacks = feedbacks.filter(f => f.studentId === user?.id && !f.isDeleted);
 
   const courses = [
     { id: '1', name: 'React.js Complete Course', teacherId: '3', teacherName: 'Dr. Sarah' },
@@ -45,19 +46,20 @@ const GiveFeedback: React.FC = () => {
 
     setTimeout(() => {
       submitFeedback({
-        studentId: user.id, 
+        studentId: user.id,
         studentName: user.name,
-        teacherId: course.teacherId, 
-        teacherName: course.teacherName,
-        courseId: course.id, 
-        courseName: course.name,
-        rating, 
-        comment,
+        recipientId: course.teacherId,
+        recipientType: 'teacher',
+        recipientName: course.teacherName,
+        feedbackText: comment,
+        rating,
+        category: 'teaching',
+        createdBy: user.id,
       });
 
-      showToast('Feedback submitted successfully!', 'success');
-      setCourseId(''); 
-      setRating(0); 
+      showToast('✓ Feedback submitted successfully!', 'success');
+      setCourseId('');
+      setRating(0);
       setComment('');
       setIsSubmitting(false);
     }, 1000);
@@ -86,9 +88,9 @@ const GiveFeedback: React.FC = () => {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Course</label>
-              <select 
+              <select
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                value={courseId} 
+                value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
               >
                 <option value="">-- Choose a course --</option>
@@ -102,20 +104,20 @@ const GiveFeedback: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <button 
-                    key={star} 
+                  <button
+                    key={star}
                     type="button"
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
                     onClick={() => setRating(star)}
                     className="focus:outline-none transition-transform hover:scale-110"
                   >
-                    <Star 
+                    <Star
                       className={`w-10 h-10 transition-colors ${
-                        star <= (hoverRating || rating) 
-                          ? 'fill-gray-900 text-gray-900' 
+                        star <= (hoverRating || rating)
+                          ? 'fill-gray-900 text-gray-900'
                           : 'text-gray-300'
-                      }`} 
+                      }`}
                     />
                   </button>
                 ))}
@@ -131,12 +133,12 @@ const GiveFeedback: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Your Experience</label>
-              <textarea 
+              <textarea
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none"
                 style={{ minHeight: 150 }}
-                placeholder="What did you like? What can be improved?" 
+                placeholder="What did you like? What can be improved?"
                 value={comment}
-                onChange={(e) => setComment(e.target.value)} 
+                onChange={(e) => setComment(e.target.value)}
               />
             </div>
 
@@ -149,7 +151,7 @@ const GiveFeedback: React.FC = () => {
         {/* My Feedbacks */}
         <div className="space-y-6">
           <h3 className="font-bold text-gray-900 text-xl">My Past Reviews</h3>
-          
+
           {myFeedbacks.length === 0 ? (
             <Card className="text-center py-12">
               <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -162,8 +164,8 @@ const GiveFeedback: React.FC = () => {
                 <Card key={fb.id} hover>
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="font-bold text-gray-900">{fb.courseName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Instructor: {fb.teacherName}</p>
+                      <p className="font-bold text-gray-900">{fb.recipientName}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Category: {fb.category}</p>
                     </div>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((s) => (
@@ -171,28 +173,16 @@ const GiveFeedback: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                  
+
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                    "{fb.comment}"
+                    "{fb.feedbackText}"
                   </p>
-                  
+
                   <div className="mt-3 flex justify-between items-center">
                     <p className="text-xs text-gray-400">
                       {new Date(fb.createdAt).toLocaleDateString()}
                     </p>
-                    {fb.reply && (
-                      <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
-                        Replied
-                      </span>
-                    )}
                   </div>
-
-                  {fb.reply && (
-                    <div className="mt-3 pl-4 border-l-4 border-gray-300">
-                      <p className="text-xs font-bold text-gray-700 mb-1">Teacher's Reply:</p>
-                      <p className="text-sm text-gray-600 italic">{fb.reply}</p>
-                    </div>
-                  )}
                 </Card>
               ))}
             </div>

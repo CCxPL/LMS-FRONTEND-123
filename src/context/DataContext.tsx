@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { AttendanceRecord, ClassSummary, StudentActivity } from '../types/attendance.types';
 import type { Activity } from '../types/activity.types';
+import type { Feedback as FeedbackType } from '../types/feedback.types';
+import type { LeaveRequest } from '../types/leave.types'; // ✅ NEW
 
 // =====================
 // Types
@@ -39,20 +41,6 @@ interface NotificationItem {
   createdAt: string;
 }
 
-interface Feedback {
-  id: string;
-  studentId: string;
-  studentName: string;
-  teacherId: string;
-  teacherName: string;
-  courseId: string;
-  courseName: string;
-  rating: number;
-  comment: string;
-  reply?: string;
-  createdAt: string;
-}
-
 interface Certificate {
   id: string;
   studentId: string;
@@ -65,7 +53,6 @@ interface Certificate {
   score: number;
 }
 
-// ✅ OLD Task interface (keep for backward compatibility)
 interface Task {
   id: string;
   userId: string;
@@ -78,7 +65,6 @@ interface Task {
   completedAt?: string;
 }
 
-// ✅ NEW: Extended Task interface for assignment-style tasks
 interface TaskComment {
   id: string;
   userId: string;
@@ -105,7 +91,6 @@ interface ExtendedTask {
   comments: TaskComment[];
 }
 
-// ✅ ADDED: Announcement interface
 interface Announcement {
   title: string;
   message: string;
@@ -116,7 +101,6 @@ interface Announcement {
   createdAt: string;
 }
 
-// ✅ ADDED: Assignment interface
 interface Assignment {
   id: string;
   title: string;
@@ -167,35 +151,40 @@ interface DataContextType {
   clearNotification: (id: string) => void;
 
   // Feedback
-  feedbacks: Feedback[];
-  submitFeedback: (fb: Omit<Feedback, 'id' | 'createdAt'>) => void;
-  getFeedbackByStudent: (studentId: string) => Feedback[];
-  getFeedbackByTeacher: (teacherId: string) => Feedback[];
-  replyToFeedback: (feedbackId: string, reply: string) => void;
+  feedbacks: FeedbackType[];
+  submitFeedback: (fb: Omit<FeedbackType, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  getFeedbackByStudent: (studentId: string) => FeedbackType[];
+  getFeedbackByRecipient: (recipientId: string) => FeedbackType[];
+  updateFeedback: (id: string, updates: Partial<Omit<FeedbackType, 'id' | 'createdAt' | 'createdBy'>>) => void;
+  deleteFeedback: (id: string) => void;
 
   // Certificates
   certificates: Certificate[];
   addCertificate: (cert: Omit<Certificate, 'id'>) => void;
   getCertificatesForStudent: (studentId: string) => Certificate[];
 
-  // Tasks (Old - for backward compatibility)
+  // Tasks
   tasks: ExtendedTask[];
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   getTasksByUser: (userId: string) => Task[];
   completeTask: (id: string) => void;
-
-  // ✅ NEW: Extended Task functions
   createTask: (task: Omit<ExtendedTask, 'id' | 'createdAt' | 'comments'>) => void;
   updateTaskStatus: (id: string, status: ExtendedTask['status']) => void;
   addTaskComment: (taskId: string, comment: TaskComment) => void;
 
-  // ✅ ADDED: Announcement
+  // Announcement
   addAnnouncement: (announcement: Announcement) => void;
 
-  // ✅ ADDED: Assignment
+  // Assignment
   submitAssignment: (assignment: Assignment) => void;
+
+  // ✅ NEW: Leaves
+  leaves: LeaveRequest[];
+  addLeave: (leave: LeaveRequest) => void;
+  getStudentLeaves: (studentId: string) => LeaveRequest[];
+  getAllApprovedLeaves: () => LeaveRequest[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -259,19 +248,20 @@ const initialNotifications: NotificationItem[] = [
   },
 ];
 
-const initialFeedbacks: Feedback[] = [
+const initialFeedbacks: FeedbackType[] = [
   {
     id: 'fb-1',
     studentId: 'student-1',
     studentName: 'Emma Student',
-    teacherId: 'teacher-1',
-    teacherName: 'Sarah Teacher',
-    courseId: 'course-1',
-    courseName: 'Python Development',
+    recipientId: 'teacher-1',
+    recipientType: 'teacher',
+    recipientName: 'Sarah Teacher',
+    feedbackText: 'Excellent course!',
     rating: 5,
-    comment: 'Excellent course!',
-    reply: 'Thank you!',
+    category: 'teaching',
     createdAt: new Date(Date.now() - 604800000).toISOString(),
+    updatedAt: new Date(Date.now() - 604800000).toISOString(),
+    createdBy: 'student-1',
   },
 ];
 
@@ -289,7 +279,6 @@ const initialCertificates: Certificate[] = [
   },
 ];
 
-// ✅ UPDATED: Initial tasks with extended format
 const initialTasks: ExtendedTask[] = [
   {
     id: 'task-1',
@@ -341,6 +330,9 @@ const initialTasks: ExtendedTask[] = [
   },
 ];
 
+// ✅ NEW: Initial Leaves
+const initialLeaves: LeaveRequest[] = [];
+
 // =====================
 // Provider Component
 // =====================
@@ -351,10 +343,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activities, setActivities] = useState<Activity[]>([]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>(initialFeedbacks);
+  const [feedbacks, setFeedbacks] = useState<FeedbackType[]>(initialFeedbacks);
   const [certificates, setCertificates] = useState<Certificate[]>(initialCertificates);
   const [tasks, setTasks] = useState<ExtendedTask[]>(initialTasks);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(initialLeaves); // ✅ NEW
 
   // Attendance
   const addAttendanceRecord = useCallback((record: AttendanceRecord) => {
@@ -460,24 +453,33 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Feedback
-  const submitFeedback = useCallback((fb: Omit<Feedback, 'id' | 'createdAt'>) => {
+  const submitFeedback = useCallback((fb: Omit<FeedbackType, 'id' | 'createdAt' | 'updatedAt'>) => {
     setFeedbacks(prev => [{
       ...fb,
       id: `fb-${Date.now()}`,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }, ...prev]);
   }, []);
 
   const getFeedbackByStudent = useCallback((studentId: string) => {
-    return feedbacks.filter(f => f.studentId === studentId);
+    return feedbacks.filter(f => f.studentId === studentId && !f.isDeleted);
   }, [feedbacks]);
 
-  const getFeedbackByTeacher = useCallback((teacherId: string) => {
-    return feedbacks.filter(f => f.teacherId === teacherId);
+  const getFeedbackByRecipient = useCallback((recipientId: string) => {
+    return feedbacks.filter(f => f.recipientId === recipientId && !f.isDeleted);
   }, [feedbacks]);
 
-  const replyToFeedback = useCallback((feedbackId: string, reply: string) => {
-    setFeedbacks(prev => prev.map(f => f.id === feedbackId ? { ...f, reply } : f));
+  const updateFeedback = useCallback((id: string, updates: Partial<Omit<FeedbackType, 'id' | 'createdAt' | 'createdBy'>>) => {
+    setFeedbacks(prev => prev.map(f => 
+      f.id === id ? { ...f, ...updates, updatedAt: new Date().toISOString() } : f
+    ));
+  }, []);
+
+  const deleteFeedback = useCallback((id: string) => {
+    setFeedbacks(prev => prev.map(f => 
+      f.id === id ? { ...f, isDeleted: true } : f
+    ));
   }, []);
 
   // Certificates
@@ -489,7 +491,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return certificates.filter(c => c.studentId === studentId);
   }, [certificates]);
 
-  // Tasks (Old functions - for backward compatibility)
+  // Tasks
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt'>) => {
     const newTask: ExtendedTask = {
       id: `task-${Date.now()}`,
@@ -528,7 +530,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ));
   }, []);
 
-  // ✅ NEW: Extended Task functions
   const createTask = useCallback((task: Omit<ExtendedTask, 'id' | 'createdAt' | 'comments'>) => {
     const newTask: ExtendedTask = {
       ...task,
@@ -564,7 +565,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   }, []);
 
-  // ✅ ADDED: Announcement function
+  // Announcement
   const addAnnouncement = useCallback((announcement: Announcement) => {
     console.log('Announcement broadcasted:', announcement);
     addNotificationItem({
@@ -575,7 +576,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [addNotificationItem]);
 
-  // ✅ ADDED: Assignment submission function
+  // Assignment
   const submitAssignment = useCallback((assignment: Assignment) => {
     const submittedAssignment = {
       ...assignment,
@@ -594,6 +595,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Assignment submitted:', submittedAssignment);
   }, [addNotificationItem]);
 
+  // ✅ NEW: Leave Functions
+  const addLeave = useCallback((leave: LeaveRequest) => {
+    setLeaves(prev => [...prev, leave]);
+  }, []);
+
+  const getStudentLeaves = useCallback((studentId: string) => {
+    return leaves.filter(l => l.studentId === studentId);
+  }, [leaves]);
+
+  const getAllApprovedLeaves = useCallback(() => {
+    return leaves.filter(l => l.status === 'approved');
+  }, [leaves]);
+
   const value: DataContextType = {
     attendanceRecords, addAttendanceRecord, updateAttendanceRecord,
     classSummaries, addClassSummary, getClassSummary,
@@ -601,12 +615,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activities, addActivity, getActivities,
     messages, sendMessage, replyMessage, markMessageRead, deleteMessage,
     notifications, addNotificationItem, markRead, markAllRead, clearNotification,
-    feedbacks, submitFeedback, getFeedbackByStudent, getFeedbackByTeacher, replyToFeedback,
+    feedbacks, submitFeedback, getFeedbackByStudent, getFeedbackByRecipient, updateFeedback, deleteFeedback,
     certificates, addCertificate, getCertificatesForStudent,
     tasks, addTask, updateTask, deleteTask, getTasksByUser, completeTask,
-    createTask, updateTaskStatus, addTaskComment, // ✅ NEW functions
+    createTask, updateTaskStatus, addTaskComment,
     addAnnouncement,
     submitAssignment,
+    leaves, addLeave, getStudentLeaves, getAllApprovedLeaves, // ✅ NEW
   };
 
   return (
@@ -624,5 +639,4 @@ export const useData = (): DataContextType => {
   return context;
 };
 
-// ✅ Export Task type for use in other files
 export type { ExtendedTask as Task, TaskComment };

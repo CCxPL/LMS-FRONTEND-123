@@ -16,7 +16,7 @@ const CourseEnroll: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
-  const { addNotification } = useData();
+  const { addNotificationItem } = useData(); // ✅ CHANGED: addNotification → addNotificationItem
 
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,12 +40,12 @@ const CourseEnroll: React.FC = () => {
 
   const handleEnroll = (_data: EnrollData) => {
     setIsEnrolled(true);
-    showToast(`Successfully enrolled in ${course?.title}!`, 'success');
+    showToast(`✓ Successfully enrolled in ${course?.title}!`, 'success');
 
     if (user) {
-      addNotification({
+      // ✅ CHANGED: addNotification → addNotificationItem
+      addNotificationItem({
         userId: user.id,
-        userRole: user.role,
         title: 'Enrollment Confirmed',
         message: `You are now enrolled in "${course?.title}".`,
         type: 'success',
@@ -91,7 +91,7 @@ const CourseEnroll: React.FC = () => {
                 {course.level}
               </span>
             </div>
-            
+
             <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
             <p className="text-lg text-gray-600">{course.description}</p>
 
@@ -146,7 +146,7 @@ const CourseEnroll: React.FC = () => {
               <span>{course.modules?.length} sections • {totalLessons} lectures</span>
               <span>{course.duration} total</span>
             </div>
-            
+
             <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-200">
               {course.modules?.map((mod, idx) => (
                 <div key={mod.id} className="bg-white">
@@ -184,15 +184,15 @@ const CourseEnroll: React.FC = () => {
               <div className="h-48 bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
                 <BookOpen className="w-16 h-16 text-white/50" />
               </div>
-              
+
               <div className="p-6">
                 <div className="flex items-end gap-2 mb-6">
                   <span className="text-3xl font-bold text-gray-900">
-                    {course.price ? `$${course.price}` : 'Free'}
+                    {course.price ? `₹${course.price}` : 'Free'}
                   </span>
                   {course.price && (
                     <span className="text-lg text-gray-400 line-through mb-1">
-                      ${(course.price * 1.5).toFixed(2)}
+                      ₹{(course.price * 1.5).toFixed(2)}
                     </span>
                   )}
                 </div>
@@ -213,10 +213,6 @@ const CourseEnroll: React.FC = () => {
                     isEnrolled={isEnrolled}
                   />
                 )}
-
-                <div className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-gray-500">
-                  30-Day Money-Back Guarantee
-                </div>
               </div>
             </Card>
           </div>

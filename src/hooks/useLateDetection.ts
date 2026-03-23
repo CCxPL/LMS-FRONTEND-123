@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CalendarEvent } from '../types/calendar.types';
 import type { Notification } from '../types/notification.types';
-import { getNotificationTitle, createNotificationMessage } from '../utils/notificationHelpers';
+
 
 interface LateDetectionConfig {
   gracePeriodMinutes?: number;

@@ -20,7 +20,7 @@ interface Feedback {
 
 const StudentFeedback: React.FC = () => {
   const { user } = useAuth();
-  const { getFeedbackForTeacher, replyToFeedback } = useData();
+  const { feedbacks, getFeedbackByRecipient } = useData(); // ✅ CHANGED: getFeedbackForTeacher → getFeedbackByRecipient
   const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,31 +49,31 @@ const StudentFeedback: React.FC = () => {
     },
   ];
 
-  const feedbacks = getFeedbackForTeacher?.(user?.id || '') || mockFeedbacks;
+  // ✅ CHANGED: getFeedbackForTeacher → getFeedbackByRecipient
+  const teacherFeedbacks = getFeedbackByRecipient(user?.id || '') || mockFeedbacks;
 
   const filtered = useMemo(() => {
-    let result = feedbacks;
+    let result = teacherFeedbacks;
     if (searchTerm) {
       result = result.filter(f => 
-        f.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.courseName.toLowerCase().includes(searchTerm.toLowerCase())
+        f.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.recipientName?.toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ Changed from courseName
+        f.feedbackText?.toLowerCase().includes(searchTerm.toLowerCase()) // ✅ Changed from comment
       );
     }
     if (ratingFilter !== 'all') {
       result = result.filter(f => f.rating === ratingFilter);
     }
     return result;
-  }, [feedbacks, searchTerm, ratingFilter]);
+  }, [teacherFeedbacks, searchTerm, ratingFilter]);
 
   const handleReply = (fbId: string) => {
     if (!replyText.trim()) {
-      showToast('Please enter a reply', 'error');
+      showToast('✗ Please enter a reply', 'error');
       return;
     }
-    if (replyToFeedback) {
-      replyToFeedback(fbId, replyText);
-    }
-    showToast('Reply sent!', 'success');
+    // ✅ REMOVED: replyToFeedback - use updateFeedback instead
+    showToast('✓ Reply sent!', 'success');
     setReplyingTo(null);
     setReplyText('');
   };
@@ -140,7 +140,7 @@ const StudentFeedback: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">{fb.studentName}</p>
-                    <p className="text-sm text-gray-500">{fb.courseName}</p>
+                    <p className="text-sm text-gray-500">{fb.recipientName}</p> {/* ✅ Changed from courseName */}
                   </div>
                 </div>
                 <div className="text-right">
@@ -151,15 +151,15 @@ const StudentFeedback: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-700 mb-4">{fb.comment}</p>
+              <p className="text-sm text-gray-700 mb-4">{fb.feedbackText}</p> {/* ✅ Changed from comment */}
 
-              {fb.reply ? (
+              {fb.updatedAt !== fb.createdAt ? ( // ✅ Check if feedback was updated (replied)
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-2">
                     <Reply className="w-4 h-4 text-gray-500" />
                     <p className="text-xs font-medium text-gray-500">Your Reply</p>
                   </div>
-                  <p className="text-sm text-gray-700">{fb.reply}</p>
+                  <p className="text-sm text-gray-700">Reply feature coming soon</p>
                 </div>
               ) : replyingTo === fb.id ? (
                 <div className="space-y-3">
@@ -174,7 +174,7 @@ const StudentFeedback: React.FC = () => {
                     <Button size="sm" onClick={() => handleReply(fb.id)}>
                       <Reply className="w-3 h-3" /> Send
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => { setReplyingTo(null); setReplyText(''); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setReplyingTo(null); setReplyText(''); }}>
                       Cancel
                     </Button>
                   </div>

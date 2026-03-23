@@ -36,7 +36,7 @@ const EnrollForm: React.FC<EnrollFormProps> = ({ course, onEnroll, isEnrolled })
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 font-medium">Total Amount</p>
-        <p className="text-2xl font-bold text-gray-900">{course.price ? `$${course.price}` : 'Free'}</p>
+        <p className="text-2xl font-bold text-gray-900">{course.price ? `₹${course.price}` : 'Free'}</p>
       </div>
       
       {course.price ? (

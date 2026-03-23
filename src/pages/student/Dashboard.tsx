@@ -1,3 +1,4 @@
+// src/pages/student/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { BookOpen, ClipboardList, HelpCircle, Trophy, Play, Clock, Target, Calendar} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -5,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import Loader from '../../components/common/Loader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+
 
 const StudentDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +41,7 @@ const StudentDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+
       {/* Welcome Banner */}
       <div className="bg-black text-white rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -56,15 +59,7 @@ const StudentDashboard: React.FC = () => {
                   <p className="font-bold">82%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">This Week</p>
-                  <p className="font-bold">12 hrs</p>
-                </div>
-              </div>
+            
             </div>
           </div>
           <Button variant="secondary" onClick={() => navigate('/student/my-courses')}>
@@ -185,38 +180,7 @@ const StudentDashboard: React.FC = () => {
             </div>
           </Card>
         </div>
-      </div>
-
-      {/* Achievements */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900">Achievements</h3>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { title: 'Fast Learner', icon: '🚀', earned: true, desc: 'Complete 5 lessons in a day' },
-            { title: 'Quiz Master', icon: '🏆', earned: true, desc: 'Score 90%+ in 3 quizzes' },
-            { title: '7-Day Streak', icon: '🔥', earned: false, desc: 'Learn for 7 consecutive days' },
-            { title: 'First Course', icon: '🎓', earned: false, desc: 'Complete your first course' },
-          ].map((a, i) => (
-            <div 
-              key={i} 
-              className={`p-4 rounded-xl border-2 text-center transition-all ${
-                a.earned ? 'border-black bg-gray-50' : 'border-gray-200 opacity-60'
-              }`}
-            >
-              <div className="text-3xl mb-2">{a.icon}</div>
-              <p className="font-medium text-gray-900 text-sm">{a.title}</p>
-              <p className="text-xs text-gray-500 mt-1">{a.desc}</p>
-              {a.earned && (
-                <span className="inline-block mt-2 text-xs font-medium px-2 py-0.5 rounded-full bg-black text-white">
-                  Earned
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
+      </div> 
     </div>
   );
 };

@@ -1,9 +1,9 @@
+// src/pages/super-admin/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { 
   Users, ShieldCheck, BookOpen, TrendingUp, Server, 
   Globe, ArrowUpRight, Megaphone, Eye,
- GraduationCap,
-  UserCheck, UserX, RefreshCw
+  GraduationCap, UserCheck, UserX, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,6 +14,7 @@ import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+
 
 const SuperAdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -100,7 +101,6 @@ const SuperAdminDashboard: React.FC = () => {
 
   if (isLoading) return <Loader />;
 
-  // ✅ Fixed Paths
   const stats = [
     { title: 'Total Students', value: '12,456', change: '+12.5%', icon: <GraduationCap className="w-5 h-5" />, path: '/super-admin/manage-users' },
     { title: 'Active Admins', value: '8', change: '+2 new', icon: <ShieldCheck className="w-5 h-5" />, path: '/super-admin/manage-admins' },
@@ -112,6 +112,8 @@ const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+     
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -171,7 +173,6 @@ const SuperAdminDashboard: React.FC = () => {
             <div className="h-48 flex items-end justify-between gap-2 px-2">
               {growthData.map((h, i) => (
                 <div key={i} className="w-full flex flex-col justify-end gap-1 group relative cursor-pointer">
-                  {/* Tooltip */}
                   <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                     {h * 15} Users
                   </div>
@@ -190,7 +191,7 @@ const SuperAdminDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* System Health (Improved UI) */}
+        {/* System Health */}
         <div className="flex flex-col h-full">
           <Card className="flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-6">

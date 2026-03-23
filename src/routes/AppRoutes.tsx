@@ -49,6 +49,8 @@ import StudentFeedback from '../pages/teacher/StudentFeedback';
 import CourseDetail from '../pages/teacher/CourseDetail';
 import TeacherSchedule from '../pages/teacher/Schedule';
 
+
+
 // Student Pages
 import StudentDashboard from '../pages/student/Dashboard';
 import StudentMyCourses from '../pages/student/MyCourses';
@@ -68,6 +70,10 @@ import StudentSchedule from '../pages/student/Schedule';
 
 // ✅ ADD: Attendance Report Page
 import StudentAttendanceReport from '../pages/teacher/StudentAttendanceReport';
+import FeedbackManagement from '../pages/super-admin/FeedbackManagement';
+import BatchSelection from '../pages/teacher/BatchSelection';
+import TeacherLeaves from '../pages/teacher/TeacherLeaves';
+
 
 const AppRoutes: React.FC = () => {
   return (
@@ -96,6 +102,7 @@ const AppRoutes: React.FC = () => {
         <Route path="manage-users" element={<ManageUsers />} />
         <Route path="all-teachers" element={<AllTeachers />} />
         <Route path="platform-stats" element={<PlatformStats />} />
+        <Route path="feedback-management" element={<FeedbackManagement />} />
         <Route path="settings" element={<Settings />} />
         <Route path="schedule" element={<SuperAdminSchedule />} />
         <Route path="attendance-report" element={<StudentAttendanceReport />} /> {/* ✅ ADD */}
@@ -143,6 +150,7 @@ const AppRoutes: React.FC = () => {
         <Route path="my-courses" element={<TeacherMyCourses />} />
         <Route path="create-course" element={<CreateCourse />} />
         <Route path="course/:id" element={<CourseDetail />} />
+        <Route path="/teacher/course/:courseId/batches" element={<BatchSelection />} />
         <Route path="assignments" element={<TeacherAssignments />} />
         <Route path="grade-assignments" element={<GradeAssignment />} />
         <Route path="quizzes" element={<TeacherQuizzes />} />
@@ -151,7 +159,8 @@ const AppRoutes: React.FC = () => {
         <Route path="my-students" element={<MyStudents />} />
         <Route path="feedback" element={<StudentFeedback />} />
         <Route path="schedule" element={<TeacherSchedule />} />
-        <Route path="attendance-report" element={<StudentAttendanceReport />} /> {/* ✅ ADD */}
+        <Route path="attendance-report" element={<StudentAttendanceReport />} /> 
+        <Route path="leaves" element={<TeacherLeaves />} />{/* ✅ ADD */}
       </Route>
 
       {/* Student Routes */}

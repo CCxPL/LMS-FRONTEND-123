@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, HelpCircle, Play, Trophy, Search, Filter, Eye, RotateCcw } from 'lucide-react';
+import { Clock, HelpCircle, Play, Trophy, Search, Filter, Eye, RotateCcw, CheckCircle, XCircle } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import Modal from '../../components/ui/Modal';
 import Loader from '../../components/common/Loader';
 import { useToast } from '../../context/ToastContext';
 import type { Quiz } from '../../types/course.types';
@@ -69,6 +68,17 @@ const StudentQuizzes: React.FC = () => {
       case 'in-progress': return 'bg-gray-200 text-gray-700';
       default: return 'bg-gray-100 text-gray-600';
     }
+  };
+
+  // Calculate correct and incorrect answers
+  const getAnswerStats = (quiz: Quiz) => {
+    if (quiz.obtainedMarks === undefined) return { correct: 0, incorrect: 0 };
+    
+    const marksPerQuestion = quiz.totalMarks / quiz.totalQuestions;
+    const correct = Math.round((quiz.obtainedMarks || 0) / marksPerQuestion);
+    const incorrect = quiz.totalQuestions - correct;
+    
+    return { correct, incorrect };
   };
 
   if (isLoading) return <Loader text="Loading quizzes..." />;
@@ -187,8 +197,8 @@ const StudentQuizzes: React.FC = () => {
               <div className="mt-auto space-y-2">
                 {quiz.status === 'completed' ? (
                   <div className="space-y-2">
-                    <Button variant="outline" fullWidth onClick={() => setViewQuiz(quiz)}>
-                      <Eye className="w-4 h-4" /> View Results
+                    <Button fullWidth onClick={() => setViewQuiz(quiz)}>
+                      <Eye className="w-4 h-4" /> Preview Answers
                     </Button>
                     {quiz.attempts < quiz.maxAttempts && (
                       <Button variant="outline" fullWidth onClick={() => handleStartQuiz(quiz)}>
@@ -212,71 +222,197 @@ const StudentQuizzes: React.FC = () => {
         </div>
       )}
 
-      {/* View Results Modal */}
-      <Modal isOpen={!!viewQuiz} onClose={() => setViewQuiz(null)} title="Quiz Results">
-        {viewQuiz && (
-          <div className="space-y-6">
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <h3 className="font-bold text-lg text-gray-900">{viewQuiz.title}</h3>
-              <p className="text-sm text-gray-500">{viewQuiz.courseName}</p>
-            </div>
+      {/* View Results Modal - FULL SCREEN */}
+      {viewQuiz && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 overflow-y-auto">
+          <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+              {/* Header Card */}
+              <Card className="mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{viewQuiz.title}</h2>
+                    <p className="text-sm text-gray-500 mt-1">{viewQuiz.courseName}</p>
+                  </div>
+                  <button
+                    onClick={() => setViewQuiz(null)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              </Card>
 
-            <div className="bg-gray-100 rounded-xl p-8 text-center">
-              <Trophy className={`w-16 h-16 mx-auto mb-4 ${
-                viewQuiz.obtainedMarks !== undefined && 
-                (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
-                  ? 'text-gray-900'
-                  : 'text-gray-400'
-              }`} />
-              <p className="text-5xl font-bold text-gray-900">
-                {viewQuiz.obtainedMarks}/{viewQuiz.totalMarks}
-              </p>
-              <p className="text-lg text-gray-600 mt-2">
-                {Math.round(((viewQuiz.obtainedMarks || 0) / viewQuiz.totalMarks) * 100)}%
-              </p>
-              <p className="text-sm mt-2 font-medium text-gray-700">
-                {viewQuiz.obtainedMarks !== undefined && 
-                (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
-                  ? 'Passed!'
-                  : `Need ${viewQuiz.passingPercentage}% to pass`
-                }
-              </p>
-            </div>
+              {/* Score Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Score Card */}
+                <Card className="bg-gradient-to-br from-gray-50 to-gray-100 text-center py-8">
+                  <Trophy className={`w-16 h-16 mx-auto mb-4 ${
+                    viewQuiz.obtainedMarks !== undefined && 
+                    (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
+                      ? 'text-gray-900'
+                      : 'text-gray-400'
+                  }`} />
+                  <p className="text-4xl font-bold text-gray-900">
+                    {viewQuiz.obtainedMarks}/{viewQuiz.totalMarks}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-700 mt-2">
+                    {Math.round(((viewQuiz.obtainedMarks || 0) / viewQuiz.totalMarks) * 100)}%
+                  </p>
+                  <p className={`text-sm font-medium mt-3 ${
+                    viewQuiz.obtainedMarks !== undefined && 
+                    (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}>
+                    {viewQuiz.obtainedMarks !== undefined && 
+                    (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
+                      ? '✓ Passed'
+                      : `✗ Need ${viewQuiz.passingPercentage}% to pass`
+                    }
+                  </p>
+                </Card>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-gray-900">{viewQuiz.totalQuestions}</p>
-                <p className="text-xs text-gray-500">Questions</p>
+                {/* Stats Card */}
+                <Card className="py-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                      <span className="flex items-center gap-2 text-green-700 font-medium">
+                        <CheckCircle className="w-5 h-5" />
+                        Correct Answers
+                      </span>
+                      <span className="text-2xl font-bold text-green-600">{getAnswerStats(viewQuiz).correct}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                      <span className="flex items-center gap-2 text-red-700 font-medium">
+                        <XCircle className="w-5 h-5" />
+                        Wrong Answers
+                      </span>
+                      <span className="text-2xl font-bold text-red-600">{getAnswerStats(viewQuiz).incorrect}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="text-gray-700 font-medium">Total Questions</span>
+                      <span className="text-2xl font-bold text-gray-900">{viewQuiz.totalQuestions}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="text-gray-700 font-medium">Duration</span>
+                      <span className="text-2xl font-bold text-gray-900">{viewQuiz.duration}m</span>
+                    </div>
+                  </div>
+                </Card>
               </div>
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-gray-900">{viewQuiz.duration}m</p>
-                <p className="text-xs text-gray-500">Duration</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-gray-900">{viewQuiz.attempts}/{viewQuiz.maxAttempts}</p>
-                <p className="text-xs text-gray-500">Attempts</p>
-              </div>
-            </div>
 
-            <div className="flex gap-3">
-              {viewQuiz.attempts < viewQuiz.maxAttempts && (
-                <Button 
-                  fullWidth
-                  onClick={() => {
-                    setViewQuiz(null);
-                    handleStartQuiz(viewQuiz);
-                  }}
-                >
-                  <RotateCcw className="w-4 h-4" /> Retry Quiz
+              {/* All Questions */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-lg font-bold text-gray-900 px-4">Question-wise Review</h3>
+                
+                {viewQuiz.questions && viewQuiz.questions.length > 0 ? (
+                  viewQuiz.questions.map((question, index) => {
+                    const isCorrect = question.isCorrect;
+                    return (
+                      <Card key={question.id} className={`border-l-4 ${
+                        isCorrect ? 'border-l-green-500 bg-green-50' : 'border-l-red-500 bg-red-50'
+                      }`}>
+                        {/* Question Header */}
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className={`flex-shrink-0 mt-1 ${
+                            isCorrect ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {isCorrect ? (
+                              <CheckCircle className="w-6 h-6" />
+                            ) : (
+                              <XCircle className="w-6 h-6" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">
+                              Q{index + 1}. {question.questionText || question.question}
+                            </p>
+                            <p className={`text-sm font-medium mt-2 ${
+                              isCorrect ? 'text-green-700' : 'text-red-700'
+                            }`}>
+                              {isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                            </p>
+                          </div>
+                          <div className={`flex-shrink-0 text-sm font-bold px-3 py-1 rounded-full ${
+                            isCorrect 
+                              ? 'bg-green-200 text-green-800' 
+                              : 'bg-red-200 text-red-800'
+                          }`}>
+                            {isCorrect ? `+${question.marks}` : '0'}/{question.marks}
+                          </div>
+                        </div>
+
+                        {/* Options */}
+                        <div className="space-y-2 mb-4 pl-10">
+                          {question.options && question.options.map((option, optionIndex) => {
+                            const isCorrectOption = optionIndex === question.correctAnswer;
+                            const isStudentAnswer = option === question.studentAnswer;
+                            
+                            let bgColor = 'bg-white border-gray-200';
+                            let borderColor = 'border';
+                            let textColor = 'text-gray-700';
+                            
+                            if (isCorrectOption) {
+                              bgColor = 'bg-green-100';
+                              borderColor = 'border-2 border-green-500';
+                              textColor = 'text-green-900 font-semibold';
+                            } else if (isStudentAnswer && !isCorrect) {
+                              bgColor = 'bg-red-100';
+                              borderColor = 'border-2 border-red-500';
+                              textColor = 'text-red-900 font-semibold';
+                            }
+                            
+                            return (
+                              <div key={optionIndex} className={`${borderColor} ${bgColor} rounded-lg p-3`}>
+                                <p className={`text-sm ${textColor}`}>
+                                  {String.fromCharCode(65 + optionIndex)}. {option}
+                                  {isCorrectOption && <span className="ml-2">✓</span>}
+                                  {isStudentAnswer && !isCorrect && <span className="ml-2">✗ (Your Answer)</span>}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Explanation */}
+                        {question.explanation && (
+                          <div className="pl-10 bg-white rounded-lg p-4 border border-gray-200">
+                            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Explanation:</p>
+                            <p className="text-sm text-gray-700">{question.explanation}</p>
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })
+                ) : (
+                  <Card className="text-center py-12">
+                    <p className="text-gray-500">No question details available</p>
+                  </Card>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <Card className="flex gap-3 sticky bottom-0">
+                {viewQuiz.attempts < viewQuiz.maxAttempts && (
+                  <Button 
+                    fullWidth
+                    onClick={() => {
+                      setViewQuiz(null);
+                      handleStartQuiz(viewQuiz);
+                    }}
+                  >
+                    <RotateCcw className="w-4 h-4" /> Retry Quiz
+                  </Button>
+                )}
+                <Button variant="outline" fullWidth onClick={() => setViewQuiz(null)}>
+                  Close
                 </Button>
-              )}
-              <Button variant="outline" fullWidth onClick={() => setViewQuiz(null)}>
-                Close
-              </Button>
+              </Card>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
+// src/pages/teacher/MyCourses.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Clock, Edit, Eye,Search, Filter, RefreshCw, MoreVertical, Star } from 'lucide-react';
+import { Plus, Users, Clock, Edit, Eye, Search, Filter, RefreshCw, MoreVertical, Star, Layers } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -26,7 +27,6 @@ const TeacherMyCourses: React.FC = () => {
     loadCourses();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = () => setActiveDropdown(null);
     document.addEventListener('click', handleClick);
@@ -50,7 +50,6 @@ const TeacherMyCourses: React.FC = () => {
     showToast('Courses refreshed', 'success');
   };
 
-  // Filter courses
   const filtered = courses.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -58,7 +57,6 @@ const TeacherMyCourses: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Delete course
   const handleDelete = () => {
     if (!deleteConfirm) return;
     setCourses(prev => prev.filter(c => c.id !== deleteConfirm.id));
@@ -66,7 +64,6 @@ const TeacherMyCourses: React.FC = () => {
     setDeleteConfirm(null);
   };
 
-  // Duplicate course
   const handleDuplicate = (course: Course) => {
     const duplicated: Course = {
       ...course,
@@ -81,7 +78,6 @@ const TeacherMyCourses: React.FC = () => {
     setActiveDropdown(null);
   };
 
-  // Stats
   const stats = {
     total: courses.length,
     published: courses.filter(c => c.status === 'published').length,
@@ -175,14 +171,15 @@ const TeacherMyCourses: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((course) => (
             <Card key={course.id} hover className="flex flex-col h-full group">
-              {/* Thumbnail */}
+              {/* Thumbnail - ✅ CHANGED: batch page pe jayega */}
               <div 
                 className="h-40 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg mb-4 flex items-center justify-center cursor-pointer relative overflow-hidden"
-                onClick={() => navigate(`/teacher/course/${course.id}`)}
+                onClick={() => navigate(`/teacher/course/${course.id}/batches`)}
               >
                 <span className="text-4xl">📚</span>
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Eye className="w-8 h-8 text-white" />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center flex-col gap-1">
+                  <Layers className="w-8 h-8 text-white" />
+                  <span className="text-white text-xs font-medium">Select Batches</span>
                 </div>
               </div>
 
@@ -203,10 +200,10 @@ const TeacherMyCourses: React.FC = () => {
                   )}
                 </div>
 
-                {/* Title & Description */}
+                {/* Title - ✅ CHANGED: batch page pe jayega */}
                 <h3 
                   className="font-semibold text-gray-800 text-lg mb-2 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => navigate(`/teacher/course/${course.id}`)}
+                  onClick={() => navigate(`/teacher/course/${course.id}/batches`)}
                 >
                   {course.title}
                 </h3>
@@ -223,21 +220,21 @@ const TeacherMyCourses: React.FC = () => {
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Actions - ✅ CHANGED: batch page pe jayega */}
               <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="flex-1"
-                  onClick={() => navigate(`/teacher/course/${course.id}`)}
+                  onClick={() => navigate(`/teacher/course/${course.id}/batches`)}
                 >
-                  <Eye className="w-4 h-4" /> View
+                  <Layers className="w-4 h-4" /> Batches
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="flex-1"
-                  onClick={() => navigate(`/teacher/course/${course.id}`)}
+                  onClick={() => navigate(`/teacher/course/${course.id}/batches`)}
                 >
                   <Edit className="w-4 h-4" /> Edit
                 </Button>

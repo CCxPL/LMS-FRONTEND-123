@@ -1,15 +1,17 @@
-import React, { useMemo } from 'react';
-import { Award, Download, Share2, CheckCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Award, Download, Share2, CheckCircle, Eye, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
 
 const Certificates: React.FC = () => {
   const { user } = useAuth();
   const { getCertificatesForStudent } = useData();
   const { showToast } = useToast();
+  const [previewCert, setPreviewCert] = useState<typeof certs[0] | null>(null);
 
   const certs = useMemo(() => getCertificatesForStudent(user?.id || ''), [getCertificatesForStudent, user]);
 
@@ -44,10 +46,6 @@ const Certificates: React.FC = () => {
     showToast('Certificate downloaded!', 'success');
   };
 
-  const handleShare = (courseName: string) => {
-    navigator.clipboard.writeText(`I just earned a certificate in ${courseName}!`);
-    showToast('Share text copied!', 'success');
-  };
 
   return (
     <div className="space-y-6">
@@ -112,18 +110,106 @@ const Certificates: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3">
+                  <Button fullWidth onClick={() => setPreviewCert(cert)}>
+                    <Eye className="w-4 h-4" /> Preview
+                  </Button>
                   <Button fullWidth onClick={() => handleDownload(cert)}>
                     <Download className="w-4 h-4" /> Download
                   </Button>
-                  <Button variant="outline" onClick={() => handleShare(cert.courseName)}>
-                    <Share2 className="w-4 h-4" />
-                  </Button>
+                 
                 </div>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Certificate Preview Modal */}
+      <Modal isOpen={!!previewCert} onClose={() => setPreviewCert(null)} title="Certificate Preview">
+        {previewCert && (
+          <div className="space-y-6">
+            {/* Full Certificate */}
+            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-12 rounded-xl text-center border-4 border-yellow-600 relative overflow-hidden">
+              {/* Decorative Corners */}
+              <div className="absolute top-6 left-6 w-12 h-12 border-l-4 border-t-4 border-yellow-600"></div>
+              <div className="absolute bottom-6 right-6 w-12 h-12 border-r-4 border-b-4 border-yellow-600"></div>
+              
+              <div className="relative z-10">
+                {/* Award Icon */}
+                <div className="w-20 h-20 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Award className="w-10 h-10 text-white" />
+                </div>
+
+                {/* Title */}
+                <p className="text-yellow-700 text-sm uppercase tracking-widest font-bold mb-4">
+                  Certificate of Completion
+                </p>
+
+                {/* Student Name */}
+                <p className="text-gray-600 text-sm mb-2">This certifies that</p>
+                <h2 className="text-4xl font-bold text-yellow-900 mb-4 italic">
+                  {previewCert.studentName}
+                </h2>
+
+                {/* Achievement */}
+                <p className="text-gray-700 text-base mb-6">
+                  has successfully completed the course
+                </p>
+                <h3 className="text-2xl font-bold text-yellow-800 mb-6 underline">
+                  {previewCert.courseName}
+                </h3>
+
+                {/* Grade & Score */}
+                <div className="bg-white rounded-lg p-6 mb-6 shadow-md border-2 border-yellow-600">
+                  <div className="grid grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-gray-600 text-sm">Grade</p>
+                      <p className="text-3xl font-bold text-yellow-600">{previewCert.grade}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-sm">Score</p>
+                      <p className="text-3xl font-bold text-yellow-600">{previewCert.score}%</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-sm">Date</p>
+                      <p className="text-xl font-bold text-yellow-600">
+                        {new Date(previewCert.issueDate).toLocaleDateString(undefined, { 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instructor */}
+                <div className="border-t-2 border-yellow-600 pt-6">
+                  <p className="text-gray-600 text-sm mb-2">Verified and Issued by</p>
+                  <p className="text-xl font-bold text-yellow-900 italic">{previewCert.instructorName}</p>
+                  <p className="text-xs text-gray-600 mt-4">Certificate ID: {previewCert.id}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button 
+                fullWidth 
+                onClick={() => handleDownload(previewCert)}
+              >
+                <Download className="w-4 h-4" /> Download Certificate
+              </Button>
+              <Button 
+                variant="outline" 
+                fullWidth 
+                onClick={() => setPreviewCert(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

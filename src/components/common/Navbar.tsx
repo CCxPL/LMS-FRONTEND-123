@@ -14,12 +14,10 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isSidebarOpen }) => {
   const { notifications } = useData();
   const navigate = useNavigate();
 
-  // Initialize theme
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
   });
 
-  // Toggle Theme Logic
   useEffect(() => {
     const root = window.document.documentElement;
     if (isDark) {
@@ -84,7 +82,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isSidebarOpen }) => {
             <span className="absolute top-1 right-1 w-2 h-2 bg-black rounded-full ring-2 ring-white" />
           )}
         </button>
-
         {/* Theme Toggle Button */}
         <button
           onClick={() => setIsDark(!isDark)}

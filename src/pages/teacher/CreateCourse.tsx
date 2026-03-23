@@ -240,7 +240,7 @@ const CreateCourse: React.FC = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Price ($)" type="number" placeholder="49.99" value={price} onChange={(e) => setPrice(e.target.value)} />
+                <Input label="	Price (₹)" type="number" placeholder="49.99" value={price} onChange={(e) => setPrice(e.target.value)} />
                 <Input label="Duration" placeholder="e.g., 24 hours" value={duration} onChange={(e) => setDuration(e.target.value)} />
               </div>
             </div>
@@ -325,7 +325,7 @@ const CreateCourse: React.FC = () => {
               <div className="flex justify-between text-sm"><span className="text-gray-500">Modules</span><span className="font-bold">{modules.length}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Total Lessons</span><span className="font-bold">{totalLessons}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Video Lessons</span><span className="font-bold">{totalVideos}</span></div>
-              {price && <div className="flex justify-between text-sm pt-2 border-t"><span className="text-gray-500">Price</span><span className="font-bold text-emerald-600">${price}</span></div>}
+              {price && <div className="flex justify-between text-sm pt-2 border-t"><span className="text-gray-500">Price</span><span className="font-bold text-emerald-600">₹{price}</span></div>}
             </div>
             <div className="mt-6 space-y-2">
               <Button fullWidth onClick={handlePublish} disabled={isSaving}><Save className="w-4 h-4" /> Publish Course</Button>
@@ -371,7 +371,7 @@ const CreateCourse: React.FC = () => {
             <div className="flex items-center gap-2 mt-2">
               <span className="badge badge-gray">{category || 'No Category'}</span>
               <span className="badge badge-gray capitalize">{level}</span>
-              {price && <span className="badge badge-success">${price}</span>}
+              {price && <span className="badge badge-success">₹{price}</span>}
             </div>
           </div>
           <div><h3 className="font-bold text-gray-900 mb-2">Description</h3><p className="text-gray-600">{description || 'No description provided'}</p></div>

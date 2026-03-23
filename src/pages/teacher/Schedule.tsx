@@ -375,11 +375,11 @@ const TeacherSchedule: React.FC = () => {
         <span className="text-sm font-medium text-gray-700">Legend:</span>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-red-500" />
-          <span className="text-sm text-gray-600">Class</span>
+          <span className="text-sm text-gray-600">Test</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-blue-400" />
-          <span className="text-sm text-gray-600">Test</span>
+          <span className="text-sm text-gray-600">Class</span>
         </div>
         <div className="flex items-center gap-2">
           <Repeat className="w-4 h-4 text-gray-400" />
@@ -390,7 +390,7 @@ const TeacherSchedule: React.FC = () => {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-4">
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <CalendarView
               events={filteredEvents}

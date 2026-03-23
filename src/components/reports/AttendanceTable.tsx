@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, XCircle, Clock, User, Calendar, BookOpen } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, User, Calendar, BookOpen, Umbrella } from 'lucide-react';
 import type { AttendanceRecord } from '../../types/attendance.types';
 
 interface AttendanceTableProps {
@@ -34,6 +34,13 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
             <Clock className="w-3 h-3" />
             Late
+          </span>
+        );
+      case 'on-leave':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+            <Umbrella className="w-3 h-3" />
+            On Leave
           </span>
         );
     }
@@ -117,17 +124,28 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
                   <span className="text-sm text-gray-900">{record.eventTitle}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(record.status)}
+                  <div>
+                    {getStatusBadge(record.status)}
+                    {record.status === 'on-leave' && record.leaveReason && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        Reason: {record.leaveReason}
+                      </p>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-600">{formatTime(record.joinTime)}</span>
+                  <span className="text-sm text-gray-600">
+                    {record.status === 'on-leave' ? 'N/A' : formatTime(record.joinTime)}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-600">{formatTime(record.leaveTime)}</span>
+                  <span className="text-sm text-gray-600">
+                    {record.status === 'on-leave' ? 'N/A' : formatTime(record.leaveTime)}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="text-sm text-gray-900 font-medium">
-                    {record.duration > 0 ? `${record.duration} min` : '-'}
+                    {record.status === 'on-leave' ? 'N/A' : record.duration > 0 ? `${record.duration} min` : '-'}
                   </span>
                 </td>
               </tr>

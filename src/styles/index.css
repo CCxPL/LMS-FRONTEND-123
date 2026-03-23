@@ -93,3 +93,71 @@
 .dark textarea::placeholder {
   color: #888888 !important;
 }
+
+/* =========================================
+   ✅ AUTH PAGES - TEXT COLOR FIX ONLY
+   ========================================= */
+
+/* Auth headings - Always black */
+.dark .auth-page-container h1,
+.dark .auth-page-container h2,
+.dark .auth-page-container h3,
+.dark .auth-card h1,
+.dark .auth-card h2,
+.dark .auth-card h3 {
+  color: #111827 !important;
+}
+
+/* Auth paragraphs & labels - Always gray */
+.dark .auth-page-container p,
+.dark .auth-page-container label,
+.dark .auth-page-container span:not(.text-white),
+.dark .auth-card p,
+.dark .auth-card label,
+.dark .auth-card span:not(.text-white) {
+  color: #6b7280 !important;
+}
+
+/* Auth input text - Always black */
+.dark .auth-page-container input,
+.dark .auth-card input {
+  color: #111827 !important;
+}
+
+/* Auth placeholder - Always gray */
+.dark .auth-page-container input::placeholder,
+.dark .auth-card input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Auth links - Blue */
+.dark .auth-page-container a,
+.dark .auth-page-container button[type="button"]:not([class*="bg-gradient"]),
+.dark .auth-card a,
+.dark .auth-card button[type="button"]:not([class*="bg-gradient"]) {
+  color: #0081d1 !important;
+}
+
+/* Auth icons - Gray */
+.dark .auth-page-container svg:not([class*="text-white"]),
+.dark .auth-card svg:not([class*="text-white"]) {
+  color: #9ca3af !important;
+}
+
+/* Demo button text - Black */
+.dark .auth-page-container button:not([type="submit"]),
+.dark .auth-card button:not([type="submit"]) {
+  color: #111827 !important;
+}
+
+/* Error text - Red */
+.dark .auth-page-container .text-red-600,
+.dark .auth-card .text-red-600 {
+  color: #dc2626 !important;
+}
+
+/* Success text - Green */
+.dark .auth-page-container .text-green-600,
+.dark .auth-card .text-green-600 {
+  color: #16a34a !important;
+}

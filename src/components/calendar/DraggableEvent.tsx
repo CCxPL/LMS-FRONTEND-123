@@ -47,7 +47,7 @@ const DraggableEvent: React.FC<DraggableEventProps> = ({
       title={`${event.title} (${formatTime12hr(event.startTime)})`}
     >
       {event.title}
-    </div>
+    </div> 
   );
 };
 

@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
+    isDangerous?: boolean; // ✅ ADD THIS
+  isLoading?: boolean; 
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({

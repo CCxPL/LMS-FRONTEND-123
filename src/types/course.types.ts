@@ -74,10 +74,16 @@ export interface Quiz {
 
 export interface QuizQuestion {
   id: string;
-  question: string;
+  question?: string;
+  questionText?: string;
   options: string[];
   correctAnswer: number;
+  correctAnswerText?: string;
+  studentAnswer?: string;
+  isCorrect?: boolean;
   marks: number;
+  explanation?: string;
+  order?: number;
 }
 
 export interface Enrollment {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { GraduationCap, TrendingUp, BarChart3, Clock, CheckCircle, Target, Award, Calendar } from 'lucide-react';
+import { GraduationCap, TrendingUp, BarChart3, Clock, CheckCircle,} from 'lucide-react';
 import Card from '../../components/ui/Card';
 
 const Progress: React.FC = () => {
@@ -57,7 +57,7 @@ const Progress: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Course-wise Progress */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-5">
           <Card>
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-gray-500" /> Course Progress
@@ -92,53 +92,6 @@ const Progress: React.FC = () => {
                       <p className="text-xs text-gray-500">Status</p>
                       <p className="font-bold text-gray-900">{course.progress === 100 ? 'Done' : 'Active'}</p>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Award className="w-5 h-5 text-gray-500" /> Achievements
-            </h3>
-            <div className="space-y-4">
-              {recentAchievements.map((achievement, idx) => (
-                <div key={idx} className="flex gap-4 p-3 bg-gray-50 rounded-xl">
-                  <div className="text-2xl bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm shrink-0">
-                    {achievement.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h5 className="font-bold text-gray-900 text-sm">{achievement.title}</h5>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                      <Calendar className="w-3 h-3" /> {achievement.date}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-gray-500" /> Monthly Goals
-            </h3>
-            <div className="space-y-3">
-              {[
-                { label: 'Complete React Course', progress: 80 },
-                { label: 'Submit 5 Assignments', progress: 60 },
-                { label: 'Score 90% in Quizzes', progress: 40 },
-              ].map((goal, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-gray-700">{goal.label}</span>
-                    <span className="text-gray-500">{goal.progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
-                    <div className="h-full bg-black rounded-full" style={{ width: `${goal.progress}%` }} />
                   </div>
                 </div>
               ))}

@@ -1,3 +1,4 @@
+// src/pages/admin/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -7,6 +8,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+
 import {
   Users,
   GraduationCap,
@@ -94,6 +96,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div className="bg-black rounded-2xl p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

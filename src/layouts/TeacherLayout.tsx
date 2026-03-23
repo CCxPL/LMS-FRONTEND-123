@@ -16,7 +16,8 @@ import {
   Bell,
   ListTodo,
   Calendar,
-  FileText
+  FileText,
+  Umbrella, // ✅ NEW ICON
 } from 'lucide-react';
 
 const sidebarItems = [
@@ -30,7 +31,8 @@ const sidebarItems = [
   { label: 'Tasks', path: '/teacher/tasks', icon: <ListTodo className="w-5 h-5" /> },
   { label: 'Create Quiz', path: '/teacher/create-quiz', icon: <FilePlus className="w-5 h-5" /> },
   { label: 'My Students', path: '/teacher/my-students', icon: <Users className="w-5 h-5" /> },
-  { label: 'Attendance Report', path: `/teacher/attendance-report`, icon: <FileText className="w-5 h-5" /> },
+  { label: 'Attendance Report', path: '/teacher/attendance-report', icon: <FileText className="w-5 h-5" /> },
+  { label: 'Student Leaves', path: '/teacher/leaves', icon: <Umbrella className="w-5 h-5" /> }, // ✅ NEW ITEM
   { label: 'Messages', path: '/teacher/messages', icon: <MessageSquare className="w-5 h-5" /> },
   { label: 'Feedback', path: '/teacher/feedback', icon: <Star className="w-5 h-5" /> },
   { label: 'Notifications', path: '/teacher/notifications', icon: <Bell className="w-5 h-5" /> },
@@ -50,8 +52,9 @@ const TeacherLayout: React.FC = () => {
         onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         isSidebarOpen={isSidebarOpen}
       />
-      <main className={`pt-16 min-h-screen transition-all duration-300 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
-        }`}>
+      <main className={`pt-16 min-h-screen transition-all duration-300 ${
+        isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+      }`}>
         <div className="p-6">
           <Outlet />
         </div>

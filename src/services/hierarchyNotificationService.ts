@@ -1,17 +1,6 @@
 import type { Notification, NotificationType } from '../types/notification.types';
-import type { AuthUser } from '../types/auth.types';
 import { mockUsers } from '../mockData/users';
 
-/**
- * Hierarchical Notification Service
- * 
- * Flow:
- * - Super Admin changes Admin → Admin gets notification
- * - Admin changes Teacher → Teacher gets notification
- * - Teacher changes Student → Student gets notification
- * - Teacher late → Admin + Super Admin get notification
- * - Class summary → Admin + Super Admin get notification
- */
 
 class HierarchyNotificationService {
   private notifications: Notification[] = [];
