@@ -166,7 +166,7 @@ export const formatDuration = (minutes: number): string => {
   return `${hours} hr ${mins} min`;
 };
 
-export const formatDate = (date: string | Date, formatStr?: string): string => {
+export const formatDate = (date: string | Date, _formatStr?: string): string => {
   const d = new Date(date);
   return d.toLocaleDateString('en-US', { 
     year: 'numeric', 

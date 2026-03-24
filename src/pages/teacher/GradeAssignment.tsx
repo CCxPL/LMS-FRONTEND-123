@@ -9,7 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import type { Assignment } from '../../types/course.types';
 
 const GradeAssignment: React.FC = () => {
-  const dataContext = useData();
+  useData();
   const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');

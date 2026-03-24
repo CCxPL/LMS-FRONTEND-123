@@ -28,7 +28,7 @@ const CourseView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [contentType, setContentType] = useState<'select' | 'videos' | 'notes'>('select');
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [selectedModuleId, setSelectedModuleId] = useState<string>('');
+  const [, setSelectedModuleId] = useState<string>('');
   
   // Modal & Discussion States
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);

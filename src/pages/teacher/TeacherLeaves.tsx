@@ -14,7 +14,7 @@ const TeacherLeaves: React.FC = () => {
 
   const teacherLeaves = useMemo(() => {
     const teacherEvents = events.filter(e => e.teacherId === user?.id);
-    const teacherCourseIds = [...new Set(teacherEvents.map(e => e.courseId))];
+   [...new Set(teacherEvents.map(e => e.courseId))];
     
     return leaves.filter(leave => leave.status === 'approved');
   }, [leaves, events, user]);

@@ -20,7 +20,7 @@ interface Feedback {
 
 const StudentFeedback: React.FC = () => {
   const { user } = useAuth();
-  const { feedbacks, getFeedbackByRecipient } = useData(); // ✅ CHANGED: getFeedbackForTeacher → getFeedbackByRecipient
+  const { getFeedbackByRecipient } = useData(); // ✅ CHANGED: getFeedbackForTeacher → getFeedbackByRecipient
   const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,7 +67,7 @@ const StudentFeedback: React.FC = () => {
     return result;
   }, [teacherFeedbacks, searchTerm, ratingFilter]);
 
-  const handleReply = (fbId: string) => {
+  const handleReply = (_fbId: string) => {
     if (!replyText.trim()) {
       showToast('✗ Please enter a reply', 'error');
       return;
