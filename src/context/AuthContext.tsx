@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [showToast]);
 
   // ✅ ADDED: Change Password
-  const changePassword = useCallback(async (oldPassword: string, newPassword: string): Promise<boolean> => {
+  const changePassword = useCallback(async (oldPassword: string,): Promise<boolean> => {
     if (!user) return false;
 
     if (oldPassword !== user.defaultPassword) {

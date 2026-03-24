@@ -92,7 +92,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center gap-3">
             <FileText className="w-8 h-8 text-gray-500" />
-            <span className="text-sm text-gray-700 truncate max-w-[200px]">{fileName}</span>
+            <span className="text-sm text-gray-700 truncate max-w-50">{fileName}</span>
           </div>
           <button
             type="button"

@@ -118,7 +118,7 @@ const mockCourses = [
 ];
 
 const StudentAttendanceReport: React.FC = () => {
-  const { user } = useAuth();
+  const {  } = useAuth();
   const { leaves } = useData();
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<AttendanceFilter>({ dateRange: 'month' });

@@ -222,7 +222,7 @@ const CreateCourse: React.FC = () => {
               <Input label="Course Title *" placeholder="e.g., Complete React.js Course" value={title} onChange={(e) => setTitle(e.target.value)} />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Description *</label>
-                <textarea className="input-field min-h-[120px]" placeholder="Describe what students will learn..." value={description} onChange={(e) => setDescription(e.target.value)} />
+                <textarea className="input-field min-h-30" placeholder="Describe what students will learn..." value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

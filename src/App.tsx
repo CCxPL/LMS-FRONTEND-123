@@ -29,7 +29,7 @@ const getLoaderMessage = (path: string) => {
 const StudyLoader = ({ message }: { message: string }) => {
   return (
     <div 
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+      className="fixed inset-0 z-9999 flex flex-col items-center justify-center"
       style={{ backgroundColor: '#ffffff' }} // ✅ Force white background
     >
       <div className="relative flex flex-col items-center">
@@ -42,7 +42,7 @@ const StudyLoader = ({ message }: { message: string }) => {
         />
 
         {/* Dynamic Text & Bar - ✅ Always dark text */}
-        <div className="mt-[-20px] w-56 text-center">
+        <div className="-mt-5 w-56 text-center">
           <p 
             className="text-xs font-bold tracking-[0.2em] uppercase mb-3 animate-pulse"
             style={{ color: '#6b7280' }} // ✅ Force gray text

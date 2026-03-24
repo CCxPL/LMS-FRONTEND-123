@@ -365,7 +365,7 @@ const StudentSchedule: React.FC = () => {
 
               {leaveStart && leaveEnd && new Date(leaveStart) <= new Date(leaveEnd) && (
                  <div className={`p-3 rounded-lg border flex items-start gap-2 text-xs font-medium ${actualLeaveDays > 0 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                   <Calendar className="w-4 h-4 flex-shrink-0" />
+                   <Calendar className="w-4 h-4 shrink-0" />
                    {actualLeaveDays > 0 ? `${actualLeaveDays} Working Day(s) Selected (Saturdays & Sundays excluded automatically).` : 'Invalid Range! Selected dates only contain weekends.'}
                  </div>
               )}

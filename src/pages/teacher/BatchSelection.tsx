@@ -239,7 +239,7 @@ const BatchSelection: React.FC = () => {
                 onClick={() => toggleBatch(batch.id)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     {isSelected 
                       ? <CheckSquare className="w-5 h-5 text-blue-600" />
                       : <Square className="w-5 h-5 text-gray-300" />
@@ -279,7 +279,7 @@ const BatchSelection: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={e => { 
                         e.stopPropagation(); 

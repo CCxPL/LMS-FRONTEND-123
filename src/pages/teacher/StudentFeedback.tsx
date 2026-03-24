@@ -164,7 +164,7 @@ const StudentFeedback: React.FC = () => {
               ) : replyingTo === fb.id ? (
                 <div className="space-y-3">
                   <textarea 
-                    className="input-field min-h-[80px]"
+                    className="input-field min-h-20"
                     placeholder="Write your reply..." 
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}

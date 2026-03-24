@@ -381,7 +381,7 @@ const Tasks: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea 
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent min-h-[100px] resize-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent min-h-25 resize-none"
               placeholder="Task details..." 
               value={desc} 
               onChange={(e) => setDesc(e.target.value)} 

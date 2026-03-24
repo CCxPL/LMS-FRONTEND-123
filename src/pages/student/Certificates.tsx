@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Award, Download, Share2, CheckCircle, Eye, X } from 'lucide-react';
+import { Award, Download, CheckCircle, Eye,} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
@@ -129,7 +129,7 @@ const Certificates: React.FC = () => {
         {previewCert && (
           <div className="space-y-6">
             {/* Full Certificate */}
-            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-12 rounded-xl text-center border-4 border-yellow-600 relative overflow-hidden">
+            <div className="bg-linear-to-br from-yellow-50 to-yellow-100 p-12 rounded-xl text-center border-4 border-yellow-600 relative overflow-hidden">
               {/* Decorative Corners */}
               <div className="absolute top-6 left-6 w-12 h-12 border-l-4 border-t-4 border-yellow-600"></div>
               <div className="absolute bottom-6 right-6 w-12 h-12 border-r-4 border-b-4 border-yellow-600"></div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, Edit2, Trash2, Clock, User, Tag } from 'lucide-react';
+import { Star, Edit2, Trash2, Clock, User, } from 'lucide-react';
 import type { Feedback } from '../../types/feedback.types';
 import Card from '../ui/Card';
 
@@ -119,7 +119,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({
         {/* Time Warning */}
         {isAdmin && canEdit && timeRemaining && timeRemaining.hours < 12 && (
           <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded p-2 flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />
+            <Clock className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
             <p className="text-xs text-yellow-700">
               <span className="font-semibold">{timeRemaining.hours}h {timeRemaining.minutes}m</span> left to edit
             </p>
@@ -129,7 +129,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({
         {/* Locked Badge */}
         {isAdmin && !canEdit && (
           <div className="mt-2 bg-red-50 border border-red-200 rounded p-2 flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
+            <Clock className="w-3.5 h-3.5 text-red-600 shrink-0" />
             <p className="text-xs text-red-700 font-medium">Locked - Cannot edit (48h passed)</p>
           </div>
         )}

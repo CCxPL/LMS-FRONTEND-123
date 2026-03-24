@@ -86,7 +86,7 @@ const ClassSummaryModal: React.FC<ClassSummaryModalProps> = ({
 
             <div>
               <h4 className="font-medium text-gray-900 mb-3">Attendance Details</h4>
-              <div className="max-h-[200px] overflow-y-auto border rounded-lg">
+              <div className="max-h-50 overflow-y-auto border rounded-lg">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>

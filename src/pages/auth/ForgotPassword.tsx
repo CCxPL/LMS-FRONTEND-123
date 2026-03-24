@@ -84,7 +84,7 @@ const ForgotPassword: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed font-medium"
+              className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed font-medium"
             >
               {isLoading ? (
                 <>
@@ -141,7 +141,7 @@ const ForgotPassword: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 font-medium"
+                className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 font-medium"
               >
                 Back to Login
               </button>
@@ -164,24 +164,24 @@ const ForgotPassword: React.FC = () => {
   );
 
   return (
-    <div className="auth-page-container min-h-screen w-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center p-4">
+    <div className="auth-page-container min-h-screen w-full bg-linear-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center p-4">
 
       {/* DESKTOP/LAPTOP VIEW */}
-      <div className="hidden lg:block relative w-full max-w-[1450px] h-[740px] mx-auto">
+      <div className="hidden lg:block relative w-full max-w-362.5 h-185 mx-auto">
         <img
           src="/fg4.png"
           alt="background"
           className="w-full h-full object-cover rounded-3xl shadow-2xl"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/10 rounded-3xl"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-black/20 via-transparent to-black/10 rounded-3xl"></div>
 
-        <div className="auth-card absolute right-8 lg:right-16 top-1/2 -translate-y-1/2 w-full max-w-[400px] bg-white/98 backdrop-blur-xl rounded-3xl p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
+        <div className="auth-card absolute right-8 lg:right-16 top-1/2 -translate-y-1/2 w-full max-w-100 bg-white/98 backdrop-blur-xl rounded-3xl p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
           <CardContent />
         </div>
       </div>
 
       {/* MOBILE/TABLET VIEW */}
-      <div className="lg:hidden auth-card w-full max-w-[400px] bg-white/98 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
+      <div className="lg:hidden auth-card w-full max-w-100 bg-white/98 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
         <CardContent />
       </div>
     </div>

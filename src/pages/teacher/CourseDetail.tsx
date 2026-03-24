@@ -490,7 +490,7 @@ const CourseDetail: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><Video className="w-5 h-5 text-blue-600"/></div>
                         <div>
-                          <p className="font-semibold text-sm text-gray-900 truncate max-w-[200px] sm:max-w-sm">{selectedFile.name}</p>
+                          <p className="font-semibold text-sm text-gray-900 truncate max-w-50 sm:max-w-sm">{selectedFile.name}</p>
                           <p className="text-xs text-gray-500">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
                         </div>
                       </div>
@@ -514,7 +514,7 @@ const CourseDetail: React.FC = () => {
                 </div>
 
                 {notesInputType === 'type' ? (
-                  <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm min-h-[150px]" placeholder="Type your notes here..." value={uploadContentText} onChange={(e) => setUploadContentText(e.target.value)} />
+                  <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm min-h-37.5" placeholder="Type your notes here..." value={uploadContentText} onChange={(e) => setUploadContentText(e.target.value)} />
                 ) : (
                   <div>
                     <input type="file" accept="application/pdf" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -577,7 +577,7 @@ const CourseDetail: React.FC = () => {
                   <td className="px-6 py-4 text-gray-500">{s.date}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2 max-w-[100px]"><div className={`h-2 rounded-full ${s.progress === 100 ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${s.progress}%` }} /></div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 max-w-25"><div className={`h-2 rounded-full ${s.progress === 100 ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${s.progress}%` }} /></div>
                       <span className="text-xs text-gray-600">{s.progress}%</span>
                     </div>
                   </td>
@@ -594,7 +594,7 @@ const CourseDetail: React.FC = () => {
           <Input label="Course Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea className="input-field min-h-[120px]" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+            <textarea className="input-field min-h-30" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
           </div>
           <Input label="	Price ($)" type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
           <div className="flex gap-3 pt-2">
@@ -613,7 +613,7 @@ const CourseDetail: React.FC = () => {
           {editingLesson?.lesson.type === 'text' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes Content</label>
-              <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm min-h-[150px]" value={editLessonContent} onChange={(e) => setEditLessonContent(e.target.value)} />
+              <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm min-h-37.5" value={editLessonContent} onChange={(e) => setEditLessonContent(e.target.value)} />
             </div>
           )}
 

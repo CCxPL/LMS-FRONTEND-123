@@ -325,7 +325,7 @@ const GradeAssignment: React.FC = () => {
                 Feedback
               </label>
               <textarea
-                className="input-field min-h-[120px]"
+                className="input-field min-h-30"
                 placeholder="Write feedback..."
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}

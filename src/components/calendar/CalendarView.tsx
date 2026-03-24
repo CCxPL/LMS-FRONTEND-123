@@ -21,7 +21,7 @@ import DroppableDay from './DroppableDay';
 import EventModal from './EventModal';
 import { filterEventsByDate } from '../../utils/eventHelpers';
 import { useToast } from '../../context/ToastContext';
-import { useAuth, usePermissions } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/useAuth';
 
 interface CalendarViewProps {
   events: CalendarEvent[];

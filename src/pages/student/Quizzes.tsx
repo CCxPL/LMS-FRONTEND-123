@@ -246,7 +246,7 @@ const StudentQuizzes: React.FC = () => {
               {/* Score Summary */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {/* Score Card */}
-                <Card className="bg-gradient-to-br from-gray-50 to-gray-100 text-center py-8">
+                <Card className="bg-linear-to-br from-gray-50 to-gray-100 text-center py-8">
                   <Trophy className={`w-16 h-16 mx-auto mb-4 ${
                     viewQuiz.obtainedMarks !== undefined && 
                     (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
@@ -315,7 +315,7 @@ const StudentQuizzes: React.FC = () => {
                       }`}>
                         {/* Question Header */}
                         <div className="flex items-start gap-4 mb-4">
-                          <div className={`flex-shrink-0 mt-1 ${
+                          <div className={`shrink-0 mt-1 ${
                             isCorrect ? 'text-green-600' : 'text-red-600'
                           }`}>
                             {isCorrect ? (
@@ -334,7 +334,7 @@ const StudentQuizzes: React.FC = () => {
                               {isCorrect ? '✓ Correct' : '✗ Incorrect'}
                             </p>
                           </div>
-                          <div className={`flex-shrink-0 text-sm font-bold px-3 py-1 rounded-full ${
+                          <div className={`shrink-0 text-sm font-bold px-3 py-1 rounded-full ${
                             isCorrect 
                               ? 'bg-green-200 text-green-800' 
                               : 'bg-red-200 text-red-800'

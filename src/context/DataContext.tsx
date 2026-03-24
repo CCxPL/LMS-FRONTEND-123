@@ -346,7 +346,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [feedbacks, setFeedbacks] = useState<FeedbackType[]>(initialFeedbacks);
   const [certificates, setCertificates] = useState<Certificate[]>(initialCertificates);
   const [tasks, setTasks] = useState<ExtendedTask[]>(initialTasks);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+ const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>(initialLeaves); // ✅ NEW
 
   // Attendance

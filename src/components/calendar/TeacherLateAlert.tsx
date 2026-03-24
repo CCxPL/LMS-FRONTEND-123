@@ -56,7 +56,7 @@ const TeacherLateAlert: React.FC<TeacherLateAlertProps> = ({
 
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="p-2 bg-red-100 rounded-full flex-shrink-0">
+        <div className="p-2 bg-red-100 rounded-full shrink-0">
           <AlertTriangle className="w-5 h-5 text-red-600" />
         </div>
         

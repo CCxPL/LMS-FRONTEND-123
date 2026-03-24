@@ -30,7 +30,7 @@ const GlobalFestivalBanner: React.FC = () => {
       `}</style>
 
       {/* Floating Banner at Bottom Right */}
-      <div className="fixed top-6 left-165 z-[9999] animate-slide-up">
+      <div className="fixed top-6 left-165 z-9999 animate-slide-up">
         <div 
           className="relative flex items-center gap-4 p-3 pr-4 rounded-2xl overflow-hidden text-white"
           style={{ 
@@ -42,7 +42,7 @@ const GlobalFestivalBanner: React.FC = () => {
           <div className="absolute inset-0 bg-white/10 opacity-50 mix-blend-overlay"></div>
 
           {/* Festival SVG Icon */}
-          <div className="relative z-10 flex-shrink-0 w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner">
+          <div className="relative z-10 shrink-0 w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner">
             <svg 
               viewBox="0 0 24 24" 
               className="w-7 h-7 text-white" 

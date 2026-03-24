@@ -42,7 +42,7 @@ const AttendancePanel: React.FC<AttendancePanelProps> = ({
         </div>
       </div>
 
-      <div className="max-h-[300px] overflow-y-auto">
+      <div className="max-h-75 overflow-y-auto">
         {records.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             No attendance records yet

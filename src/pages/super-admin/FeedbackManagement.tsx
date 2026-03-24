@@ -320,7 +320,7 @@ const FeedbackManagement: React.FC = () => {
                     {/* Time Warning - Only for non-Super Admin */}
                     {!isSuperAdmin && getTimeRemaining(feedback).hours < 12 && (
                       <div className="flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 px-2 py-1.5 rounded">
-                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{getTimeRemaining(feedback).hours}h {getTimeRemaining(feedback).minutes}m left to edit</span>
                       </div>
                     )}
@@ -390,7 +390,7 @@ const FeedbackManagement: React.FC = () => {
                     {/* Time Remaining Warning - Only for non-Super Admin */}
                     {!isSuperAdmin && canEditFeedback(feedback) && getTimeRemaining(feedback).hours < 12 && (
                       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 px-2 py-1.5 rounded">
-                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{getTimeRemaining(feedback).hours}h {getTimeRemaining(feedback).minutes}m left to edit</span>
                       </div>
                     )}
@@ -398,7 +398,7 @@ const FeedbackManagement: React.FC = () => {
                     {/* Locked Warning - Only for non-Super Admin */}
                     {!isSuperAdmin && !canEditFeedback(feedback) && (
                       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-2 py-1.5 rounded">
-                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>Locked - Cannot edit (48h passed)</span>
                       </div>
                     )}

@@ -13,7 +13,7 @@ interface FeedbackFormProps {
 }
 
 const FeedbackForm: React.FC<FeedbackFormProps> = ({
-  recipientId,
+  
   recipientName,
   recipientType,
   onSubmitSuccess,

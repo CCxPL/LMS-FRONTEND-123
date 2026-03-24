@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, X, Bot, Sparkles, ArrowRight, Lightbulb, Trash2, RotateCcw } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate} from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 // --- Types ---
@@ -10,7 +10,7 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   suggestions?: string[];
-}
+} 
 
 interface KnowledgeItem {
   text: string;
@@ -1273,7 +1273,6 @@ const AIChatBot: React.FC = () => {
   const [sessionId, setSessionId] = useState<string>(Date.now().toString());
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get initial message based on role
@@ -1446,7 +1445,7 @@ Type "help" or click the suggestions!`,
                   navigate(response.link!); 
                   setIsOpen(false); 
                 }}
-                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black text-xs font-bold rounded-lg hover:opacity-90 transition-all hover:scale-105 shadow-md"
+                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black text-xs font-bold rounded-lg hover:opacity-90 transition-all hover:scale-105 shadow-md"
               >
                 <span>Go to Page</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -1471,10 +1470,10 @@ Type "help" or click the suggestions!`,
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans">
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-[380px] h-[580px] flex flex-col bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="w-95 h-145 flex flex-col bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-black via-gray-900 to-black text-white p-4 flex items-center justify-between shrink-0">
+          <div className="bg-linear-to-r from-black via-gray-900 to-black text-white p-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/10 backdrop-blur rounded-full flex items-center justify-center border border-white/20 shadow-lg">
                 <Bot className="w-5 h-5 text-white" />
@@ -1512,7 +1511,7 @@ Type "help" or click the suggestions!`,
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white dark:from-zinc-900 dark:to-zinc-950 scroll-smooth">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-linear-to-b from-gray-50 to-white dark:from-zinc-900 dark:to-zinc-950 scroll-smooth">
             {messages.map((msg) => (
               <div 
                 key={msg.id} 
@@ -1520,7 +1519,7 @@ Type "help" or click the suggestions!`,
               >
                 <div className={`max-w-[88%] p-3.5 rounded-2xl text-sm shadow-sm ${
                   msg.sender === 'user' 
-                    ? 'bg-gradient-to-br from-black to-gray-800 text-white rounded-tr-sm' 
+                    ? 'bg-linear-to-br from-black to-gray-800 text-white rounded-tr-sm' 
                     : 'bg-white dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 text-gray-800 dark:text-gray-200 rounded-tl-sm shadow-md'
                 }`}>
                   {msg.text}
@@ -1587,10 +1586,10 @@ Type "help" or click the suggestions!`,
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group flex items-center gap-2 bg-gradient-to-r from-black via-gray-900 to-black hover:from-gray-800 hover:via-black hover:to-gray-800 text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 hover:shadow-black/25 z-50"
+          className="group flex items-center gap-2 bg-linear-to-r from-black via-gray-900 to-black hover:from-gray-800 hover:via-black hover:to-gray-800 text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 hover:shadow-black/25 z-50"
         >
           <Sparkles className="w-6 h-6 animate-pulse" />
-          <span className="max-w-0 overflow-hidden group-hover:max-w-[100px] transition-all duration-500 ease-out font-semibold whitespace-nowrap">
+          <span className="max-w-0 overflow-hidden group-hover:max-w-25 transition-all duration-500 ease-out font-semibold whitespace-nowrap">
             Ask AI
           </span>
         </button>

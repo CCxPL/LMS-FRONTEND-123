@@ -344,7 +344,7 @@ const SuperAdminDashboard: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Message Body</label>
             <textarea 
-              className="input-field min-h-[120px]" 
+              className="input-field min-h-30" 
               placeholder="Type your announcement here..." 
               value={announcementBody}
               onChange={(e) => setAnnouncementBody(e.target.value)}

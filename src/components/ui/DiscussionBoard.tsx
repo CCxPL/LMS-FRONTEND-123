@@ -47,7 +47,7 @@ const DiscussionBoard: React.FC = () => {
         </h3>
         <div className="flex gap-3">
           <textarea
-            className="input-field min-h-[80px]"
+            className="input-field min-h-20"
             placeholder="Ask a question or start a discussion..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}

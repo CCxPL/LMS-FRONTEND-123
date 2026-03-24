@@ -19,13 +19,6 @@ const Progress: React.FC = () => {
     { name: 'AWS Cloud Practitioner', progress: 23, lessonsCompleted: 3, totalLessons: 14, quizScore: 90 },
   ];
 
-  const recentAchievements = [
-    { title: 'First Quiz Completed', icon: '🏆', date: '2024-03-20' },
-    { title: 'Assignment Graded', icon: '⭐', date: '2024-03-18' },
-    { title: 'Course Enrolled', icon: '🎯', date: '2024-02-15' },
-    { title: 'Fast Learner', icon: '🚀', date: '2024-01-10' },
-  ];
-
   return (
     <div className="space-y-6">
       <div>

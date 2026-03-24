@@ -88,7 +88,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
           {/* Warning Messages */}
           {!canEdit && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
               <p className="text-sm text-red-700">
                 <span className="font-bold">Locked:</span> Cannot edit after 48 hours. Only Super Admin can delete.
               </p>
@@ -97,7 +97,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
           {canEdit && timeRemaining && timeRemaining.hours < 1 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0" />
               <p className="text-sm text-yellow-700">
                 <span className="font-bold">Hurry!</span> Less than 1 hour left to edit!
               </p>

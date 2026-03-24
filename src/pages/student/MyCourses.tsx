@@ -154,7 +154,7 @@ const StudentMyCourses: React.FC = () => {
               >
                 {/* Thumbnail */}
                 <div className={`h-36 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden ${
-                  isCompleted ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-700 to-gray-900'
+                  isCompleted ? 'bg-gray-900' : 'bg-linear-to-br from-gray-700 to-gray-900'
                 }`}>
                   <GraduationCap className="w-12 h-12 text-white/50" />
                   {isCompleted && (

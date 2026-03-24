@@ -72,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ items, isOpen, onToggle }) => {
           className="flex items-center justify-between p-4 h-16" 
           style={{ borderBottom: `1px solid ${theme.sidebarText}33` }}
         >
-          <div className={`flex items-center gap- overflow-hidden ${!isOpen && 'lg:justify-center lg:w-full'}`}>
+          <div className={`flex items-center gap-2 overflow-hidden ${!isOpen && 'lg:justify-center lg:w-full'}`}>
             {/* ✅ Direct Logo - No background box */}
             <img 
               src="/csi.png" 
@@ -87,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ items, isOpen, onToggle }) => {
               }`} 
               style={{ color: theme.sidebarText }}
             >
-              CSI STUDENT PORTAL
+              STUDENT PORTAL
             </span>
           </div>
           

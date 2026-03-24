@@ -306,7 +306,7 @@ const CourseView: React.FC = () => {
                     <h3 className="font-bold text-gray-900">Discussion ({lessonComments.length})</h3>
                   </div>
                   
-                  <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-2">
+                  <div className="space-y-3 mb-4 max-h-75 overflow-y-auto pr-2">
                     {lessonComments.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg">No comments yet. Start the discussion!</p>
                     ) : (
@@ -345,7 +345,7 @@ const CourseView: React.FC = () => {
           {/* Sidebar */}
           <div className="space-y-4">
             <Button fullWidth variant="outline" onClick={() => setContentType('select')}>Change Content Type</Button>
-            <div className="space-y-3 max-h-[700px] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-175 overflow-y-auto pr-2">
               {course.modules?.map((module) => (
                 <Card key={module.id} className="overflow-hidden border border-gray-200">
                   <div className="p-3 bg-gray-50 border-b border-gray-200">
@@ -399,7 +399,7 @@ const CourseView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-6 rounded-lg min-h-[300px]">
+                  <div className="bg-gray-50 p-6 rounded-lg min-h-75">
                     {selectedLesson.content ? (
                       <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedLesson.content}</p>
                     ) : (
@@ -425,7 +425,7 @@ const CourseView: React.FC = () => {
                     <h3 className="font-bold text-gray-900">Discussion ({lessonComments.length})</h3>
                   </div>
                   
-                  <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-2">
+                  <div className="space-y-3 mb-4 max-h-75 overflow-y-auto pr-2">
                     {lessonComments.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg">No comments yet. Start the discussion!</p>
                     ) : (
@@ -464,7 +464,7 @@ const CourseView: React.FC = () => {
           {/* Sidebar */}
           <div className="space-y-4">
             <Button fullWidth variant="outline" onClick={() => setContentType('select')}>Change Content Type</Button>
-            <div className="space-y-3 max-h-[700px] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-175 overflow-y-auto pr-2">
               {course.modules?.map((module) => (
                 <Card key={module.id} className="overflow-hidden border border-gray-200">
                   <div className="p-3 bg-gray-50 border-b border-gray-200">

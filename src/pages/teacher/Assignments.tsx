@@ -269,7 +269,7 @@ const TeacherAssignments: React.FC = () => {
                       <div>
                         <p className="font-medium text-gray-900">{assignment.title}</p>
                         {assignment.description && (
-                          <p className="text-xs text-gray-500 truncate max-w-[200px]">{assignment.description}</p>
+                          <p className="text-xs text-gray-500 truncate max-w-50">{assignment.description}</p>
                         )}
                       </div>
                     </td>
@@ -345,7 +345,7 @@ const TeacherAssignments: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea 
-              className="input-field min-h-[100px]" 
+              className="input-field min-h-25" 
               placeholder="Describe the assignment..." 
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -419,7 +419,7 @@ const TeacherAssignments: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
             <textarea 
-              className="input-field min-h-[100px]" 
+              className="input-field min-h-25" 
               placeholder="Describe the assignment..." 
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

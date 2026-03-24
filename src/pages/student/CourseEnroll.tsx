@@ -181,7 +181,7 @@ const CourseEnroll: React.FC = () => {
         <div className="space-y-6">
           <div className="sticky top-24">
             <Card className="shadow-xl overflow-hidden" padding="none">
-              <div className="h-48 bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
+              <div className="h-48 bg-linear-to-br from-gray-800 to-black flex items-center justify-center">
                 <BookOpen className="w-16 h-16 text-white/50" />
               </div>
 

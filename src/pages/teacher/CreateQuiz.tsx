@@ -190,7 +190,7 @@ const CreateQuiz: React.FC = () => {
                         <button onClick={() => removeQuestion(q.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
-                    <textarea className="input-field mb-4 min-h-[80px]" placeholder="Type your question here..." value={q.question} onChange={(e) => updateQuestion(q.id, 'question', e.target.value)} />
+                    <textarea className="input-field mb-4 min-h-20" placeholder="Type your question here..." value={q.question} onChange={(e) => updateQuestion(q.id, 'question', e.target.value)} />
                     <div className="space-y-2">
                       {q.options.map((opt, optIdx) => (
                         <div key={optIdx} className="flex items-center gap-3">

@@ -1,7 +1,7 @@
 // src/pages/teacher/MyCourses.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Clock, Edit, Eye, Search, Filter, RefreshCw, MoreVertical, Star, Layers } from 'lucide-react';
+import { Plus, Users, Clock, Edit, Search, Filter, RefreshCw, MoreVertical, Star, Layers } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -173,7 +173,7 @@ const TeacherMyCourses: React.FC = () => {
             <Card key={course.id} hover className="flex flex-col h-full group">
               {/* Thumbnail - ✅ CHANGED: batch page pe jayega */}
               <div 
-                className="h-40 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg mb-4 flex items-center justify-center cursor-pointer relative overflow-hidden"
+                className="h-40 bg-linear-to-br from-blue-400 to-blue-600 rounded-lg mb-4 flex items-center justify-center cursor-pointer relative overflow-hidden"
                 onClick={() => navigate(`/teacher/course/${course.id}/batches`)}
               >
                 <span className="text-4xl">📚</span>

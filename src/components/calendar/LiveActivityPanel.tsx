@@ -33,7 +33,7 @@ const LiveActivityPanel: React.FC<LiveActivityPanelProps> = ({
         </div>
       </div>
 
-      <div className="max-h-[300px] overflow-y-auto">
+      <div className="max-h-75 overflow-y-auto">
         {activities.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             No activity yet

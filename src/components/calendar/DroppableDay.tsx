@@ -45,7 +45,7 @@ const DroppableDay: React.FC<DroppableDayProps> = ({
     <div
       ref={ref}
       className={`
-        min-h-[100px] p-2 border rounded-lg transition-colors
+        min-h-25 p-2 border rounded-lg transition-colors
         ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
         ${isToday ? 'border-black border-2' : 'border-gray-200'}
         ${isOver && canDrop ? 'bg-blue-50 border-blue-400' : ''}

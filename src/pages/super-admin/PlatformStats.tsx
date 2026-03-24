@@ -161,7 +161,7 @@ const PlatformStats: React.FC = () => {
                 {/* Tooltip */}
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
                   {stat.active} Users ({stat.growth}% growth)
-                  <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-black rotate-45"></div>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-black rotate-45"></div>
                 </div>
                 
                 {/* Bar */}
@@ -191,7 +191,7 @@ const PlatformStats: React.FC = () => {
             </Button>
           </div>
           
-          <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2">
+          <div className="space-y-3 overflow-y-auto max-h-75 pr-2">
             {topCourses.map((course, idx) => (
               <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-300 transition-all cursor-pointer group">
                 <div className="flex items-center gap-4">
