@@ -81,4 +81,4 @@ export const NAVRATRI_FORMS = [];
 export const getNavratriDayInfo = () => null;
 export const getUpcomingFestivals = () => [];
 
-export default FESTIVALS;
+export default FESTIVALS; 
