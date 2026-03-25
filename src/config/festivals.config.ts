@@ -36,23 +36,6 @@ const ICONS = {
 };
 
 export const FESTIVALS: Festival[] = [
-  // 🧪 TEST - Aaj ki date par set hai testing ke liye
-  {
-    id: 'test-today',
-    name: 'Diwali',
-    nameHindi: 'दीपावली',
-    type: 'hindu',
-    month:6,
-    day: 20,
-    duration: 1,
-    colors: {
-      gradient: 'linear-gradient(135deg, #FF512F 0%, #F09819 100%)',
-      shadow: 'rgba(240, 152, 25, 0.4)'
-    },
-    svgIcon: ICONS.diya,
-    message: 'Happy Diwali!'
-  },
-
   // 🕉️ HINDU FESTIVALS
   { id: 'makar-sankranti', name: 'Makar Sankranti', nameHindi: 'मकर संक्रांति', type: 'hindu', month: 1, day: 14, duration: 1, colors: { gradient: 'linear-gradient(135deg, #FFB75E 0%, #ED8F03 100%)', shadow: 'rgba(237, 143, 3, 0.4)' }, svgIcon: ICONS.kites, message: 'Happy Makar Sankranti!' },
   { id: 'maha-shivratri', name: 'Maha Shivratri', nameHindi: 'महा शिवरात्रि', type: 'hindu', month: 2, day: 26, duration: 1, colors: { gradient: 'linear-gradient(135deg, #141E30 0%, #243B55 100%)', shadow: 'rgba(36, 59, 85, 0.4)' }, svgIcon: ICONS.moon_star, message: 'Har Har Mahadev!' },
