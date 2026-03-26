@@ -10,6 +10,8 @@ import './App.css';
 import Toast from './components/common/Toast';
 import AIChatBot from './components/common/AIChatBot';
 import GlobalFestivalBanner from './components/festival/GlobalFestivalBanner';
+import logo from '../public/coding-freak.gif';
+
 
 // Helper: Route ka naam nikalne ke liye
 const getLoaderMessage = (path: string) => {
@@ -36,7 +38,7 @@ const StudyLoader = ({ message }: { message: string }) => {
         
         {/* GIF Animation - ✅ Always normal colors */}
         <img 
-          src="https://cdn.dribbble.com/users/1059583/screenshots/4171367/coding-freak.gif"
+          src={logo}
           alt="Student Coding"
           className="w-80 h-64 object-cover mix-blend-multiply"
         />
