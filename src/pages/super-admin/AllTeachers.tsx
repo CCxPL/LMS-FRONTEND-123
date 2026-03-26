@@ -7,19 +7,18 @@ import Modal from '../../components/ui/Modal';
 import Loader from '../../components/common/Loader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useToast } from '../../context/ToastContext';
-import type { Teacher } from '../../types/user.types';
-import { userService } from '../../services/userService';
+import { getSuperAdminUsersApi, removeUserApi, toggleUserStatusApi } from '../../api/superadminApi';
 
 const AllTeachers: React.FC = () => {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
-  const [viewTeacher, setViewTeacher] = useState<Teacher | null>(null);
-  const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
+  const [viewTeacher, setViewTeacher] = useState<any | null>(null);
+  const [editTeacher, setEditTeacher] = useState<any | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ teacher: Teacher; type: 'delete' | 'toggle' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ teacher: any; type: 'delete' | 'toggle' } | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -37,8 +36,24 @@ const AllTeachers: React.FC = () => {
 
   const loadTeachers = async () => {
     try {
-      const data = await userService.getTeachers();
-      setTeachers(data);
+      const res = await getSuperAdminUsersApi({ role: 'Teacher', limit: 100 });
+      const mapped = (res.data.users || []).map((u: any) => ({
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        specialization: u.specialization || 'General',
+        phone: u.phone || '',
+        bio: u.bio || '',
+        rating: 0,
+        coursesCount: 0,
+        studentsCount: 0,
+        status: u.isActive ? 'active' : 'inactive',
+        role: 'teacher',
+        joinedDate: new Date(u.createdAt).toLocaleDateString(),
+        createdAt: u.createdAt,
+        avatar: '',
+      }));
+      setTeachers(mapped as any);
     } catch (error) {
       showToast('Failed to load teachers', 'error');
     } finally {
@@ -61,7 +76,7 @@ const AllTeachers: React.FC = () => {
       return;
     }
 
-    const newTeacher: Teacher = {
+    const newTeacher = {
       id: `teacher-${Date.now()}`,
       name: formData.name,
       email: formData.email,
@@ -74,7 +89,7 @@ const AllTeachers: React.FC = () => {
       status: 'active',
       role: 'teacher',
       joinedDate: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(), // ✅ Added this property
+      createdAt: new Date().toISOString(),
       avatar: ''
     };
 
@@ -98,25 +113,35 @@ const AllTeachers: React.FC = () => {
     resetForm();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirmAction) return;
-    setTeachers(prev => prev.filter(t => t.id !== confirmAction.teacher.id));
-    showToast('Teacher deleted successfully!', 'info');
+    try {
+      await removeUserApi(confirmAction.teacher.id);
+      setTeachers(prev => prev.filter(t => t.id !== confirmAction.teacher.id));
+      showToast('Teacher deleted successfully!', 'success');
+    } catch (error) {
+      showToast('Failed to delete teacher', 'error');
+    }
     setConfirmAction(null);
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     if (!confirmAction) return;
-    setTeachers(prev => prev.map(t => 
-      t.id === confirmAction.teacher.id 
-        ? { ...t, status: t.status === 'active' ? 'inactive' : 'active' }
-        : t
-    ));
-    showToast(`Teacher ${confirmAction.teacher.status === 'active' ? 'deactivated' : 'activated'} successfully!`, 'success');
+    try {
+      await toggleUserStatusApi(confirmAction.teacher.id);
+      setTeachers(prev => prev.map(t => 
+        t.id === confirmAction.teacher.id 
+          ? { ...t, status: t.status === 'active' ? 'inactive' : 'active' }
+          : t
+      ));
+      showToast(`Teacher ${confirmAction.teacher.status === 'active' ? 'deactivated' : 'activated'} successfully!`, 'success');
+    } catch (error) {
+      showToast('Failed to update teacher status', 'error');
+    }
     setConfirmAction(null);
   };
 
-  const openEditModal = (teacher: Teacher) => {
+  const openEditModal = (teacher: any) => {
     setFormData({
       name: teacher.name,
       email: teacher.email,

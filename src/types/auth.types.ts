@@ -11,8 +11,8 @@ export interface AuthUser {
   permissions?: string[];
   createdAt: string;
   lastLogin?: string;
-  mustChangePassword?: boolean; // ✅ ADDED
-  defaultPassword?: string; // ✅ ADDED
+  mustChangePassword?: boolean;
+  defaultPassword?: string;
 }
 
 export interface LoginCredentials {
@@ -34,6 +34,6 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
-  changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>; // ✅ ADDED
-  checkMustChangePassword: () => boolean; // ✅ ADDED
+  changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
+  checkMustChangePassword: () => boolean;
 }

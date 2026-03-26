@@ -1,30 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trophy, Medal } from 'lucide-react';
 import Card from './Card';
+import { getLeaderboardApi } from '../../api/performanceApi';
 
 interface LeaderboardEntry {
-  id: string;
-  name: string;
-  score: number;
   rank: number;
+  studentName: string;
+  averageScore: number;
+  bestScore: number;
+  totalAttempts: number;
 }
-
-const MOCK_DATA: Record<string, LeaderboardEntry[]> = {
-  '1': [
-    { id: '1', name: 'Arjun Sharma', score: 980, rank: 1 },
-    { id: '2', name: 'Priya Verma', score: 950, rank: 2 },
-    { id: '3', name: 'Rahul Singh', score: 920, rank: 3 },
-    { id: '4', name: 'You', score: 850, rank: 4 },
-    { id: '5', name: 'Amit Patel', score: 800, rank: 5 },
-  ]
-};
 
 interface LeaderboardProps {
   courseId: string;
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({ courseId }) => {
-  const data = MOCK_DATA[courseId] || MOCK_DATA['1'];
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!courseId) return;
+    fetchLeaderboard();
+  }, [courseId]);
+
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true);
+      const res = await getLeaderboardApi({ courseId, limit: 10 });
+      const raw: any[] = res.data?.leaderboard ?? [];
+
+      const mapped: LeaderboardEntry[] = raw.map((entry: any, idx: number) => ({
+        rank: idx + 1,
+        studentName: entry.studentName ?? 'Unknown',
+        averageScore: Math.round(entry.averageScore ?? 0),
+        bestScore: Math.round(entry.bestScore ?? 0),
+        totalAttempts: entry.totalAttempts ?? 0,
+      }));
+
+      setData(mapped);
+    } catch (err) {
+      console.error('Leaderboard fetch error:', err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-600 fill-yellow-100" />;
@@ -40,33 +61,38 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ courseId }) => {
         <Trophy className="w-5 h-5 text-gray-400" />
       </div>
 
-      <div className="space-y-3">
-        {data.map((student) => (
-          <div 
-            key={student.id} 
-            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-              student.name === 'You' 
-                ? 'bg-black text-white border-black' 
-                : 'bg-white border-gray-100'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 flex justify-center">
-                {getRankIcon(student.rank)}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                  student.name === 'You' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-900'
-                }`}>
-                  {student.name.charAt(0)}
+      {loading ? (
+        <div className="flex items-center justify-center h-40">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+        </div>
+      ) : data.length === 0 ? (
+        <p className="text-center text-gray-400 py-10">No data available yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {data.map((student) => (
+            <div
+              key={student.rank}
+              className="flex items-center justify-between p-3 rounded-lg border bg-white border-gray-100 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 flex justify-center">
+                  {getRankIcon(student.rank)}
                 </div>
-                <span className="text-sm font-medium">{student.name}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-900">
+                    {student.studentName.charAt(0)}
+                  </div>
+                  <span className="text-sm font-medium">{student.studentName}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold">{student.averageScore}%</p>
+                <p className="text-xs text-gray-400">avg score</p>
               </div>
             </div>
-            <span className="text-sm font-bold">{student.score} pts</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 };

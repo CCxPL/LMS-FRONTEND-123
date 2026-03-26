@@ -6,41 +6,51 @@ import { useToast } from '../../context/ToastContext';
 import Loader from '../../components/common/Loader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import { getTeacherDashboardApi } from '../../api/dashboardApi';
 
 const TeacherDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dashData, setDashData] = useState<any>(null);
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  const fetchDashboard = async () => {
+    try {
+      const res = await getTeacherDashboardApi();
+      setDashData(res.data);
+    } catch (error) {
+      console.error('Failed to fetch dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(t);
+    fetchDashboard();
   }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await fetchDashboard();
       showToast('Dashboard refreshed', 'success');
-    }, 1000);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   if (isLoading) return <Loader />;
 
   const stats = [
-    { title: 'My Courses', value: '3', icon: <BookOpen className="w-5 h-5" />, color: 'text-blue-600 bg-blue-50', path: '/teacher/my-courses' },
-    { title: 'Active Students', value: '423', icon: <Users className="w-5 h-5" />, color: 'text-emerald-600 bg-emerald-50', path: '/teacher/my-students' },
-    { title: 'Assignments', value: '12 Pending', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 bg-amber-50', path: '/teacher/assignments' },
-    { title: 'Instructor Rating', value: '4.8', icon: <Star className="w-5 h-5" />, color: 'text-purple-600 bg-purple-50', path: '/teacher/feedback' },
+    { title: 'My Courses', value: dashData?.totalCourses ?? '0', icon: <BookOpen className="w-5 h-5" />, color: 'text-blue-600 bg-blue-50', path: '/teacher/my-courses' },
+    { title: 'Active Students', value: dashData?.activeStudents ?? '0', icon: <Users className="w-5 h-5" />, color: 'text-emerald-600 bg-emerald-50', path: '/teacher/my-students' },
+    { title: 'Assignments', value: `${dashData?.totalAssignments ?? 0} Total`, icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 bg-amber-50', path: '/teacher/assignments' },
+    { title: 'Instructor Rating', value: dashData?.averageRating ?? '0.0', icon: <Star className="w-5 h-5" />, color: 'text-purple-600 bg-purple-50', path: '/teacher/feedback' },
   ];
 
-  const recentSubmissions = [
-    { id: '1', student: 'Ali Ahmed', task: 'React Project', course: 'React.js', time: '2h ago' },
-    { id: '2', student: 'Fatima Khan', task: 'API Design', course: 'Node.js', time: '5h ago' },
-    { id: '3', student: 'Hassan Ali', task: 'Database Schema', course: 'SQL', time: '1d ago' },
-  ];
+  const recentSubmissions = dashData?.recentSubmissions ?? [];
 
   return (
     <div className="space-y-6">
@@ -84,18 +94,35 @@ const TeacherDashboard: React.FC = () => {
               <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/grade-assignments')}>View All</Button>
             </div>
             <div className="space-y-3">
-              {recentSubmissions.map((sub) => (
-                <div key={sub.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+              {recentSubmissions.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">No recent submissions.</p>
+              )}
+              {recentSubmissions.map((sub: any) => (
+                <div key={sub._id || sub.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">{sub.student.charAt(0)}</div>
+                    <div className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
+                      {/* ✅ Fix: student populated object hai, .name se charAt karo */}
+                      {sub.student?.name?.charAt(0) || sub.studentName?.charAt(0) || 'S'}
+                    </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900">{sub.student}</p>
-                      <p className="text-xs text-gray-500">{sub.task} • {sub.course}</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        {sub.student?.name || sub.studentName || 'Student'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {sub.quiz?.title || sub.assignmentTitle || 'Quiz'} • {sub.quiz?.course || sub.courseName || ''}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{sub.time}</span>
-                    <button onClick={() => navigate('/teacher/grade-assignments')} className="p-2 bg-white border border-gray-200 rounded-lg hover:border-black hover:text-black text-gray-400 transition-colors"><Eye className="w-4 h-4" /></button>
+                    <span className="text-xs text-gray-400">
+                      {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString() : sub.time}
+                    </span>
+                    <button
+                      onClick={() => navigate('/teacher/grade-assignments')}
+                      className="p-2 bg-white border border-gray-200 rounded-lg hover:border-black hover:text-black text-gray-400 transition-colors"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -114,7 +141,7 @@ const TeacherDashboard: React.FC = () => {
                 <ClipboardList className="w-6 h-6" /><span className="text-xs">Create Quiz</span>
               </Button>
               <Button variant="outline" className="flex-col h-24 gap-2" onClick={() => navigate('/teacher/assignments')}>
-                <Play className="w-6 h-6" /><span className="text-xs">Assignments</span>
+                <Play className="w-4 h-4" /><span className="text-xs">Assignments</span>
               </Button>
               <Button variant="outline" className="flex-col h-24 gap-2" onClick={() => navigate('/teacher/feedback')}>
                 <MessageSquare className="w-6 h-6" /><span className="text-xs">Feedback</span>

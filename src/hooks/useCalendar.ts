@@ -3,10 +3,10 @@
 // ============================================
 
 import { useState, useEffect, useCallback, } from 'react';
-import type { 
-  CalendarEvent, 
+import type {
+  CalendarEvent,
   EventFormData,
-  RecurringEditType 
+  RecurringEditType
 } from '../types/calendar.types';
 import { calendarService } from '../services/calendarService';
 import { useAuth } from './useAuth';
@@ -43,7 +43,7 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const { showToast } = useToast();
-  
+
   // const hasFetchedRef = useRef(false);
 
   const fetchEvents = useCallback(async (): Promise<void> => {
@@ -55,18 +55,8 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
 
     setLoading(true);
     try {
-      let fetchedEvents: CalendarEvent[];
-
-      if (user.role === 'student' && user.courseIds) {
-        fetchedEvents = calendarService.getEventsByStudentCourses(user.courseIds);
-      } else if (user.role === 'teacher') {
-        fetchedEvents = calendarService.getEventsByTeacher(user.id);
-      } else if (courseId) {
-        fetchedEvents = calendarService.getEventsByCourse(courseId);
-      } else {
-        fetchedEvents = calendarService.getAllEvents();
-      }
-
+      // ✅ Ab backend se fetch hoga
+      const fetchedEvents = await calendarService.fetchEvents(courseId);
       setEvents(fetchedEvents || []);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -94,9 +84,9 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
       const newEvents = await calendarService.createEvent(formData, user);
       setEvents(prev => [...prev, ...newEvents]);
       showToast(
-        formData.isRecurring 
-          ? `${newEvents.length} recurring events created successfully` 
-          : 'Event created successfully', 
+        formData.isRecurring
+          ? `${newEvents.length} recurring events created successfully`
+          : 'Event created successfully',
         'success'
       );
       return true;
@@ -119,7 +109,7 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
         showToast('Failed to update event', 'error');
         return false;
       }
-    }, 
+    },
     [showToast]
   );
 

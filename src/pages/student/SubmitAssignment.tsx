@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Send, FileText, Link as LinkIcon, Upload, CheckCircle } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { useAuth } from '../../hooks/useAuth';
-import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
+import { submitAssignmentApi, getAssignmentByIdApi } from '../../api/assignmentApi';
+import { uploadImageApi } from '../../api/uploadApi';
+import Loader from '../../components/common/Loader';
 
 const SubmitAssignment: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { submitAssignment } = useData();
   const { showToast } = useToast();
 
+  const [assignment, setAssignment] = useState<any>(null);
+  const [isLoadingAssignment, setIsLoadingAssignment] = useState(true);
   const [submissionType, setSubmissionType] = useState<'text' | 'file' | 'link'>('text');
   const [text, setText] = useState('');
   const [link, setLink] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    loadAssignment();
+  }, [id]);
+
+  const loadAssignment = async () => {
+    if (!id) return;
+    try {
+      const res = await getAssignmentByIdApi(id);
+      setAssignment(res.data.assignment);
+      if (res.data.assignment?.status === 'submitted' || res.data.assignment?.status === 'graded') {
+        setIsSubmitted(true);
+      }
+    } catch (error) {
+      console.error('Failed to load assignment:', error);
+    } finally {
+      setIsLoadingAssignment(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -33,9 +53,7 @@ const SubmitAssignment: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-    let submittedText = '';
-
+  const handleSubmit = async () => {
     if (submissionType === 'text' && !text.trim()) {
       showToast('Please write your submission', 'error');
       return;
@@ -49,31 +67,48 @@ const SubmitAssignment: React.FC = () => {
       return;
     }
 
-    if (submissionType === 'text') submittedText = text;
-    else if (submissionType === 'link') submittedText = `Link: ${link}`;
-    else if (submissionType === 'file') submittedText = `File: ${file?.name}`;
-
+    if (!id) return;
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      if (submitAssignment) {
-        submitAssignment({
-          id: id || 'a1',
-          title: 'Assignment Submission',
-          studentId: user?.id || '',
-          studentName: user?.name || '',
-          courseId: '1',
-          courseName: 'React.js Complete',
-          submittedText,
-          totalMarks: 100,
-        });
+    try {
+      let submittedText = '';
+      let fileUrl = '';
+
+      if (submissionType === 'text') {
+        submittedText = text;
+      } else if (submissionType === 'link') {
+        submittedText = link;
+      } else if (submissionType === 'file' && file) {
+        try {
+          // ✅ Fix: File direct pass karo, FormData nahi
+          const uploadRes = await uploadImageApi(file);
+          fileUrl = uploadRes.data?.url || '';
+          submittedText = fileUrl || file.name;
+        } catch {
+          submittedText = file.name;
+        }
       }
 
-      setIsSubmitting(false);
+      await submitAssignmentApi(id, {
+        submittedText,
+        submissionType,
+        link: submissionType === 'link' ? link : undefined,
+        fileUrl,
+      });
+
       setIsSubmitted(true);
       showToast('Assignment submitted!', 'success');
-    }, 1500);
+    } catch (error: any) {
+      showToast(
+        error?.response?.data?.message || 'Failed to submit assignment. Please try again.',
+        'error'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoadingAssignment) return <Loader text="Loading assignment..." />;
 
   if (isSubmitted) {
     return (
@@ -108,7 +143,11 @@ const SubmitAssignment: React.FC = () => {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Submit Assignment</h1>
-          <p className="text-gray-500 text-sm mt-1">Upload your work for review</p>
+          {assignment && (
+            <p className="text-gray-500 text-sm mt-1">
+              {assignment.title} — {assignment.course?.title || ''}
+            </p>
+          )}
         </div>
       </div>
 
@@ -128,11 +167,10 @@ const SubmitAssignment: React.FC = () => {
                 <button
                   key={opt.type}
                   onClick={() => setSubmissionType(opt.type)}
-                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
-                    submissionType === opt.type 
-                      ? 'border-black bg-gray-50 text-gray-900' 
+                  className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${submissionType === opt.type
+                      ? 'border-black bg-gray-50 text-gray-900'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   {opt.icon}
                   <span className="font-medium text-sm">{opt.label}</span>
@@ -158,9 +196,7 @@ const SubmitAssignment: React.FC = () => {
 
           {submissionType === 'file' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Upload File
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Upload File</label>
               {file ? (
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <div className="flex items-center gap-3">
@@ -194,9 +230,7 @@ const SubmitAssignment: React.FC = () => {
 
           {submissionType === 'link' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Project Link
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Project Link</label>
               <div className="relative">
                 <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input

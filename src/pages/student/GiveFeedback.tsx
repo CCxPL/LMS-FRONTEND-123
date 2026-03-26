@@ -1,66 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Send, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import { getMyEnrolledCoursesApi, addCourseReviewApi, getMyReviewsApi } from '../../api/studentApi';
 
 const GiveFeedback: React.FC = () => {
   const { user } = useAuth();
-  const { submitFeedback, getFeedbackByStudent } = useData();
   const { showToast } = useToast();
 
+  const [courses, setCourses] = useState<any[]>([]);
+  const [myFeedbacks, setMyFeedbacks] = useState<any[]>([]);
   const [courseId, setCourseId] = useState('');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const myFeedbacks = getFeedbackByStudent(user?.id || '');
+  useEffect(() => {
+    loadCourses();
+    loadMyFeedbacks();
+  }, []);
 
-  const courses = [
-    { id: '1', name: 'React.js Complete Course', teacherId: '3', teacherName: 'Dr. Sarah' },
-    { id: '2', name: 'Python for Data Science', teacherId: '3', teacherName: 'Dr. Sarah' },
-    { id: '3', name: 'AWS Cloud Practitioner', teacherId: '5', teacherName: 'Eng. Hassan' },
-  ];
+  const loadCourses = async () => {
+    try {
+      const res = await getMyEnrolledCoursesApi();
+      setCourses(res.data.courses || []);
+    } catch (error) {
+      console.error('Failed to load courses:', error);
+    }
+  };
 
-  const handleSubmit = () => {
-    if (!courseId) {
-      showToast('Please select a course', 'error');
-      return;
+  // ✅ SAHI
+  const loadMyFeedbacks = async () => {
+    try {
+      const res = await getMyReviewsApi();
+      setMyFeedbacks(res.data?.reviews || []);
+    } catch (error) {
+      console.error('Failed to load feedbacks:', error);
     }
-    if (rating === 0) {
-      showToast('Please select a rating', 'error');
-      return;
-    }
-    if (!comment.trim()) {
-      showToast('Please write a comment', 'error');
-      return;
-    }
+  };
+
+  const handleSubmit = async () => {
+    if (!courseId) { showToast('Please select a course', 'error'); return; }
+    if (rating === 0) { showToast('Please select a rating', 'error'); return; }
+    if (!comment.trim()) { showToast('Please write a comment', 'error'); return; }
 
     setIsSubmitting(true);
-    const course = courses.find((c) => c.id === courseId);
-    if (!course || !user) return;
-
-    setTimeout(() => {
-      submitFeedback({
-        studentId: user.id, 
-        studentName: user.name,
-        teacherId: course.teacherId, 
-        teacherName: course.teacherName,
-        courseId: course.id, 
-        courseName: course.name,
-        rating, 
-        comment,
-      });
-
+    try {
+      await addCourseReviewApi({ courseId, rating, comment });
       showToast('Feedback submitted successfully!', 'success');
-      setCourseId(''); 
-      setRating(0); 
+      setCourseId('');
+      setRating(0);
       setComment('');
+      loadMyFeedbacks();
+    } catch (error) {
+      showToast('Failed to submit feedback', 'error');
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -86,14 +85,16 @@ const GiveFeedback: React.FC = () => {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Course</label>
-              <select 
+              <select
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                value={courseId} 
+                value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
               >
                 <option value="">-- Choose a course --</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name} (by {c.teacherName})</option>
+                {courses.map((c: any) => (
+                  <option key={c._id || c.id} value={c._id || c.id}>
+                    {c.title} {c.instructor?.name ? `(by ${c.instructor.name})` : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -102,41 +103,40 @@ const GiveFeedback: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <button 
-                    key={star} 
+                  <button
+                    key={star}
                     type="button"
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
                     onClick={() => setRating(star)}
                     className="focus:outline-none transition-transform hover:scale-110"
                   >
-                    <Star 
-                      className={`w-10 h-10 transition-colors ${
-                        star <= (hoverRating || rating) 
-                          ? 'fill-gray-900 text-gray-900' 
-                          : 'text-gray-300'
-                      }`} 
+                    <Star
+                      className={`w-10 h-10 transition-colors ${star <= (hoverRating || rating)
+                        ? 'fill-gray-900 text-gray-900'
+                        : 'text-gray-300'
+                        }`}
                     />
                   </button>
                 ))}
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                {rating === 1 && "Poor"}
-                {rating === 2 && "Fair"}
-                {rating === 3 && "Good"}
-                {rating === 4 && "Very Good"}
-                {rating === 5 && "Excellent"}
+                {rating === 1 && 'Poor'}
+                {rating === 2 && 'Fair'}
+                {rating === 3 && 'Good'}
+                {rating === 4 && 'Very Good'}
+                {rating === 5 && 'Excellent'}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Your Experience</label>
-              <textarea 
+              <textarea
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none"
                 style={{ minHeight: 150 }}
-                placeholder="What did you like? What can be improved?" 
+                placeholder="What did you like? What can be improved?"
                 value={comment}
-                onChange={(e) => setComment(e.target.value)} 
+                onChange={(e) => setComment(e.target.value)}
               />
             </div>
 
@@ -149,7 +149,7 @@ const GiveFeedback: React.FC = () => {
         {/* My Feedbacks */}
         <div className="space-y-6">
           <h3 className="font-bold text-gray-900 text-xl">My Past Reviews</h3>
-          
+
           {myFeedbacks.length === 0 ? (
             <Card className="text-center py-12">
               <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -158,24 +158,32 @@ const GiveFeedback: React.FC = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {myFeedbacks.map((fb) => (
-                <Card key={fb.id} hover>
+              {myFeedbacks.map((fb: any) => (
+                <Card key={fb._id || fb.id} hover>
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="font-bold text-gray-900">{fb.courseName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Instructor: {fb.teacherName}</p>
+                      <p className="font-bold text-gray-900">
+                        {fb.course?.title || fb.courseName}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Instructor: {fb.instructor?.name || fb.teacherName || 'N/A'}
+                      </p>
                     </div>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className={`w-4 h-4 ${s <= fb.rating ? 'fill-gray-900 text-gray-900' : 'text-gray-200'}`} />
+                        <Star
+                          key={s}
+                          className={`w-4 h-4 ${s <= fb.rating ? 'fill-gray-900 text-gray-900' : 'text-gray-200'
+                            }`}
+                        />
                       ))}
                     </div>
                   </div>
-                  
+
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
                     "{fb.comment}"
                   </p>
-                  
+
                   <div className="mt-3 flex justify-between items-center">
                     <p className="text-xs text-gray-400">
                       {new Date(fb.createdAt).toLocaleDateString()}

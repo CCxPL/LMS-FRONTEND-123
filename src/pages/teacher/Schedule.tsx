@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { 
-  Calendar, 
-  Users, 
-  Video, 
-  BarChart3, 
-  UserCheck, 
-  UserX, 
-  LogIn, 
+import React, { useState, useEffect } from 'react';
+import {
+  Calendar,
+  Users,
+  Video,
+  BarChart3,
+  UserCheck,
+  UserX,
+  LogIn,
   LogOut,
   X,
   Filter,
@@ -25,13 +25,15 @@ import type { CalendarEvent, EventFormData, RecurringEditType } from '../../type
 import type { ClassSummary } from '../../types/attendance.types';
 import { isEventLive } from '../../utils/eventHelpers';
 import { formatTime12hr } from '../../utils/dateHelpers';
+import { getEventAttendanceApi } from '../../api/attendanceApi';
 
 const TeacherSchedule: React.FC = () => {
-  const {  } = useAuth();
+  const { } = useAuth();
   const { showToast } = useToast();
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedSummary, setSelectedSummary] = useState<ClassSummary | null>(null);
   const [selectedEventForAttendance, setSelectedEventForAttendance] = useState<CalendarEvent | null>(null);
+  const [attendanceDetails, setAttendanceDetails] = useState<any[]>([]);
 
   // ============================================
   // ✅ Event Modal & Recurring Dialog States
@@ -39,15 +41,15 @@ const TeacherSchedule: React.FC = () => {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  
+
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [recurringAction, setRecurringAction] = useState<'EDIT' | 'DELETE'>('EDIT');
 
-  const { 
-    events, 
-    loading, 
-    createEvent, 
-    updateEvent, 
+  const {
+    events,
+    loading,
+    createEvent,
+    updateEvent,
     deleteEvent,
     updateRecurringEvent,
     deleteRecurringEvent,
@@ -56,7 +58,7 @@ const TeacherSchedule: React.FC = () => {
 
   // Find currently live event
   const liveEvent = events.find(e => isEventLive(e));
-  
+
   // Get online students for live event
   const getOnlineStudents = (eventId: string) => {
     const joined = studentActivities.filter(a => a.eventId === eventId && a.action === 'joined');
@@ -115,9 +117,9 @@ const TeacherSchedule: React.FC = () => {
       const success = await createEvent(formData);
       if (success) {
         showToast(
-          formData.isRecurring 
-            ? 'Recurring events created successfully' 
-            : 'Event created successfully', 
+          formData.isRecurring
+            ? 'Recurring events created successfully'
+            : 'Event created successfully',
           'success'
         );
       }
@@ -137,7 +139,7 @@ const TeacherSchedule: React.FC = () => {
 
   const handleEditEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
-    
+
     if (event.isRecurring) {
       setRecurringAction('EDIT');
       setRecurringDialogOpen(true);
@@ -171,9 +173,9 @@ const TeacherSchedule: React.FC = () => {
       if (recurringAction === 'DELETE') {
         await deleteRecurringEvent(editingEvent.id, editType);
         showToast(
-          editType === 'THIS_EVENT' 
-            ? 'Event deleted successfully' 
-            : 'Events deleted successfully', 
+          editType === 'THIS_EVENT'
+            ? 'Event deleted successfully'
+            : 'Events deleted successfully',
           'success'
         );
         setIsEventModalOpen(false);
@@ -198,7 +200,7 @@ const TeacherSchedule: React.FC = () => {
       } else {
         await updateEvent(editingEvent.id, formData);
       }
-      
+
       showToast('Event updated successfully', 'success');
       setIsEventModalOpen(false);
       setEditingEvent(null);
@@ -224,20 +226,31 @@ const TeacherSchedule: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!selectedEventForAttendance) return;
+    getEventAttendanceApi(selectedEventForAttendance.id).then(res => {
+      const records = res.data?.attendance || [];
+      setAttendanceDetails(records.map((a: any) => ({
+        studentId: a.student?._id,
+        studentName: a.student?.name || 'Unknown',
+        joinTime: a.joinTime,
+        leaveTime: a.leaveTime,
+        duration: a.duration || 0,
+        status: a.status,
+      })));
+    }).catch(console.error);
+  }, [selectedEventForAttendance]);
+
   // Teacher's class summaries
-  const teacherSummaries = classSummaries.filter(s => 
+  const teacherSummaries = classSummaries.filter(s =>
     events.some(e => e.id === s.eventId)
   );
 
   // Filter events by course
-  const filteredEvents = selectedCourseId 
+  const filteredEvents = selectedCourseId
     ? events.filter(e => e.courseId === selectedCourseId)
     : events;
 
-  // Get attendance for selected event
-  const attendanceDetails = selectedEventForAttendance 
-    ? getAttendanceDetails(selectedEventForAttendance.id)
-    : [];
 
   const presentCount = attendanceDetails.filter(s => s.status === 'present').length;
   const absentCount = attendanceDetails.filter(s => s.status === 'absent').length;
@@ -516,11 +529,10 @@ const TeacherSchedule: React.FC = () => {
                             <span className="font-medium text-gray-900">{student.studentName}</span>
                           </td>
                           <td className="py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              student.status === 'present' 
-                                ? 'bg-green-100 text-green-700' 
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${student.status === 'present'
+                                ? 'bg-green-100 text-green-700'
                                 : 'bg-gray-100 text-gray-600'
-                            }`}>
+                              }`}>
                               {student.status}
                             </span>
                           </td>

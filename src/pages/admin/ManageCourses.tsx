@@ -1,18 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  Search,
-  Check,
-  X,
-  Eye,
-  BookOpen,
-  Users,
-  Clock,
-  Download,
-  RefreshCw,
-  Star,
-  Archive,
-  Trash2,
-  Filter
+  Search, Check, X, Eye, BookOpen, Users, Clock,
+  Download, RefreshCw, Star, Archive, Trash2, Filter
 } from 'lucide-react';
 import Loader from '../../components/common/Loader';
 import Modal from '../../components/ui/Modal';
@@ -20,25 +9,24 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import type { Course } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
 import { useToast } from '../../context/ToastContext';
+import { getAllCoursesApi, deleteCourseApi, updateCourseApi } from '../../api/courseApi';
+import { approveCourseApi, rejectCourseApi } from '../../api/adminApi';
 
 const ManageCourses: React.FC = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [levelFilter, setLevelFilter] = useState('all');
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     id: string;
     action: 'approve' | 'reject' | 'archive' | 'delete';
-    course?: Course;
+    course?: any;
   } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -48,8 +36,8 @@ const ManageCourses: React.FC = () => {
   const loadCourses = async () => {
     setIsLoading(true);
     try {
-      const data = await courseService.getAllCourses();
-      setCourses(data);
+      const res = await getAllCoursesApi({ limit: 100 });
+      setCourses(res.data?.courses || []);
     } catch (error) {
       showToast('Failed to load courses', 'error');
     }
@@ -63,47 +51,69 @@ const ManageCourses: React.FC = () => {
     showToast('Courses refreshed', 'success');
   };
 
+  const getStatus = (c: any) => {
+    if (c.isArchived) return 'archived';
+    if (c.isPublished && c.isApproved) return 'published';
+    if (!c.isApproved) return 'pending';
+    return 'draft';
+  };
 
+  const getAvgRating = (c: any) => {
+    if (!c.reviews || c.reviews.length === 0) return null;
+    return (c.reviews.reduce((s: number, r: any) => s + r.rating, 0) / c.reviews.length).toFixed(1);
+  };
 
   const filtered = useMemo(() => {
     return courses.filter((c) => {
+      const instructor = c.teacher?.name || '';
       const matchSearch =
         c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.instructor.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchStatus = statusFilter === 'all' || c.status === statusFilter;
-      const matchLevel = levelFilter === 'all' || c.level === levelFilter;
+        instructor.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const status = getStatus(c);
+      const matchStatus = statusFilter === 'all' || status === statusFilter;
+      const matchLevel = levelFilter === 'all' || (c.level || '').toLowerCase() === levelFilter;
+
       return matchSearch && matchStatus && matchLevel;
     });
   }, [courses, searchTerm, statusFilter, levelFilter]);
 
   const stats = useMemo(() => ({
     total: courses.length,
-    published: courses.filter(c => c.status === 'published').length,
-    pending: courses.filter(c => c.status === 'pending').length,
-    draft: courses.filter(c => c.status === 'draft').length,
+    published: courses.filter(c => getStatus(c) === 'published').length,
+    pending: courses.filter(c => getStatus(c) === 'pending').length,
+    draft: courses.filter(c => getStatus(c) === 'draft').length,
   }), [courses]);
 
-  const handleAction = (id: string, action: string) => {
-    const course = courses.find(c => c.id === id);
+  const handleAction = async (id: string, action: string) => {
+    const course = courses.find(c => (c._id || c.id) === id);
     if (!course) return;
-
-    switch (action) {
-      case 'approve':
-        setCourses(prev => prev.map(c => c.id === id ? { ...c, status: 'published' as const } : c));
+    try {
+      if (action === 'approve') {
+        await approveCourseApi(id);
+        setCourses(prev => prev.map(c =>
+          (c._id || c.id) === id ? { ...c, isPublished: true, isApproved: true } : c
+        ));
         showToast(`"${course.title}" approved!`, 'success');
-        break;
-      case 'reject':
-        setCourses(prev => prev.map(c => c.id === id ? { ...c, status: 'draft' as const } : c));
+      } else if (action === 'reject') {
+        await rejectCourseApi(id);
+        setCourses(prev => prev.map(c =>
+          (c._id || c.id) === id ? { ...c, isPublished: false, isApproved: false } : c
+        ));
         showToast(`"${course.title}" rejected.`, 'info');
-        break;
-      case 'archive':
-        setCourses(prev => prev.map(c => c.id === id ? { ...c, status: 'archived' as const } : c));
+      } else if (action === 'archive') {
+        await updateCourseApi(id, { isPublished: false, isArchived: true });
+        setCourses(prev => prev.map(c =>
+          (c._id || c.id) === id ? { ...c, isPublished: false, isArchived: true } : c
+        ));
         showToast(`"${course.title}" archived.`, 'info');
-        break;
-      case 'delete':
-        setCourses(prev => prev.filter(c => c.id !== id));
+      } else if (action === 'delete') {
+        await deleteCourseApi(id);
+        setCourses(prev => prev.filter(c => (c._id || c.id) !== id));
         showToast(`"${course.title}" deleted.`, 'info');
-        break;
+      }
+    } catch {
+      showToast(`Failed to ${action} course`, 'error');
     }
     setConfirmAction(null);
   };
@@ -111,9 +121,16 @@ const ManageCourses: React.FC = () => {
   const handleExport = () => {
     const csv = [
       ['Title', 'Instructor', 'Category', 'Level', 'Status', 'Students', 'Rating'].join(','),
-      ...filtered.map(c => [c.title, c.instructor, c.category, c.level, c.status, c.enrolledStudents, c.rating || 'N/A'].join(','))
+      ...filtered.map(c => [
+        c.title,
+        c.teacher?.name || '',
+        c.category || '',
+        c.level || 'N/A',
+        getStatus(c),
+        c.enrolledStudents?.length || 0,
+        getAvgRating(c) || 'N/A',
+      ].join(','))
     ].join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -152,17 +169,16 @@ const ManageCourses: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: stats.total, active: statusFilter === 'all' },
-          { label: 'Published', value: stats.published, active: statusFilter === 'published' },
-          { label: 'Pending', value: stats.pending, active: statusFilter === 'pending' },
-          { label: 'Drafts', value: stats.draft, active: statusFilter === 'draft' },
+          { label: 'Total', value: stats.total, key: 'all' },
+          { label: 'Published', value: stats.published, key: 'published' },
+          { label: 'Pending', value: stats.pending, key: 'pending' },
+          { label: 'Drafts', value: stats.draft, key: 'draft' },
         ].map((s) => (
           <button
             key={s.label}
-            onClick={() => setStatusFilter(s.label.toLowerCase() === 'total' ? 'all' : s.label.toLowerCase() === 'drafts' ? 'draft' : s.label.toLowerCase())}
-            className={`rounded-xl p-3 text-center transition-all border-2 ${
-              s.active ? 'border-black bg-gray-50' : 'border-transparent bg-gray-50 hover:border-gray-200'
-            }`}
+            onClick={() => setStatusFilter(s.key)}
+            className={`rounded-xl p-3 text-center transition-all border-2 ${statusFilter === s.key ? 'border-black bg-gray-50' : 'border-transparent bg-gray-50 hover:border-gray-200'
+              }`}
           >
             <p className="text-xl font-bold text-gray-900">{s.value}</p>
             <p className="text-xs text-gray-500">{s.label}</p>
@@ -234,99 +250,104 @@ const ManageCourses: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((course) => (
-                  <tr key={course.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-gray-500" />
+                {filtered.map((course) => {
+                  const status = getStatus(course);
+                  const rating = getAvgRating(course);
+                  const id = course._id || course.id;
+                  return (
+                    <tr key={id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <BookOpen className="w-5 h-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{course.title}</p>
+                            <p className="text-xs text-gray-500">{course.category}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">{course.title}</p>
-                          <p className="text-xs text-gray-500">{course.category} • {course.duration}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
+                            {(course.teacher?.name || 'U').charAt(0)}
+                          </div>
+                          <span className="text-sm text-gray-700">{course.teacher?.name || 'Unknown'}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
-                          {course.instructor.charAt(0)}
-                        </div>
-                        <span className="text-sm text-gray-700">{course.instructor}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="text-sm font-bold text-gray-900">{course.enrolledStudents}</span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
-                        {course.level}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${
-                        course.status === 'published' ? 'bg-black text-white' :
-                        course.status === 'pending' ? 'bg-gray-200 text-gray-700' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>
-                        {course.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      {course.rating ? (
-                        <div className="inline-flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-gray-700 fill-gray-700" />
-                          <span className="text-sm font-medium">{course.rating}</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-300">N/A</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
-                        {course.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => setConfirmAction({ id: course.id, action: 'approve', course })}
-                              className="p-2 bg-black text-white rounded-lg hover:bg-gray-800"
-                              title="Approve"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setConfirmAction({ id: course.id, action: 'reject', course })}
-                              className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                              title="Reject"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className="text-sm font-bold text-gray-900">{course.enrolledStudents?.length || 0}</span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
+                          {course.level || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${status === 'published' ? 'bg-black text-white' :
+                          status === 'pending' ? 'bg-gray-200 text-gray-700' :
+                            status === 'archived' ? 'bg-red-100 text-red-600' :
+                              'bg-gray-100 text-gray-500'
+                          }`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {rating ? (
+                          <div className="inline-flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-gray-700 fill-gray-700" />
+                            <span className="text-sm font-medium">{rating}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-300">N/A</span>
                         )}
-                        <button
-                          onClick={() => { setSelectedCourse(course); setShowPreview(true); }}
-                          className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                          title="View"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ id: course.id, action: 'archive', course })}
-                          className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                          title="Archive"
-                        >
-                          <Archive className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ id: course.id, action: 'delete', course })}
-                          className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          {status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => setConfirmAction({ id, action: 'approve', course })}
+                                className="p-2 bg-black text-white rounded-lg hover:bg-gray-800"
+                                title="Approve"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmAction({ id, action: 'reject', course })}
+                                className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                                title="Reject"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => { setSelectedCourse(course); setShowPreview(true); }}
+                            className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmAction({ id, action: 'archive', course })}
+                            className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                            title="Archive"
+                          >
+                            <Archive className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmAction({ id, action: 'delete', course })}
+                            className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -345,22 +366,22 @@ const ManageCourses: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-gray-50 rounded-xl p-3 text-center">
                 <Users className="w-5 h-5 text-gray-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{selectedCourse.enrolledStudents}</p>
+                <p className="text-lg font-bold">{selectedCourse.enrolledStudents?.length || 0}</p>
                 <p className="text-xs text-gray-500">Students</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-center">
                 <BookOpen className="w-5 h-5 text-gray-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{selectedCourse.modules?.length || 0}</p>
-                <p className="text-xs text-gray-500">Modules</p>
+                <p className="text-lg font-bold">{selectedCourse.totalVideos || 0}</p>
+                <p className="text-xs text-gray-500">Videos</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-center">
                 <Clock className="w-5 h-5 text-gray-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{selectedCourse.duration}</p>
+                <p className="text-lg font-bold">{selectedCourse.duration || 'N/A'}</p>
                 <p className="text-xs text-gray-500">Duration</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-center">
                 <Star className="w-5 h-5 text-gray-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{selectedCourse.rating || 'N/A'}</p>
+                <p className="text-lg font-bold">{getAvgRating(selectedCourse) || 'N/A'}</p>
                 <p className="text-xs text-gray-500">Rating</p>
               </div>
             </div>
@@ -373,34 +394,27 @@ const ManageCourses: React.FC = () => {
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-700">
-                  {selectedCourse.instructor.charAt(0)}
+                  {(selectedCourse.teacher?.name || 'U').charAt(0)}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{selectedCourse.instructor}</p>
-                  <p className="text-xs text-gray-500">{selectedCourse.category} • {selectedCourse.level}</p>
+                  <p className="font-medium text-gray-900">{selectedCourse.teacher?.name || 'Unknown'}</p>
+                  <p className="text-xs text-gray-500">{selectedCourse.category} • {selectedCourse.level || 'N/A'}</p>
                 </div>
               </div>
             </div>
 
-            {selectedCourse.status === 'pending' && (
+            {getStatus(selectedCourse) === 'pending' && (
               <div className="flex gap-3">
-                <Button
-                  fullWidth
-                  onClick={() => {
-                    setShowPreview(false);
-                    setConfirmAction({ id: selectedCourse.id, action: 'approve', course: selectedCourse });
-                  }}
-                >
+                <Button fullWidth onClick={() => {
+                  setShowPreview(false);
+                  setConfirmAction({ id: selectedCourse._id || selectedCourse.id, action: 'approve', course: selectedCourse });
+                }}>
                   <Check className="w-4 h-4" /> Approve
                 </Button>
-                <Button
-                  variant="outline"
-                  fullWidth
-                  onClick={() => {
-                    setShowPreview(false);
-                    setConfirmAction({ id: selectedCourse.id, action: 'reject', course: selectedCourse });
-                  }}
-                >
+                <Button variant="outline" fullWidth onClick={() => {
+                  setShowPreview(false);
+                  setConfirmAction({ id: selectedCourse._id || selectedCourse.id, action: 'reject', course: selectedCourse });
+                }}>
                   <X className="w-4 h-4" /> Reject
                 </Button>
               </div>

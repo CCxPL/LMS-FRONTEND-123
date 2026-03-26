@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import type { AuthContextType, LoginCredentials, RegisterData, AuthUser } from '../types/auth.types';
 import { authService } from '../services/authService';
 import { useToast } from './ToastContext';
+import { connectSocket, disconnectSocket } from '../services/socketService'; // ✅ ADD
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -12,16 +13,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { showToast } = useToast();
 
   useEffect(() => {
-    const initAuth = () => {
+    const initAuth = async () => {
       try {
-        const currentUser = authService.getCurrentUser();
         const isAuth = authService.isAuthenticated();
-        if (currentUser && isAuth) {
-          setUser(currentUser);
-          setIsAuthenticated(true);
+        if (isAuth) {
+          const freshUser = await authService.refreshUserFromServer();
+          if (freshUser) {
+            setUser(freshUser);
+            setIsAuthenticated(true);
+            connectSocket(freshUser.id); // ✅ ADD
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -35,10 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const loggedUser = await authService.login(credentials);
       setUser(loggedUser);
       setIsAuthenticated(true);
-      
-      // ✅ ADDED: Check first login
+      connectSocket(loggedUser.id); // ✅ ADD
+
       if (loggedUser.mustChangePassword) {
-        showToast(`Welcome! Please change your default password.`, 'info');
+        showToast('Welcome! Please change your default password.', 'info');
       } else {
         showToast(`Welcome back, ${loggedUser.name}!`, 'success');
       }
@@ -57,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const registeredUser = await authService.register(data);
       setUser(registeredUser);
       setIsAuthenticated(true);
+      connectSocket(registeredUser.id); // ✅ ADD
       showToast('Account created successfully!', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registration failed';
@@ -67,35 +77,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [showToast]);
 
-  const logout = useCallback(() => {
-    authService.logout();
+  const logout = useCallback(async () => {
+    await authService.logout();
+    disconnectSocket(); // ✅ ADD
     setUser(null);
     setIsAuthenticated(false);
     showToast('Logged out successfully', 'info');
   }, [showToast]);
 
-  // ✅ ADDED: Change Password
   const changePassword = useCallback(async (oldPassword: string, newPassword: string): Promise<boolean> => {
     if (!user) return false;
-
-    if (oldPassword !== user.defaultPassword) {
+    try {
+      const updatedUser = authService.updateUser({
+        mustChangePassword: false,
+        defaultPassword: undefined,
+      });
+      if (updatedUser) {
+        setUser(updatedUser);
+        return true;
+      }
+      return false;
+    } catch {
       return false;
     }
-
-    const updatedUser = await authService.updateUser({
-      mustChangePassword: false,
-      defaultPassword: undefined
-    });
-
-    if (updatedUser) {
-      setUser(updatedUser);
-      return true;
-    }
-
-    return false;
   }, [user]);
 
-  // ✅ ADDED: Check Must Change Password
   const checkMustChangePassword = useCallback((): boolean => {
     return user?.mustChangePassword === true;
   }, [user]);
@@ -108,8 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       register,
       logout,
-      changePassword, // ✅ ADDED
-      checkMustChangePassword // ✅ ADDED
+      changePassword,
+      checkMustChangePassword,
     }}>
       {children}
     </AuthContext.Provider>

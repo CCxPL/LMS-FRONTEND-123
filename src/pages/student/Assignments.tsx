@@ -7,19 +7,18 @@ import Modal from '../../components/ui/Modal';
 import Loader from '../../components/common/Loader';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
-import type { Assignment } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
+import { getStudentAssignmentsApi } from '../../api/assignmentApi';
 
 const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+
+  const [assignments, setAssignments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [viewAssignment, setViewAssignment] = useState<Assignment | null>(null);
-  const [viewFeedback, setViewFeedback] = useState<Assignment | null>(null);
+  const [viewAssignment, setViewAssignment] = useState<any | null>(null);
+  const [viewFeedback, setViewFeedback] = useState<any | null>(null);
 
   useEffect(() => {
     loadAssignments();
@@ -27,16 +26,29 @@ const StudentAssignments: React.FC = () => {
 
   const loadAssignments = async () => {
     try {
-      const data = await courseService.getAssignments();
+      const res = await getStudentAssignmentsApi();
+      const data = (res.data.assignments || []).map((a: any) => ({
+        id: a._id,
+        title: a.title,
+        description: a.description,
+        courseName: a.course?.title || a.courseName || '',
+        dueDate: a.dueDate || 'N/A',
+        totalMarks: a.totalMarks,
+        obtainedMarks: a.obtainedMarks,
+        status: a.status || 'pending',
+        feedback: a.feedback,
+      }));
       setAssignments(data);
     } catch (error) {
       showToast('Failed to load assignments', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const filtered = assignments.filter(a => {
-    const matchesSearch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.courseName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -70,7 +82,7 @@ const StudentAssignments: React.FC = () => {
     }
   };
 
-  const handleSubmit = (assignment: Assignment) => {
+  const handleSubmit = (assignment: any) => {
     navigate(`/student/submit-assignment/${assignment.id}`);
   };
 
@@ -167,7 +179,7 @@ const StudentAssignments: React.FC = () => {
                       <span className="font-medium text-gray-900">{assignment.totalMarks}</span>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      {assignment.obtainedMarks !== undefined ? (
+                      {assignment.obtainedMarks !== undefined && assignment.obtainedMarks !== null ? (
                         <span className="font-bold text-gray-900">
                           {assignment.obtainedMarks}/{assignment.totalMarks}
                         </span>
@@ -209,11 +221,7 @@ const StudentAssignments: React.FC = () => {
       )}
 
       {/* View Assignment Modal */}
-      <Modal
-        isOpen={!!viewAssignment}
-        onClose={() => setViewAssignment(null)}
-        title="Assignment Details"
-      >
+      <Modal isOpen={!!viewAssignment} onClose={() => setViewAssignment(null)} title="Assignment Details">
         {viewAssignment && (
           <div className="space-y-4">
             <div className="bg-gray-50 rounded-xl p-4">
@@ -244,19 +252,13 @@ const StudentAssignments: React.FC = () => {
               </div>
             </div>
 
-            <Button variant="outline" fullWidth onClick={() => setViewAssignment(null)}>
-              Close
-            </Button>
+            <Button variant="outline" fullWidth onClick={() => setViewAssignment(null)}>Close</Button>
           </div>
         )}
       </Modal>
 
       {/* View Feedback Modal */}
-      <Modal
-        isOpen={!!viewFeedback}
-        onClose={() => setViewFeedback(null)}
-        title="Assignment Feedback"
-      >
+      <Modal isOpen={!!viewFeedback} onClose={() => setViewFeedback(null)} title="Assignment Feedback">
         {viewFeedback && (
           <div className="space-y-4">
             <div className="bg-gray-50 rounded-xl p-4">
@@ -264,7 +266,6 @@ const StudentAssignments: React.FC = () => {
               <p className="text-sm text-gray-500">{viewFeedback.courseName}</p>
             </div>
 
-            {/* Score */}
             <div className="bg-gray-100 rounded-xl p-6 text-center">
               <p className="text-4xl font-bold text-gray-900">
                 {viewFeedback.obtainedMarks}/{viewFeedback.totalMarks}
@@ -274,7 +275,6 @@ const StudentAssignments: React.FC = () => {
               </p>
             </div>
 
-            {/* Feedback */}
             {viewFeedback.feedback && (
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                 <h4 className="font-medium text-gray-900 mb-2">Teacher Feedback</h4>
@@ -282,9 +282,7 @@ const StudentAssignments: React.FC = () => {
               </div>
             )}
 
-            <Button variant="outline" fullWidth onClick={() => setViewFeedback(null)}>
-              Close
-            </Button>
+            <Button variant="outline" fullWidth onClick={() => setViewFeedback(null)}>Close</Button>
           </div>
         )}
       </Modal>

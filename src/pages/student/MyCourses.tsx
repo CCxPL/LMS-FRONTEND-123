@@ -6,24 +6,16 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Loader from '../../components/common/Loader';
 import { useToast } from '../../context/ToastContext';
-import type { Course } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
+import { getMyEnrolledCoursesApi } from '../../api/studentApi';
 
 const StudentMyCourses: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
-  const [courses, setCourses] = useState<Course[]>([]);
+
+  const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-
-  const progressData: Record<string, number> = {
-    '1': 68,
-    '2': 45,
-    '3': 23,
-    '4': 100,
-  };
 
   useEffect(() => {
     loadCourses();
@@ -31,38 +23,39 @@ const StudentMyCourses: React.FC = () => {
 
   const loadCourses = async () => {
     try {
-      const data = await courseService.getAllCourses();
-      setCourses(data.filter((c) => ['1', '2', '3'].includes(c.id)));
+      const res = await getMyEnrolledCoursesApi();
+      setCourses(res.data.courses || []);
     } catch (error) {
       showToast('Failed to load courses', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const filtered = courses.filter(c => {
-    const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.instructor.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const progress = progressData[c.id] || 0;
+    // ✅ Fix: teacher field use karo
+    const instructor = c.teacher?.name || c.instructor?.name || '';
+    const matchesSearch =
+      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      instructor.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const progress = c.progress || 0;
     let matchesStatus = true;
     if (statusFilter === 'in-progress') matchesStatus = progress > 0 && progress < 100;
     if (statusFilter === 'completed') matchesStatus = progress === 100;
     if (statusFilter === 'not-started') matchesStatus = progress === 0;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   const stats = {
     total: courses.length,
-    inProgress: courses.filter(c => {
-      const p = progressData[c.id] || 0;
-      return p > 0 && p < 100;
-    }).length,
-    completed: courses.filter(c => progressData[c.id] === 100).length,
+    inProgress: courses.filter(c => (c.progress || 0) > 0 && (c.progress || 0) < 100).length,
+    completed: courses.filter(c => (c.progress || 0) === 100).length,
   };
 
-  const handleContinue = (course: Course) => {
-    navigate(`/student/course/${course.id}`);
+  const handleContinue = (course: any) => {
+    navigate(`/student/course/${course._id || course.id}`);
     showToast(`Continuing "${course.title}"`, 'info');
   };
 
@@ -142,21 +135,27 @@ const StudentMyCourses: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((course) => {
-            const progress = progressData[course.id] || 0;
+            const progress = course.progress || 0;
             const isCompleted = progress === 100;
-            
+            const courseId = course._id || course.id;
+            // ✅ Fix: teacher field use karo
+            const instructorName = course.teacher?.name || course.instructor?.name || 'Unknown';
+
             return (
-              <Card 
-                key={course.id} 
-                hover 
+              <Card
+                key={courseId}
+                hover
                 className="flex flex-col cursor-pointer group"
-                onClick={() => navigate(`/student/course/${course.id}`)}
+                onClick={() => navigate(`/student/course/${courseId}`)}
               >
                 {/* Thumbnail */}
-                <div className={`h-36 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden ${
-                  isCompleted ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-700 to-gray-900'
-                }`}>
-                  <GraduationCap className="w-12 h-12 text-white/50" />
+                <div className={`h-36 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden ${isCompleted ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-700 to-gray-900'
+                  }`}>
+                  {course.thumbnail ? (
+                    <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <GraduationCap className="w-12 h-12 text-white/50" />
+                  )}
                   {isCompleted && (
                     <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 text-xs font-bold text-gray-900">
                       ✓ Completed
@@ -173,7 +172,7 @@ const StudentMyCourses: React.FC = () => {
                     <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
                       {course.level}
                     </span>
-                    {course.rating && (
+                    {course.rating > 0 && (
                       <span className="flex items-center gap-1 text-xs text-gray-700">
                         <Star className="w-3 h-3 fill-current" /> {course.rating}
                       </span>
@@ -184,15 +183,18 @@ const StudentMyCourses: React.FC = () => {
                   <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-gray-700 transition-colors">
                     {course.title}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-3">by {course.instructor}</p>
+                  {/* ✅ Fix: instructorName use karo */}
+                  <p className="text-sm text-gray-500 mb-3">
+                    by {instructorName}
+                  </p>
 
                   {/* Stats */}
                   <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {course.duration}
+                      <Clock className="w-3 h-3" /> {course.duration || 'N/A'}
                     </span>
                     <span className="flex items-center gap-1">
-                      <GraduationCap className="w-3 h-3" /> {course.modules?.length || 0} modules
+                      <GraduationCap className="w-3 h-3" /> {course.modules?.length || course.totalLectures || 0} modules
                     </span>
                   </div>
 
@@ -213,7 +215,7 @@ const StudentMyCourses: React.FC = () => {
 
                 {/* Action */}
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <Button 
+                  <Button
                     fullWidth
                     variant={isCompleted ? 'outline' : 'primary'}
                     onClick={(e) => {
@@ -221,7 +223,7 @@ const StudentMyCourses: React.FC = () => {
                       handleContinue(course);
                     }}
                   >
-                    <Play className="w-4 h-4" /> 
+                    <Play className="w-4 h-4" />
                     {isCompleted ? 'Review Course' : 'Continue Learning'}
                   </Button>
                 </div>

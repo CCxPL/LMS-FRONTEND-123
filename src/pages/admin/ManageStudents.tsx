@@ -6,85 +6,124 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Loader from '../../components/common/Loader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import type { Student } from '../../types/user.types';
-import { userService } from '../../services/userService';
 import { useToast } from '../../context/ToastContext';
-
-// Define Extended Student Type to include isNew flag
-type StudentWithFlag = Student & { isNew?: boolean };
+import { getAdminStudentsApi } from '../../api/adminApi';
+import { updateUserApi, deleteUserApi } from '../../api/userApi';
 
 const ManageStudents: React.FC = () => {
-  const [students, setStudents] = useState<StudentWithFlag[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  const [viewStudent, setViewStudent] = useState<StudentWithFlag | null>(null);
-  const [editStudent, setEditStudent] = useState<StudentWithFlag | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ student: StudentWithFlag; action: 'suspend' | 'activate' | 'delete' } | null>(null);
-  
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', grade: '' });
 
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const LIMIT = 20;
+
+  const [viewStudent, setViewStudent] = useState<any | null>(null);
+  const [editStudent, setEditStudent] = useState<any | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ student: any; action: 'suspend' | 'activate' | 'delete' } | null>(null);
+
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', grade: '' });
   const { showToast } = useToast();
 
-  useEffect(() => {
-    loadStudents();
-  }, []);
+  useEffect(() => { loadStudents(1); }, []);
 
-  const loadStudents = async () => {
+  // ✅ Search/filter change pe page 1 pe wapas jao
+  useEffect(() => {
+    loadStudents(1);
+  }, [searchTerm, statusFilter]);
+
+  const loadStudents = async (page = 1) => {
     try {
-      const data = await userService.getStudents();
-      setStudents(data);
-    } catch (error) {
+      const res = await getAdminStudentsApi({
+        page,
+        limit: LIMIT,
+        search: searchTerm || undefined,
+      });
+      setStudents(res.data?.students || []);
+      setTotalPages(res.data?.pagination?.pages || 1);
+      setTotalStudents(res.data?.pagination?.total || 0);
+      setCurrentPage(page);
+    } catch {
       showToast('Failed to load students', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadStudents();
+    await loadStudents(1); // ✅ Page 1 se start
     setIsRefreshing(false);
     showToast('Students refreshed', 'success');
   };
 
   const filtered = students.filter((s) => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && s.isActive) ||
+      (statusFilter === 'suspended' && !s.isActive);
+    return matchesStatus;
   });
 
-  const handleStatusChange = (student: StudentWithFlag, newStatus: 'active' | 'suspended') => {
-    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, status: newStatus } : s));
-    showToast(`Student ${newStatus === 'active' ? 'activated' : 'suspended'}`, 'success');
+  const handleStatusChange = async (student: any, newStatus: 'active' | 'suspended') => {
+    try {
+      await updateUserApi(student._id || student.id, { isActive: newStatus === 'active' });
+      setStudents(prev => prev.map(s =>
+        (s._id || s.id) === (student._id || student.id)
+          ? { ...s, isActive: newStatus === 'active', status: newStatus }
+          : s
+      ));
+      showToast(`Student ${newStatus === 'active' ? 'activated' : 'suspended'}`, 'success');
+    } catch {
+      showToast('Failed to update student', 'error');
+    }
     setConfirmAction(null);
   };
 
-  const handleDelete = (student: StudentWithFlag) => {
-    setStudents(prev => prev.filter(s => s.id !== student.id));
-    showToast(`Student "${student.name}" deleted`, 'info');
+  const handleDelete = async (student: any) => {
+    try {
+      await deleteUserApi(student._id || student.id);
+      setStudents(prev => prev.filter(s => (s._id || s.id) !== (student._id || student.id)));
+      setTotalStudents(prev => prev - 1);
+      showToast(`Student "${student.name}" deleted`, 'info');
+    } catch {
+      showToast('Failed to delete student', 'error');
+    }
     setConfirmAction(null);
   };
 
-  const handleEditStudent = (e: React.FormEvent) => {
+  const handleEditStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editStudent) return;
-    setStudents(prev => prev.map(s => 
-      s.id === editStudent.id ? { ...s, ...formData } : s
-    ));
-    showToast('Student updated', 'success');
+    try {
+      await updateUserApi(editStudent._id || editStudent.id, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        grade: formData.grade,
+      });
+      setStudents(prev => prev.map(s =>
+        (s._id || s.id) === (editStudent._id || editStudent.id) ? { ...s, ...formData } : s
+      ));
+      showToast('Student updated', 'success');
+    } catch {
+      showToast('Failed to update student', 'error');
+    }
     setEditStudent(null);
     setFormData({ name: '', email: '', phone: '', grade: '' });
   };
 
-  const openEditModal = (student: StudentWithFlag) => {
+  const openEditModal = (student: any) => {
     setFormData({
       name: student.name,
       email: student.email,
       phone: student.phone || '',
-      grade: student.grade || ''
+      grade: student.grade || '',
     });
     setEditStudent(student);
   };
@@ -92,9 +131,14 @@ const ManageStudents: React.FC = () => {
   const handleExport = () => {
     const csv = [
       ['Name', 'Email', 'Status', 'Enrolled', 'Avg Score', 'Grade'].join(','),
-      ...filtered.map(s => [s.name, s.email, s.status, s.enrolledCourses, `${s.averageScore}%`, s.grade || 'N/A'].join(','))
+      ...filtered.map(s => [
+        s.name, s.email,
+        s.isActive ? 'active' : 'suspended',
+        s.enrolledCourses ?? 0,
+        `${s.averageScore ?? 0}%`,
+        s.grade || 'N/A'
+      ].join(','))
     ].join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -105,16 +149,15 @@ const ManageStudents: React.FC = () => {
   };
 
   const stats = {
-    total: students.length,
-    active: students.filter(s => s.status === 'active').length,
-    suspended: students.filter(s => s.status === 'suspended').length,
+    total: totalStudents,
+    active: students.filter(s => s.isActive).length,
+    suspended: students.filter(s => !s.isActive).length,
   };
 
   if (isLoading) return <Loader text="Loading students..." />;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manage Students</h1>
@@ -130,7 +173,6 @@ const ManageStudents: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="text-center">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -146,7 +188,6 @@ const ManageStudents: React.FC = () => {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -170,12 +211,11 @@ const ManageStudents: React.FC = () => {
             </select>
           </div>
           <span className="text-sm text-gray-500 self-center bg-gray-100 px-3 py-2 rounded-lg">
-            {filtered.length} students
+            {totalStudents} students
           </span>
         </div>
       </Card>
 
-      {/* Students Table */}
       <Card padding="none">
         {filtered.length === 0 ? (
           <div className="text-center py-12">
@@ -183,163 +223,144 @@ const ManageStudents: React.FC = () => {
             <p className="text-gray-500 font-medium">No students found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
-                  <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Enrolled</th>
-                  <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Avg Score</th>
-                  <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Grade</th>
-                  <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                          student.status === 'suspended' ? 'bg-gray-200 text-gray-500' : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {student.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className={`font-medium flex items-center gap-2 ${student.status === 'suspended' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                            {student.name}
-                            {/* ✅ NEW BADGE IMPLEMENTED */}
-                            {student.isNew && (
-                              <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
-                                NEW
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="font-bold text-gray-900">{student.enrolledCourses}</span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className={`font-bold ${
-                        student.averageScore >= 80 ? 'text-emerald-600' :
-                        student.averageScore >= 60 ? 'text-amber-600' :
-                        'text-red-600'
-                      }`}>
-                        {student.averageScore}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">{student.grade || 'N/A'}</span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        student.status === 'active' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
-                      }`}>
-                        {student.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setViewStudent(student)}
-                          className="p-2 hover:bg-gray-100 rounded-lg"
-                          title="View"
-                        >
-                          <Eye className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(student)}
-                          className="p-2 hover:bg-gray-100 rounded-lg"
-                          title="Edit"
-                        >
-                          <Pencil className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ 
-                            student, 
-                            action: student.status === 'active' ? 'suspend' : 'activate' 
-                          })}
-                          className={`p-2 rounded-lg ${
-                            student.status === 'active' 
-                              ? 'hover:bg-red-100 text-red-500' 
-                              : 'hover:bg-emerald-100 text-emerald-500'
-                          }`}
-                          title={student.status === 'active' ? 'Suspend' : 'Activate'}
-                        >
-                          {student.status === 'active' 
-                            ? <Ban className="w-4 h-4 text-gray-500" /> 
-                            : <CheckCircle className="w-4 h-4 text-gray-500" />
-                          }
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ student, action: 'delete' })}
-                          className="p-2 hover:bg-red-100 rounded-lg"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
+                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Enrolled</th>
+                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Avg Score</th>
+                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Grade</th>
+                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map((student) => (
+                    <tr key={student._id || student.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${!student.isActive ? 'bg-gray-200 text-gray-500' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                            {student.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className={`font-medium flex items-center gap-2 ${!student.isActive ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                              {student.name}
+                            </p>
+                            <p className="text-xs text-gray-500">{student.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className="font-bold text-gray-900">{student.enrolledCourses ?? 0}</span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className={`font-bold ${(student.averageScore ?? 0) >= 80 ? 'text-emerald-600' :
+                          (student.averageScore ?? 0) >= 60 ? 'text-amber-600' :
+                            'text-red-600'
+                          }`}>
+                          {student.averageScore ?? 0}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">{student.grade || 'N/A'}</span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${student.isActive ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
+                          }`}>
+                          {student.isActive ? 'active' : 'suspended'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => setViewStudent(student)} className="p-2 hover:bg-gray-100 rounded-lg" title="View">
+                            <Eye className="w-4 h-4 text-gray-500" />
+                          </button>
+                          <button onClick={() => openEditModal(student)} className="p-2 hover:bg-gray-100 rounded-lg" title="Edit">
+                            <Pencil className="w-4 h-4 text-gray-500" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmAction({ student, action: student.isActive ? 'suspend' : 'activate' })}
+                            className={`p-2 rounded-lg ${student.isActive ? 'hover:bg-red-100 text-red-500' : 'hover:bg-emerald-100 text-emerald-500'}`}
+                            title={student.isActive ? 'Suspend' : 'Activate'}
+                          >
+                            {student.isActive ? <Ban className="w-4 h-4 text-gray-500" /> : <CheckCircle className="w-4 h-4 text-gray-500" />}
+                          </button>
+                          <button onClick={() => setConfirmAction({ student, action: 'delete' })} className="p-2 hover:bg-red-100 rounded-lg" title="Delete">
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ✅ Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+                <p className="text-sm text-gray-500">
+                  Page {currentPage} of {totalPages} — {totalStudents} total students
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadStudents(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadStudents(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
 
-      {/* View Student Modal */}
-      <Modal
-        isOpen={!!viewStudent}
-        onClose={() => setViewStudent(null)}
-        title="Student Details"
-        size="md"
-      >
+      {/* View Modal */}
+      <Modal isOpen={!!viewStudent} onClose={() => setViewStudent(null)} title="Student Details" size="md">
         {viewStudent && (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold ${
-                viewStudent.status === 'active' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'
-              }`}>
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold ${viewStudent.isActive ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'
+                }`}>
                 {viewStudent.name.charAt(0)}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  {viewStudent.name}
-                  {viewStudent.isNew && (
-                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      NEW
-                    </span>
-                  )}
-                </h3>
+                <h3 className="text-xl font-bold text-gray-900">{viewStudent.name}</h3>
                 <p className="text-gray-500">{viewStudent.email}</p>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full mt-2 inline-block ${
-                  viewStudent.status === 'active' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {viewStudent.status}
+                <span className={`text-xs font-medium px-2 py-1 rounded-full mt-2 inline-block ${viewStudent.isActive ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                  {viewStudent.isActive ? 'active' : 'suspended'}
                 </span>
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{viewStudent.enrolledCourses}</p>
+                <p className="text-2xl font-bold text-gray-900">{viewStudent.enrolledCourses ?? 0}</p>
                 <p className="text-sm text-gray-500">Enrolled</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{viewStudent.completedCourses || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{viewStudent.completedCourses ?? 0}</p>
                 <p className="text-sm text-gray-500">Completed</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center">
-                <p className={`text-2xl font-bold ${
-                  viewStudent.averageScore >= 80 ? 'text-emerald-600' :
-                  viewStudent.averageScore >= 60 ? 'text-amber-600' :
-                  'text-red-600'
-                }`}>
-                  {viewStudent.averageScore}%
+                <p className={`text-2xl font-bold ${(viewStudent.averageScore ?? 0) >= 80 ? 'text-emerald-600' :
+                  (viewStudent.averageScore ?? 0) >= 60 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                  {viewStudent.averageScore ?? 0}%
                 </p>
                 <p className="text-sm text-gray-500">Avg Score</p>
               </div>
@@ -348,30 +369,22 @@ const ManageStudents: React.FC = () => {
                 <p className="text-sm text-gray-500">Grade</p>
               </div>
             </div>
-
             {viewStudent.phone && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-sm text-gray-500">Phone</p>
                 <p className="font-medium text-gray-900">{viewStudent.phone}</p>
               </div>
             )}
-
             <div className="flex gap-3">
               <Button className="flex-1" onClick={() => { setViewStudent(null); openEditModal(viewStudent); }}>
                 <Pencil className="w-4 h-4" /> Edit
               </Button>
-              <Button 
-                variant={viewStudent.status === 'active' ? 'danger' : 'success'}
+              <Button
+                variant="outline"
                 className="flex-1"
-                onClick={() => { 
-                  setViewStudent(null); 
-                  setConfirmAction({ 
-                    student: viewStudent, 
-                    action: viewStudent.status === 'active' ? 'suspend' : 'activate' 
-                  }); 
-                }}
+                onClick={() => { setViewStudent(null); setConfirmAction({ student: viewStudent, action: viewStudent.isActive ? 'suspend' : 'activate' }); }}
               >
-                {viewStudent.status === 'active' ? 'Suspend' : 'Activate'}
+                {viewStudent.isActive ? 'Suspend' : 'Activate'}
               </Button>
             </div>
           </div>
@@ -381,64 +394,27 @@ const ManageStudents: React.FC = () => {
       {/* Edit Modal */}
       <Modal isOpen={!!editStudent} onClose={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }} title="Edit Student">
         <form onSubmit={handleEditStudent} className="space-y-4">
-          <Input
-            label="Full Name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            required
-          />
-          <Input
-            label="Phone"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-          />
-          <Input
-            label="Grade"
-            value={formData.grade}
-            onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-            placeholder="e.g., A, B+, C"
-          />
+          <Input label="Full Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+          <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+          <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+          <Input label="Grade" value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="e.g., A, B+, C" />
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1">Save Changes</Button>
-            <Button type="button" variant="secondary" onClick={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }}>
-              Cancel
-            </Button>
+            <Button type="button" variant="secondary" onClick={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }}>Cancel</Button>
           </div>
         </form>
       </Modal>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={!!confirmAction}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => {
           if (!confirmAction) return;
-          if (confirmAction.action === 'delete') {
-            handleDelete(confirmAction.student);
-          } else {
-            handleStatusChange(
-              confirmAction.student, 
-              confirmAction.action === 'activate' ? 'active' : 'suspended'
-            );
-          }
+          if (confirmAction.action === 'delete') handleDelete(confirmAction.student);
+          else handleStatusChange(confirmAction.student, confirmAction.action === 'activate' ? 'active' : 'suspended');
         }}
-        title={
-          confirmAction?.action === 'delete' ? 'Delete Student?' :
-          confirmAction?.action === 'suspend' ? 'Suspend Student?' :
-          'Activate Student?'
-        }
-        message={
-          confirmAction?.action === 'delete' 
-            ? `Are you sure you want to delete "${confirmAction?.student.name}"? This cannot be undone.`
-            : `Are you sure you want to ${confirmAction?.action} "${confirmAction?.student.name}"?`
-        }
+        title={confirmAction?.action === 'delete' ? 'Delete Student?' : confirmAction?.action === 'suspend' ? 'Suspend Student?' : 'Activate Student?'}
+        message={confirmAction?.action === 'delete' ? `Are you sure you want to delete "${confirmAction?.student?.name}"? This cannot be undone.` : `Are you sure you want to ${confirmAction?.action} "${confirmAction?.student?.name}"?`}
         confirmText={confirmAction?.action === 'delete' ? 'Delete' : confirmAction?.action === 'suspend' ? 'Suspend' : 'Activate'}
         type={confirmAction?.action === 'delete' || confirmAction?.action === 'suspend' ? 'danger' : 'info'}
       />

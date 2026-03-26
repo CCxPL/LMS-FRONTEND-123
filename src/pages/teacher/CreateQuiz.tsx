@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save, HelpCircle, CheckCircle, GripVertical } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useToast } from '../../context/ToastContext';
-
-
-
-
+import { createQuizApi } from '../../api/quizApi';
+import { getTeacherCoursesApi } from '../../api/teacherApi';
 
 interface QuestionForm {
   id: string;
@@ -24,11 +22,25 @@ const CreateQuiz: React.FC = () => {
 
   const [title, setTitle] = useState('');
   const [courseId, setCourseId] = useState('');
+  const [courses, setCourses] = useState<any[]>([]);
   const [duration, setDuration] = useState('30');
   const [passingPercentage, setPassingPercentage] = useState('60');
   const [maxAttempts, setMaxAttempts] = useState('3');
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    try {
+      const res = await getTeacherCoursesApi();
+      setCourses(res.data?.courses || []);
+    } catch {
+      showToast('Failed to load courses', 'error');
+    }
+  };
 
   const addQuestion = () => {
     setQuestions([...questions, {
@@ -84,7 +96,7 @@ const CreateQuiz: React.FC = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim() || !courseId || questions.length === 0) {
       showToast('Please fill all required fields', 'error');
       return;
@@ -95,27 +107,66 @@ const CreateQuiz: React.FC = () => {
     }
 
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const payload = {
+        title,
+        courseId,
+        timeLimit: parseInt(duration) || 30,
+        passingScore: parseInt(passingPercentage) || 60,
+        isPublished: true,
+        questions: questions.map(q => ({
+          questionText: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          points: q.marks,
+        })),
+      };
+
+      await createQuizApi(payload as any);
       showToast('Quiz created successfully!', 'success');
       navigate('/teacher/quizzes');
-    }, 1000);
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to create quiz', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!title.trim()) {
       showToast('Please enter quiz title', 'error');
       return;
     }
-    showToast('Quiz saved as draft', 'success');
-    navigate('/teacher/quizzes');
+    setIsSaving(true);
+    try {
+      const payload = {
+        title,
+        courseId,
+        timeLimit: parseInt(duration) || 30,
+        passingScore: parseInt(passingPercentage) || 60,
+        isPublished: false,
+        questions: questions.map(q => ({
+          questionText: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          points: q.marks,
+        })),
+      };
+
+      await createQuizApi(payload as any);
+      showToast('Quiz saved as draft', 'success');
+      navigate('/teacher/quizzes');
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to save draft', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const totalMarks = questions.reduce((s, q) => s + q.marks, 0);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/quizzes')}>
@@ -127,7 +178,7 @@ const CreateQuiz: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSaveDraft}>Save Draft</Button>
+          <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving}>Save Draft</Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? 'Saving...' : <><Save className="w-4 h-4" /> Publish Quiz</>}
           </Button>
@@ -135,7 +186,6 @@ const CreateQuiz: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Quiz Information</h3>
@@ -146,8 +196,9 @@ const CreateQuiz: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Course *</label>
                   <select className="input-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
                     <option value="">Select course</option>
-                    <option value="1">React.js Complete</option>
-                    <option value="2">Python Data Science</option>
+                    {courses.map((c: any) => (
+                      <option key={c._id || c.id} value={c._id || c.id}>{c.title}</option>
+                    ))}
                   </select>
                 </div>
                 <Input label="Duration (min)" type="number" placeholder="30" value={duration} onChange={(e) => setDuration(e.target.value)} />
@@ -210,7 +261,6 @@ const CreateQuiz: React.FC = () => {
           </Card>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
           <Card className="sticky top-20">
             <h3 className="font-bold text-gray-900 mb-4">Quiz Summary</h3>
@@ -222,7 +272,7 @@ const CreateQuiz: React.FC = () => {
             </div>
             <div className="mt-6 space-y-2">
               <Button fullWidth onClick={handleSave} disabled={isSaving}><Save className="w-4 h-4" /> Publish Quiz</Button>
-              <Button variant="outline" fullWidth onClick={handleSaveDraft}>Save as Draft</Button>
+              <Button variant="outline" fullWidth onClick={handleSaveDraft} disabled={isSaving}>Save as Draft</Button>
             </div>
           </Card>
         </div>

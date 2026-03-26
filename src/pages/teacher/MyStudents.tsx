@@ -5,54 +5,88 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Loader from '../../components/common/Loader';
-import type { Enrollment } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
 import { useToast } from '../../context/ToastContext';
+import { getTeacherCoursesApi, getEnrolledStudentsApi } from '../../api/teacherApi';
 
 const MyStudents: React.FC = () => {
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [viewStudent, setViewStudent] = useState<Enrollment | null>(null);
-
+  const [viewStudent, setViewStudent] = useState<any | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
-    loadEnrollments();
+    loadStudents();
   }, []);
 
-  const loadEnrollments = async () => {
+  const loadStudents = async () => {
     try {
-      const data = await courseService.getEnrollments();
-      setEnrollments(data);
+      // ✅ Sab courses fetch karo
+      const coursesRes = await getTeacherCoursesApi({ limit: 100 });
+      const courses = coursesRes.data?.courses || [];
+
+      const studentMap = new Map<string, any>();
+
+      await Promise.all(
+        courses.map(async (course: any) => {
+          try {
+            const res = await getEnrolledStudentsApi(course._id || course.id);
+            const courseStudents = res.data?.students || [];
+            courseStudents.forEach((s: any) => {
+              const id = s._id || s.id;
+              if (studentMap.has(id)) {
+                // ✅ Already exists — courses list mein add karo
+                const existing = studentMap.get(id);
+                existing.courses = existing.courses || [existing.courseName];
+                existing.courses.push(course.title);
+                existing.courseName = existing.courses.join(', ');
+              } else {
+                // ✅ New student — add karo
+                studentMap.set(id, {
+                  ...s,
+                  courseName: course.title,
+                  courses: [course.title],
+                });
+              }
+            });
+          } catch { }
+        })
+      );
+
+      setStudents(Array.from(studentMap.values()));
     } catch (error) {
       showToast('Failed to load students', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadEnrollments();
+    await loadStudents();
     setIsRefreshing(false);
     showToast('Students refreshed', 'success');
   };
 
-  const filtered = enrollments.filter((e) => {
-    const matchesSearch = e.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.studentEmail?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const filtered = students.filter(s => {
+    const name = s.name || s.studentName || '';
+    const email = s.email || s.studentEmail || '';
+    return (
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   });
 
   const handleExport = () => {
     const csv = [
-      ['Student', 'Email', 'Course', 'Progress', 'Status', 'Enrolled Date'].join(','),
-      ...filtered.map(e => [e.studentName, e.studentEmail || 'N/A', e.courseName, `${e.progress}%`, e.status, e.enrolledAt].join(','))
+      ['Student', 'Email', 'Course'].join(','),
+      ...filtered.map(s => [
+        s.name || s.studentName || '',
+        s.email || s.studentEmail || 'N/A',
+        s.courseName || '',
+      ].join(','))
     ].join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -67,12 +101,7 @@ const MyStudents: React.FC = () => {
   };
 
   const stats = {
-    total: enrollments.length,
-    active: enrollments.filter(e => e.status === 'active').length,
-    completed: enrollments.filter(e => e.status === 'completed').length,
-    avgProgress: enrollments.length > 0 
-      ? Math.round(enrollments.reduce((sum, e) => sum + e.progress, 0) / enrollments.length)
-      : 0
+    total: students.length,
   };
 
   if (isLoading) return <Loader text="Loading students..." />;
@@ -94,22 +123,10 @@ const MyStudents: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="text-center p-4">
           <p className="text-2xl font-black text-gray-900">{stats.total}</p>
           <p className="text-xs text-gray-500">Total Students</p>
-        </Card>
-        <Card className="text-center p-4 bg-blue-50">
-          <p className="text-2xl font-black text-blue-600">{stats.active}</p>
-          <p className="text-xs text-blue-600">Active</p>
-        </Card>
-        <Card className="text-center p-4 bg-emerald-50">
-          <p className="text-2xl font-black text-emerald-600">{stats.completed}</p>
-          <p className="text-xs text-emerald-600">Completed</p>
-        </Card>
-        <Card className="text-center p-4 bg-purple-50">
-          <p className="text-2xl font-black text-purple-600">{stats.avgProgress}%</p>
-          <p className="text-xs text-purple-600">Avg Progress</p>
         </Card>
       </div>
 
@@ -122,19 +139,6 @@ const MyStudents: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               icon={<Search className="w-4 h-4" />}
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="dropped">Dropped</option>
-            </select>
           </div>
         </div>
       </Card>
@@ -152,57 +156,35 @@ const MyStudents: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold">Student</th>
                   <th className="px-4 py-4 text-left font-semibold">Course</th>
-                  <th className="px-4 py-4 text-center font-semibold">Progress</th>
-                  <th className="px-4 py-4 text-center font-semibold">Status</th>
                   <th className="px-6 py-4 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((enrollment) => (
-                  <tr key={enrollment.id} className="hover:bg-gray-50 transition-colors">
+                {filtered.map((student) => (
+                  <tr key={student._id || student.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-xs font-bold">
-                          {enrollment.studentName.charAt(0)}
+                          {(student.name || student.studentName || 'S').charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{enrollment.studentName}</p>
-                          <p className="text-xs text-gray-500">{enrollment.studentEmail || 'No email'}</p>
+                          <p className="font-medium text-gray-900">{student.name || student.studentName || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">{student.email || student.studentEmail || 'No email'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-700">{enrollment.courseName}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full ${
-                              enrollment.progress >= 80 ? 'bg-emerald-500' : 'bg-blue-500'
-                            }`}
-                            style={{ width: `${enrollment.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-bold text-gray-600">{enrollment.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        enrollment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {enrollment.status}
-                      </span>
-                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-700">{student.courseName || ''}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1">
                         <button
-                          onClick={() => setViewStudent(enrollment)}
+                          onClick={() => setViewStudent(student)}
                           className="p-1.5 hover:bg-gray-100 rounded text-gray-500"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {enrollment.studentEmail && (
+                        {(student.email || student.studentEmail) && (
                           <button
-                            onClick={() => handleSendMessage(enrollment.studentEmail!)}
+                            onClick={() => handleSendMessage(student.email || student.studentEmail)}
                             className="p-1.5 hover:bg-blue-50 rounded text-blue-500"
                           >
                             <Mail className="w-4 h-4" />
@@ -218,45 +200,29 @@ const MyStudents: React.FC = () => {
         </Card>
       )}
 
-      <Modal
-        isOpen={!!viewStudent}
-        onClose={() => setViewStudent(null)}
-        title="Student Details"
-        size="md"
-      >
+      <Modal isOpen={!!viewStudent} onClose={() => setViewStudent(null)} title="Student Details" size="md">
         {viewStudent && (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {viewStudent.studentName.charAt(0)}
+                {(viewStudent.name || viewStudent.studentName || 'S').charAt(0)}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{viewStudent.studentName}</h3>
-                <p className="text-gray-500">{viewStudent.studentEmail}</p>
+                <h3 className="text-xl font-bold text-gray-900">{viewStudent.name || viewStudent.studentName}</h3>
+                <p className="text-gray-500">{viewStudent.email || viewStudent.studentEmail}</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <TrendingUp className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{viewStudent.progress}%</p>
-                <p className="text-sm text-gray-500">Progress</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="font-bold text-gray-900 capitalize mt-2">{viewStudent.status}</p>
-                <p className="text-sm text-gray-500">Status</p>
-              </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-500">Course</p>
+              <p className="font-medium text-gray-900">{viewStudent.courseName || 'N/A'}</p>
             </div>
-
             <div className="flex gap-3">
-              {viewStudent.studentEmail && (
-                <Button className="flex-1" onClick={() => handleSendMessage(viewStudent.studentEmail!)}>
+              {(viewStudent.email || viewStudent.studentEmail) && (
+                <Button className="flex-1" onClick={() => handleSendMessage(viewStudent.email || viewStudent.studentEmail)}>
                   <Mail className="w-4 h-4" /> Send Email
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => setViewStudent(null)}>
-                Close
-              </Button>
+              <Button variant="secondary" onClick={() => setViewStudent(null)}>Close</Button>
             </div>
           </div>
         )}

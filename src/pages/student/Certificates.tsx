@@ -1,19 +1,40 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Award, Download, Share2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import { getMyCertificatesApi } from '../../api/certificateApi';
 
 const Certificates: React.FC = () => {
   const { user } = useAuth();
-  const { getCertificatesForStudent } = useData();
   const { showToast } = useToast();
 
-  const certs = useMemo(() => getCertificatesForStudent(user?.id || ''), [getCertificatesForStudent, user]);
+  const [certs, setCerts] = useState<any[]>([]);
 
-  const handleDownload = (cert: typeof certs[0]) => {
+  useEffect(() => {
+    loadCertificates();
+  }, []);
+
+  const loadCertificates = async () => {
+    try {
+      const res = await getMyCertificatesApi();
+      const data = (res.data.certificates || []).map((c: any) => ({
+        id: c._id || c.id,
+        courseName: c.course?.title || c.courseName || '',
+        studentName: c.student?.name || user?.name || '',
+        instructorName: c.course?.teacher?.name || c.instructorName || 'Instructor',
+        grade: c.grade || 'A',
+        score: c.score ?? 0,
+        issueDate: c.issueDate || c.issuedAt || new Date().toISOString(),
+      }));
+      setCerts(data);
+    } catch (error) {
+      console.error('Failed to load certificates:', error);
+    }
+  };
+
+  const handleDownload = (cert: any) => {
     const text = `
     CERTIFICATE OF COMPLETION
     ========================================
@@ -63,7 +84,7 @@ const Certificates: React.FC = () => {
           <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">
             Complete courses and pass assessments to earn certificates.
           </p>
-          <Button onClick={() => window.location.href='/student/my-courses'}>
+          <Button onClick={() => window.location.href = '/student/my-courses'}>
             Go to Courses
           </Button>
         </Card>
@@ -75,7 +96,7 @@ const Certificates: React.FC = () => {
               <div className="bg-black text-white p-8 text-center relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-20 h-20 border-l-4 border-t-4 border-white/20 rounded-tl-3xl m-4" />
                 <div className="absolute bottom-0 right-0 w-20 h-20 border-r-4 border-b-4 border-white/20 rounded-br-3xl m-4" />
-                
+
                 <div className="relative z-10">
                   <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white">
                     <Award className="w-8 h-8 text-white" />
@@ -100,7 +121,7 @@ const Certificates: React.FC = () => {
                   </div>
                   <div className="bg-gray-50 rounded-lg p-2">
                     <p className="text-lg font-bold text-gray-900">
-                      {new Date(cert.issueDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                      {cert.issueDate}
                     </p>
                     <p className="text-xs text-gray-500">Issued</p>
                   </div>

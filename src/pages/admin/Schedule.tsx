@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { 
-  Calendar, 
-  AlertTriangle, 
-  BarChart3, 
-  Clock, 
+import {
+  Calendar,
+  AlertTriangle,
+  BarChart3,
+  Clock,
   Filter,
   UserCheck,
   UserX,
@@ -35,21 +35,21 @@ const AdminSchedule: React.FC = () => {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  
+
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [recurringAction, setRecurringAction] = useState<'EDIT' | 'DELETE'>('EDIT');
 
-  const { 
-    events, 
-    loading, 
-    createEvent, 
-    updateEvent, 
+  const {
+    events,
+    loading,
+    createEvent,
+    updateEvent,
     deleteEvent,
     updateRecurringEvent,
     deleteRecurringEvent,
-    
+
   } = useCalendar();
-  
+
   const { addNotification } = useNotifications();
   const { classSummaries } = useData();
   const { showToast } = useToast();
@@ -76,9 +76,9 @@ const AdminSchedule: React.FC = () => {
       const success = await createEvent(formData);
       if (success) {
         showToast(
-          formData.isRecurring 
-            ? 'Recurring events created successfully' 
-            : 'Event created successfully', 
+          formData.isRecurring
+            ? 'Recurring events created successfully'
+            : 'Event created successfully',
           'success'
         );
       }
@@ -98,7 +98,7 @@ const AdminSchedule: React.FC = () => {
 
   const handleEditEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
-    
+
     if (event.isRecurring) {
       setRecurringAction('EDIT');
       setRecurringDialogOpen(true);
@@ -132,9 +132,9 @@ const AdminSchedule: React.FC = () => {
       if (recurringAction === 'DELETE') {
         await deleteRecurringEvent(editingEvent.id, editType);
         showToast(
-          editType === 'THIS_EVENT' 
-            ? 'Event deleted successfully' 
-            : 'Events deleted successfully', 
+          editType === 'THIS_EVENT'
+            ? 'Event deleted successfully'
+            : 'Events deleted successfully',
           'success'
         );
         setIsEventModalOpen(false);
@@ -159,7 +159,7 @@ const AdminSchedule: React.FC = () => {
       } else {
         await updateEvent(editingEvent.id, formData);
       }
-      
+
       showToast('Event updated successfully', 'success');
       setIsEventModalOpen(false);
       setEditingEvent(null);
@@ -189,7 +189,7 @@ const AdminSchedule: React.FC = () => {
     setLateAlerts(prev => prev.filter(e => e.id !== eventId));
   };
 
-  const filteredEvents = selectedCourseId 
+  const filteredEvents = selectedCourseId
     ? events.filter(e => e.courseId === selectedCourseId)
     : events;
 
@@ -374,13 +374,12 @@ const AdminSchedule: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      attendanceRate >= 80 
-                        ? 'bg-gray-100 text-gray-700' 
-                        : attendanceRate >= 60 
-                          ? 'bg-yellow-100 text-yellow-700' 
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${attendanceRate >= 80
+                        ? 'bg-gray-100 text-gray-700'
+                        : attendanceRate >= 60
+                          ? 'bg-yellow-100 text-yellow-700'
                           : 'bg-red-100 text-red-700'
-                    }`}>
+                      }`}>
                       {attendanceRate}%
                     </div>
                     <span className="text-xs text-gray-400">

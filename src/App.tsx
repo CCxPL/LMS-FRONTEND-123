@@ -9,6 +9,7 @@ import AppRoutes from './routes/AppRoutes';
 import './App.css';
 import Toast from './components/common/Toast';
 import AIChatBot from './components/common/AIChatBot';
+import SocketListener from './components/common/socketListener'; 
 
 const AutoLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -40,8 +41,9 @@ const App: React.FC = () => {
     <ThemeProvider>
       <BrowserRouter>
         <ToastProvider>
-          <Toast/>
+          <Toast />
           <AuthProvider>
+            <SocketListener /> {/* ✅ ADD */}
             <DataProvider>
               <AutoLoader>
                 <AppRoutes />

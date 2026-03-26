@@ -1,88 +1,83 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { CheckCircle, Send, FileText, Clock, User, Search, Download } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
-import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-import type { Assignment } from '../../types/course.types';
+import { getTeacherAssignmentsApi, getAssignmentSubmissionsApi, gradeSubmissionApi } from '../../api/assignmentApi';
 
 const GradeAssignment: React.FC = () => {
-  const dataContext = useData();
   const { showToast } = useToast();
 
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'graded'>('all');
   const [selectedSub, setSelectedSub] = useState<string | null>(null);
   const [grade, setGrade] = useState('');
   const [feedback, setFeedback] = useState('');
   const [showGradeModal, setShowGradeModal] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
 
-  // Mock data fallback
-  const mockSubmissions: Assignment[] = [
-    {
-      id: '1',
-      title: 'React Components Project',
-      courseId: '1',
-      courseName: 'React.js Complete',
-      studentId: 's1',
-      studentName: 'Ali Ahmed',
-      dueDate: '2024-01-25',
-      totalMarks: 100,
-      status: 'submitted',
-      submittedAt: '2024-01-20T10:30:00',
-      submittedText: 'Project completed successfully.'
-    },
-    {
-      id: '2',
-      title: 'API Integration',
-      courseId: '2',
-      courseName: 'Node.js Backend',
-      studentId: 's2',
-      studentName: 'Fatima Khan',
-      dueDate: '2024-01-22',
-      totalMarks: 100,
-      status: 'graded',
-      obtainedMarks: 85,
-      submittedAt: '2024-01-19T14:00:00',
-      submittedText: 'API implementation done.',
-      feedback: 'Great work!'
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const assignRes = await getTeacherAssignmentsApi();
+      const allAssignments = assignRes.data?.assignments || [];
+      setAssignments(allAssignments);
+
+      const allSubmissions: any[] = [];
+      await Promise.all(
+        allAssignments.map(async (a: any) => {
+          try {
+            const res = await getAssignmentSubmissionsApi(a._id || a.id);
+            const subs = (res.data?.submissions || []).map((s: any) => ({
+              ...s,
+              assignmentTitle: a.title,
+              courseName: a.course?.title || '',
+              totalMarks: a.totalMarks,
+            }));
+            allSubmissions.push(...subs);
+          } catch { }
+        })
+      );
+      setSubmissions(allSubmissions);
+    } catch (error) {
+      showToast('Failed to load submissions', 'error');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
-  // Get submissions - use mock data since context methods don't exist
-  const submissions = mockSubmissions;
-
-  // Filter logic
   const filtered = useMemo(() => {
     let result = submissions;
-    
     if (searchTerm) {
-      result = result.filter((s: Assignment) => 
-        (s.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.title.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(s =>
+        (s.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.assignmentTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
     if (statusFilter !== 'all') {
-      result = result.filter((s: Assignment) => s.status === statusFilter);
+      result = result.filter(s => s.status === statusFilter);
     }
-    
     return result;
   }, [submissions, searchTerm, statusFilter]);
 
-  const selected = selectedSub ? submissions.find((s: Assignment) => s.id === selectedSub) : null;
+  const selected = selectedSub ? submissions.find(s => (s._id || s.id) === selectedSub) : null;
 
-  // Stats
   const stats = {
     total: submissions.length,
-    pending: submissions.filter((s: Assignment) => s.status === 'submitted').length,
-    graded: submissions.filter((s: Assignment) => s.status === 'graded').length
+    pending: submissions.filter(s => s.status === 'submitted').length,
+    graded: submissions.filter(s => s.status === 'graded').length,
   };
 
   const openGradeModal = (subId: string) => {
-    const sub = submissions.find((s: Assignment) => s.id === subId);
+    const sub = submissions.find(s => (s._id || s.id) === subId);
     if (sub) {
       setSelectedSub(subId);
       setGrade(sub.obtainedMarks?.toString() || '');
@@ -91,54 +86,48 @@ const GradeAssignment: React.FC = () => {
     }
   };
 
-  const handleGrade = () => {
+  const handleGrade = async () => {
     if (!selectedSub || !grade) {
       showToast('Please enter a grade', 'error');
       return;
     }
-    
     const gradeNum = parseInt(grade);
     if (isNaN(gradeNum) || gradeNum < 0) {
       showToast('Please enter a valid grade', 'error');
       return;
     }
-    
     if (selected && gradeNum > selected.totalMarks) {
       showToast(`Grade cannot exceed total marks (${selected.totalMarks})`, 'error');
       return;
     }
-
-    // Update the submission in mock data (in real app, call context method)
-    const subIndex = submissions.findIndex((s: Assignment) => s.id === selectedSub);
-    if (subIndex !== -1) {
-      submissions[subIndex] = {
-        ...submissions[subIndex],
-        status: 'graded',
-        obtainedMarks: gradeNum,
-        feedback: feedback
-      };
+    setIsGrading(true);
+    try {
+      await gradeSubmissionApi(selectedSub, { obtainedMarks: gradeNum, feedback });
+      showToast('Assignment graded successfully!', 'success');
+      setShowGradeModal(false);
+      setGrade('');
+      setFeedback('');
+      setSelectedSub(null);
+      await loadData();
+    } catch (error) {
+      showToast('Failed to grade assignment', 'error');
+    } finally {
+      setIsGrading(false);
     }
-    
-    showToast('Assignment graded successfully!', 'success');
-    setShowGradeModal(false);
-    setGrade('');
-    setFeedback('');
-    setSelectedSub(null);
   };
 
   const handleExport = () => {
     const csv = [
       ['Student', 'Assignment', 'Course', 'Status', 'Grade', 'Max Grade'].join(','),
-      ...filtered.map((s: Assignment) => [
-        s.studentName || 'Unknown', 
-        s.title, 
-        s.courseName, 
-        s.status, 
-        s.obtainedMarks || 'N/A', 
-        s.totalMarks
+      ...filtered.map(s => [
+        s.student?.name || 'Unknown',
+        s.assignmentTitle || '',
+        s.courseName || '',
+        s.status,
+        s.obtainedMarks ?? 'N/A',
+        s.totalMarks,
       ].join(','))
     ].join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -148,6 +137,12 @@ const GradeAssignment: React.FC = () => {
     URL.revokeObjectURL(url);
     showToast('Submissions exported', 'success');
   };
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -191,11 +186,8 @@ const GradeAssignment: React.FC = () => {
               <button
                 key={f}
                 onClick={() => setStatusFilter(f)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                  statusFilter === f 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${statusFilter === f ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
               >
                 {f === 'submitted' ? 'Pending' : f}
               </button>
@@ -212,19 +204,20 @@ const GradeAssignment: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {filtered.map((sub) => (
-            <Card key={sub.id} className="border-l-4 border-l-black">
+            <Card key={sub._id || sub.id} className="border-l-4 border-l-black">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
                     <User className="w-6 h-6 text-gray-600" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900">{sub.title}</h4>
-                    <p className="text-sm text-gray-500">{sub.studentName} • {sub.courseName}</p>
+                    <h4 className="font-bold text-gray-900">{sub.assignmentTitle}</h4>
+                    <p className="text-sm text-gray-500">
+                      {sub.student?.name || 'Unknown'} • {sub.courseName || ''}
+                    </p>
                     <div className="flex items-center gap-3 mt-2">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        sub.status === 'graded' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${sub.status === 'graded' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
                         {sub.status === 'graded' ? 'Graded' : 'Pending Review'}
                       </span>
                       {sub.submittedAt && (
@@ -236,34 +229,40 @@ const GradeAssignment: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-3">
                   {sub.status === 'graded' ? (
                     <div className="text-right">
                       <p className="text-2xl font-black text-gray-900">
                         {sub.obtainedMarks}<span className="text-sm text-gray-400 font-normal">/{sub.totalMarks}</span>
                       </p>
-                      <button 
-                        onClick={() => openGradeModal(sub.id)} 
-                        className="text-xs text-blue-600 hover:underline"
-                      >
+                      <button onClick={() => openGradeModal(sub._id || sub.id)} className="text-xs text-blue-600 hover:underline">
                         Edit Grade
                       </button>
                     </div>
                   ) : (
-                    <Button onClick={() => openGradeModal(sub.id)}>
+                    <Button onClick={() => openGradeModal(sub._id || sub.id)}>
                       <CheckCircle className="w-4 h-4" /> Grade Now
                     </Button>
                   )}
                 </div>
               </div>
 
-              {sub.submittedText && (
+              {(sub.submittedText || sub.link || sub.fileUrl) && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1">
                     <FileText className="w-3 h-3" /> Submission:
                   </p>
-                  <p className="text-sm text-gray-700">{sub.submittedText}</p>
+                  {sub.fileUrl && (
+                    <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">
+                      View File
+                    </a>
+                  )}
+                  {sub.link && (
+                    <a href={sub.link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">
+                      {sub.link}
+                    </a>
+                  )}
+                  {sub.submittedText && <p className="text-sm text-gray-700">{sub.submittedText}</p>}
                 </div>
               )}
 
@@ -278,15 +277,10 @@ const GradeAssignment: React.FC = () => {
         </div>
       )}
 
-      <Modal 
-        isOpen={showGradeModal} 
-        onClose={() => { 
-          setShowGradeModal(false); 
-          setSelectedSub(null); 
-          setGrade(''); 
-          setFeedback(''); 
-        }} 
-        title="Grade Assignment" 
+      <Modal
+        isOpen={showGradeModal}
+        onClose={() => { setShowGradeModal(false); setSelectedSub(null); setGrade(''); setFeedback(''); }}
+        title="Grade Assignment"
         size="md"
       >
         {selected && (
@@ -295,15 +289,14 @@ const GradeAssignment: React.FC = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase">Student</p>
-                  <p className="font-medium text-gray-900">{selected.studentName}</p>
+                  <p className="font-medium text-gray-900">{selected.student?.name || 'Unknown'}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-bold text-gray-500 uppercase">Assignment</p>
-                  <p className="font-medium text-gray-900">{selected.title}</p>
+                  <p className="font-medium text-gray-900">{selected.assignmentTitle}</p>
                 </div>
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">
                 Score (Max: {selected.totalMarks})
@@ -319,11 +312,8 @@ const GradeAssignment: React.FC = () => {
                 autoFocus
               />
             </div>
-
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                Feedback
-              </label>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Feedback</label>
               <textarea
                 className="input-field min-h-[120px]"
                 placeholder="Write feedback..."
@@ -331,20 +321,11 @@ const GradeAssignment: React.FC = () => {
                 onChange={(e) => setFeedback(e.target.value)}
               />
             </div>
-
             <div className="flex gap-3 pt-2">
-              <Button onClick={handleGrade} className="flex-1">
+              <Button onClick={handleGrade} className="flex-1" isLoading={isGrading}>
                 <Send className="w-4 h-4" /> Submit Grade
               </Button>
-              <Button 
-                variant="secondary" 
-                onClick={() => { 
-                  setShowGradeModal(false); 
-                  setSelectedSub(null); 
-                  setGrade(''); 
-                  setFeedback(''); 
-                }}
-              >
+              <Button variant="secondary" onClick={() => { setShowGradeModal(false); setSelectedSub(null); setGrade(''); setFeedback(''); }}>
                 Cancel
               </Button>
             </div>

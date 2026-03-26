@@ -7,6 +7,9 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { COURSE_CATEGORIES, COURSE_LEVELS } from '../../utils/constants';
+import { createTeacherCourseApi } from '../../api/teacherApi';
+import { uploadImageApi } from '../../api/uploadApi';
+import { addLectureApi } from '../../api/teacherApi';
 
 interface ModuleData {
   id: string;
@@ -33,16 +36,14 @@ const CreateCourse: React.FC = () => {
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('');
   const [thumbnail, setThumbnail] = useState<string | null>(null);
-
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [modules, setModules] = useState<ModuleData[]>([]);
-
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [currentModuleId, setCurrentModuleId] = useState('');
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonType, setLessonType] = useState<'video' | 'text'>('video');
   const [lessonDuration, setLessonDuration] = useState('10:00');
   const [editingLesson, setEditingLesson] = useState<{ moduleId: string; lesson: LessonData } | null>(null);
-
   const [showPreview, setShowPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -97,18 +98,17 @@ const CreateCourse: React.FC = () => {
       showToast('Please enter lesson title', 'error');
       return;
     }
-
     if (editingLesson) {
-      setModules(modules.map(m => 
-        m.id === editingLesson.moduleId 
+      setModules(modules.map(m =>
+        m.id === editingLesson.moduleId
           ? {
-              ...m,
-              lessons: m.lessons.map(l => 
-                l.id === editingLesson.lesson.id 
-                  ? { ...l, title: lessonTitle, type: lessonType, duration: lessonDuration }
-                  : l
-              )
-            }
+            ...m,
+            lessons: m.lessons.map(l =>
+              l.id === editingLesson.lesson.id
+                ? { ...l, title: lessonTitle, type: lessonType, duration: lessonDuration }
+                : l
+            )
+          }
           : m
       ));
       showToast('Lesson updated', 'success');
@@ -119,22 +119,21 @@ const CreateCourse: React.FC = () => {
         type: lessonType,
         duration: lessonDuration
       };
-      setModules(modules.map(m => 
-        m.id === currentModuleId 
+      setModules(modules.map(m =>
+        m.id === currentModuleId
           ? { ...m, lessons: [...m.lessons, newLesson] }
           : m
       ));
       showToast('Lesson added', 'success');
     }
-
     setShowLessonModal(false);
     setLessonTitle('');
     setEditingLesson(null);
   };
 
   const removeLesson = (moduleId: string, lessonId: string) => {
-    setModules(modules.map(m => 
-      m.id === moduleId 
+    setModules(modules.map(m =>
+      m.id === moduleId
         ? { ...m, lessons: m.lessons.filter(l => l.id !== lessonId) }
         : m
     ));
@@ -148,40 +147,83 @@ const CreateCourse: React.FC = () => {
         showToast('Image size should be less than 5MB', 'error');
         return;
       }
+      setThumbnailFile(file);
       const reader = new FileReader();
       reader.onload = () => {
         setThumbnail(reader.result as string);
-        showToast('Thumbnail uploaded', 'success');
+        showToast('Thumbnail selected', 'success');
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!title.trim() || !description.trim() || !category) {
       showToast('Please fill all basic fields', 'error');
       return;
     }
-    if (modules.length === 0) {
-      showToast('Please add at least one module', 'error');
-      return;
-    }
-
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      showToast('Course published successfully!', 'success');
+    try {
+      let thumbnailUrl = '';
+      if (thumbnailFile) {
+        try {
+          const uploadRes = await uploadImageApi(thumbnailFile);
+          thumbnailUrl = uploadRes.data?.url || '';
+        } catch {
+          showToast('Thumbnail upload failed, continuing without it', 'error');
+        }
+      }
+
+      await createTeacherCourseApi({
+        title,
+        description,
+        category,
+        thumbnail: thumbnailUrl,
+        isPublished: false,
+        level,      // ✅ ADD
+        price: parseFloat(price) || 0,   // ✅ ADD
+        duration,
+      });
+
+      showToast('Course submitted for approval!', 'success');
       navigate('/teacher/my-courses');
-    }, 1500);
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to publish course', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!title.trim()) {
       showToast('Please enter course title', 'error');
       return;
     }
-    showToast('Course saved as draft', 'success');
-    navigate('/teacher/my-courses');
+    setIsSaving(true);
+    try {
+      let thumbnailUrl = '';
+      if (thumbnailFile) {
+        try {
+          const uploadRes = await uploadImageApi(thumbnailFile);
+          thumbnailUrl = uploadRes.data?.url || '';
+        } catch { }
+      }
+
+      await createTeacherCourseApi({
+        title,
+        description,
+        category,
+        thumbnail: thumbnailUrl,
+        isPublished: false,
+      });
+
+      showToast('Course saved as draft', 'success');
+      navigate('/teacher/my-courses');
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to save draft', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
@@ -189,7 +231,6 @@ const CreateCourse: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -204,17 +245,16 @@ const CreateCourse: React.FC = () => {
           <Button variant="outline" onClick={() => setShowPreview(true)}>
             <Eye className="w-4 h-4" /> Preview
           </Button>
-          <Button variant="outline" onClick={handleSaveDraft}>
+          <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving}>
             Save Draft
           </Button>
           <Button onClick={handlePublish} disabled={isSaving}>
-            {isSaving ? 'Publishing...' : <><Save className="w-4 h-4" /> Publish</>}
+            {isSaving ? 'Publishing...' : <><Save className="w-4 h-4" /> Submit for Approval</>}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Basic Information</h3>
@@ -246,7 +286,6 @@ const CreateCourse: React.FC = () => {
             </div>
           </Card>
 
-          {/* Curriculum */}
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Curriculum</h3>
@@ -301,14 +340,13 @@ const CreateCourse: React.FC = () => {
           </Card>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Course Thumbnail</h3>
             {thumbnail ? (
               <div className="relative">
                 <img src={thumbnail} alt="Thumbnail" className="w-full h-40 object-cover rounded-lg" />
-                <button onClick={() => setThumbnail(null)} className="absolute top-2 right-2 p-1.5 bg-white rounded-lg shadow hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                <button onClick={() => { setThumbnail(null); setThumbnailFile(null); }} className="absolute top-2 right-2 p-1.5 bg-white rounded-lg shadow hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-500" /></button>
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
@@ -328,14 +366,15 @@ const CreateCourse: React.FC = () => {
               {price && <div className="flex justify-between text-sm pt-2 border-t"><span className="text-gray-500">Price</span><span className="font-bold text-emerald-600">${price}</span></div>}
             </div>
             <div className="mt-6 space-y-2">
-              <Button fullWidth onClick={handlePublish} disabled={isSaving}><Save className="w-4 h-4" /> Publish Course</Button>
-              <Button variant="outline" fullWidth onClick={handleSaveDraft}>Save as Draft</Button>
+              <Button fullWidth onClick={handlePublish} disabled={isSaving}>
+                <Save className="w-4 h-4" /> Submit for Approval
+              </Button>
+              <Button variant="outline" fullWidth onClick={handleSaveDraft} disabled={isSaving}>Save as Draft</Button>
             </div>
           </Card>
         </div>
       </div>
 
-      {/* Lesson Modal */}
       <Modal isOpen={showLessonModal} onClose={() => { setShowLessonModal(false); setEditingLesson(null); }} title={editingLesson ? 'Edit Lesson' : 'Add Lesson'} size="md">
         <div className="space-y-4">
           <Input label="Lesson Title *" placeholder="e.g., Intro to React" value={lessonTitle} onChange={(e) => setLessonTitle(e.target.value)} />
@@ -362,16 +401,15 @@ const CreateCourse: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Preview Modal */}
       <Modal isOpen={showPreview} onClose={() => setShowPreview(false)} title="Course Preview" size="lg">
         <div className="space-y-6">
           {thumbnail && <img src={thumbnail} alt="Course" className="w-full h-48 object-cover rounded-xl" />}
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{title || 'Untitled Course'}</h2>
             <div className="flex items-center gap-2 mt-2">
-              <span className="badge badge-gray">{category || 'No Category'}</span>
-              <span className="badge badge-gray capitalize">{level}</span>
-              {price && <span className="badge badge-success">${price}</span>}
+              <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">{category || 'No Category'}</span>
+              <span className="text-xs px-2 py-1 bg-gray-100 rounded-full capitalize">{level}</span>
+              {price && <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">${price}</span>}
             </div>
           </div>
           <div><h3 className="font-bold text-gray-900 mb-2">Description</h3><p className="text-gray-600">{description || 'No description provided'}</p></div>

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Users, ShieldCheck, BookOpen, TrendingUp, Server, 
+import {
+  Users, ShieldCheck, BookOpen, TrendingUp, Server,
   Globe, ArrowUpRight, Megaphone, Eye,
- GraduationCap,
+  GraduationCap,
   UserCheck, UserX, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,101 +14,174 @@ import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import { getSuperAdminDashboardApi } from '../../api/dashboardApi';
+import { getPlatformStatsApi } from '../../api/superadminApi';
+import { createNotificationApi } from '../../api/notificationApi';
+import { getAllUsersApi } from '../../api/userApi';
+import { toggleUserStatusApi } from '../../api/superadminApi';
 
 const SuperAdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dashData, setDashData] = useState<any>(null);
   const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
   const [isServerLogsOpen, setIsServerLogsOpen] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementBody, setAnnouncementBody] = useState('');
   const [targetRoles, setTargetRoles] = useState<string[]>(['student', 'teacher', 'admin']);
-  const [recentUsers, setRecentUsers] = useState([
-    { id: '1', name: 'Sarah Wilson', role: 'Teacher', date: '2 mins ago', status: 'Active', email: 'sarah@example.com' },
-    { id: '2', name: 'Mike Johnson', role: 'Student', date: '15 mins ago', status: 'Pending', email: 'mike@example.com' },
-    { id: '3', name: 'Emma Davis', role: 'Student', date: '1 hour ago', status: 'Active', email: 'emma@example.com' },
-    { id: '4', name: 'James Brown', role: 'Teacher', date: '3 hours ago', status: 'Verified', email: 'james@example.com' },
-  ]);
-  const [serverLogs] = useState([
-    { time: '10:45:23', level: 'INFO', message: 'User authentication successful' },
-    { time: '10:44:12', level: 'WARNING', message: 'High memory usage detected' },
-    { time: '10:43:01', level: 'INFO', message: 'Course published successfully' },
-    { time: '10:42:55', level: 'ERROR', message: 'Failed to send email notification' },
-  ]);
-  
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  // ✅ FIX 1 — setter add kiya, fake data hata diya
+  const [serverLogs, setServerLogs] = useState<any[]>([]);
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addAnnouncement } = useData();
   const { showToast } = useToast();
 
+  const fetchDashboard = async () => {
+    try {
+      const [dashRes, usersRes] = await Promise.all([
+        getSuperAdminDashboardApi(),
+        getAllUsersApi(),
+      ]);
+
+      console.log('dashRes.data:', dashRes.data);
+      console.log('dashRes.data.data:', dashRes.data?.data);
+
+      setDashData(dashRes.data);
+      console.log('monthlyGrowth:', dashRes.data?.monthlyGrowth);
+      console.log('full dashRes.data:', dashRes.data);
+
+      // ✅ FIX 2A — real server logs from recentActivity
+      const logs = (dashRes.data?.recentActivity ?? []).slice(0, 8).map((u: any) => ({
+        time: new Date(u.createdAt).toLocaleTimeString(),
+        level: 'INFO',
+        message: `${u.name} (${u.role}) joined the platform`,
+      }));
+      setServerLogs(logs);
+
+      // ✅ FIX 2B — correct path for users
+      const users = (usersRes?.data?.users || []).slice(0, 4).map((u: any) => ({
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        date: new Date(u.createdAt).toLocaleDateString(),
+        status: u.isActive ? 'Active' : 'Suspended',
+      }));
+
+      setRecentUsers(users);
+    } catch (error) {
+      console.error('Failed to fetch dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(t);
+    fetchDashboard();
   }, []);
 
-  const handleBroadcast = (e: React.FormEvent) => {
+  const handleBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announcementTitle || !announcementBody) {
       showToast('Please fill all fields', 'error');
       return;
     }
 
-    addAnnouncement({
-      title: announcementTitle,
-      message: announcementBody,
-      userId: user?.id || '1',
-      userRole: 'super-admin',
-      type: 'info',
-      read: false,
-      createdAt: new Date().toISOString()
-    });
+    try {
+      await createNotificationApi({
+        title: announcementTitle,
+        message: announcementBody,
+        role: targetRoles.join(','),
+        type: 'info',
+      });
 
-    showToast('Announcement broadcasted successfully!', 'success');
-    setIsBroadcastOpen(false);
-    setAnnouncementTitle('');
-    setAnnouncementBody('');
+      addAnnouncement({
+        title: announcementTitle,
+        message: announcementBody,
+        userId: user?.id || '1',
+        userRole: 'super-admin',
+        type: 'info',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      showToast('Announcement broadcasted successfully!', 'success');
+      setIsBroadcastOpen(false);
+      setAnnouncementTitle('');
+      setAnnouncementBody('');
+    } catch (error) {
+      showToast('Failed to broadcast announcement', 'error');
+    }
   };
 
-  const handleToggleUserStatus = (userId: string) => {
-    setRecentUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-        showToast(`User ${u.name} ${newStatus === 'Active' ? 'activated' : 'suspended'}`, 'success');
-        return { ...u, status: newStatus };
-      }
-      return u;
-    }));
+  const handleToggleUserStatus = async (userId: string) => {
+    const u = recentUsers.find(u => u.id === userId);
+    if (!u) return;
+
+    const newStatus = u.status === 'Active' ? 'suspended' : 'active';
+    try {
+      await toggleUserStatusApi(userId);
+      setRecentUsers(prev => prev.map(u => {
+        if (u.id === userId) {
+          const displayStatus = newStatus === 'active' ? 'Active' : 'Suspended';
+          showToast(`User ${u.name} ${displayStatus}`, 'success');
+          return { ...u, status: displayStatus };
+        }
+        return u;
+      }));
+    } catch (error) {
+      showToast('Failed to update user status', 'error');
+    }
   };
 
-  const handleApproveUser = (userId: string) => {
-    setRecentUsers(prev => prev.map(u => {
-      if (u.id === userId && u.status === 'Pending') {
-        showToast(`User ${u.name} approved successfully`, 'success');
-        return { ...u, status: 'Active' };
-      }
-      return u;
-    }));
+  const handleApproveUser = async (userId: string) => {
+    try {
+      await toggleUserStatusApi(userId);
+      setRecentUsers(prev => prev.map(u => {
+        if (u.id === userId && u.status === 'Pending') {
+          showToast(`User ${u.name} approved successfully`, 'success');
+          return { ...u, status: 'Active' };
+        }
+        return u;
+      }));
+    } catch (error) {
+      showToast('Failed to approve user', 'error');
+    }
   };
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const handleRefreshStats = () => {
+  const handleRefreshStats = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await fetchDashboard();
       showToast('Stats refreshed successfully', 'success');
-    }, 1000);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   if (isLoading) return <Loader />;
 
-  // ✅ Fixed Paths
-  const stats = [
-    { title: 'Total Students', value: '12,456', change: '+12.5%', icon: <GraduationCap className="w-5 h-5" />, path: '/super-admin/manage-users' },
-    { title: 'Active Admins', value: '8', change: '+2 new', icon: <ShieldCheck className="w-5 h-5" />, path: '/super-admin/manage-admins' },
-    { title: 'Total Courses', value: '567', change: '+23 this month', icon: <BookOpen className="w-5 h-5" />, path: '/super-admin/platform-stats' },
-    { title: 'Total Teachers', value: '89', change: '+5 hired', icon: <Users className="w-5 h-5" />, path: '/super-admin/all-teachers' },
-  ];
+  console.log('dashData:', dashData);
+  console.log('dashData.monthlyGrowth:', dashData?.monthlyGrowth);
+  console.log('growthData will be:', dashData?.monthlyGrowth);
 
-  const growthData = [40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 100];
+
+  // ✅ FIX 3 — dashData?.data?.systemStats (correct path)
+  const stats = [
+    { title: 'Total Students', value: dashData?.systemStats?.users?.students ?? '0', change: 'View all', icon: <GraduationCap className="w-5 h-5" />, path: '/super-admin/manage-users' },
+    { title: 'Active Admins', value: dashData?.systemStats?.users?.admins ?? '0', change: 'Manage', icon: <ShieldCheck className="w-5 h-5" />, path: '/super-admin/manage-admins' },
+    { title: 'Total Courses', value: dashData?.systemStats?.courses?.total ?? '0', change: 'View stats', icon: <BookOpen className="w-5 h-5" />, path: '/super-admin/platform-stats' },
+    { title: 'Total Teachers', value: dashData?.systemStats?.users?.teachers ?? '0', change: 'View all', icon: <Users className="w-5 h-5" />, path: '/super-admin/all-teachers' },
+  ];
+  console.log('admins count:', dashData?.systemStats?.users?.admins);
+  // ✅ FIX 4 — correct path + safe maxVal
+  const rawGrowth: number[] = dashData?.monthlyGrowth ?? new Array(12).fill(0);
+  const maxVal = Math.max(...rawGrowth, 1);
+  const growthData = rawGrowth.map((v: number) =>
+    v === 0 ? 8 : Math.max(Math.round((v / maxVal) * 100), 15)
+  );
 
   return (
     <div className="space-y-6">
@@ -119,16 +192,14 @@ const SuperAdminDashboard: React.FC = () => {
           <p className="page-subtitle">Real-time insights and system control.</p>
         </div>
         <div className="flex gap-3">
-          <Button 
+          <Button
             variant="outline"
             onClick={handleRefreshStats}
             disabled={isRefreshing}
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-          <Button 
-            onClick={() => setIsBroadcastOpen(true)} 
-          >
+          <Button onClick={() => setIsBroadcastOpen(true)}>
             <Megaphone className="w-4 h-4" /> Announcement
           </Button>
         </div>
@@ -137,8 +208,8 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (
-          <Card 
-            key={i} 
+          <Card
+            key={i}
             hover
             onClick={() => navigate(s.path)}
             className="cursor-pointer group"
@@ -167,20 +238,22 @@ const SuperAdminDashboard: React.FC = () => {
                 <p className="text-xs text-gray-400">Monthly trend</p>
               </div>
             </div>
-            
-            <div className="h-48 flex items-end justify-between gap-2 px-2">
-              {growthData.map((h, i) => (
-                <div key={i} className="w-full flex flex-col justify-end gap-1 group relative cursor-pointer">
-                  {/* Tooltip */}
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                    {h * 15} Users
+            <div style={{ height: '192px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '4px', padding: '0 8px', borderBottom: '1px solid #e5e7eb' }}>
+              {(dashData?.monthlyGrowth ?? new Array(12).fill(0)).map((v: number, i: number) => {
+                const max = Math.max(...(dashData?.monthlyGrowth ?? [1]), 1);
+                const heightPx = v === 0 ? 6 : Math.max(Math.round((v / max) * 180), 20);
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', position: 'relative', cursor: 'pointer' }}>
+                    <div style={{
+                      width: '100%',
+                      height: `${heightPx}px`,
+                      backgroundColor: '#1f2937',
+                      borderRadius: '2px 2px 0 0',
+                      minHeight: '6px'
+                    }} />
                   </div>
-                  <div 
-                    className="w-full bg-black rounded-t-sm opacity-80 group-hover:opacity-100 transition-all hover:bg-emerald-600" 
-                    style={{ height: `${h}%` }} 
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="flex justify-between mt-2 text-xs text-gray-400 font-medium px-2">
               {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(m => (
@@ -190,7 +263,7 @@ const SuperAdminDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* System Health (Improved UI) */}
+        {/* System Health */}
         <div className="flex flex-col h-full">
           <Card className="flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-6">
@@ -205,10 +278,29 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6 flex-1">
+              {/* ✅ FIX 6 — real backend data for system status bars */}
               {[
-                { label: 'Server CPU', val: 24, icon: Server },
-                { label: 'Memory Usage', val: 68, icon: Globe },
-                { label: 'Database Load', val: 42, icon: BookOpen },
+                {
+                  label: 'Active Users',
+                  val: dashData?.systemStats?.users?.total > 0
+                    ? Math.round((dashData?.systemStats?.users?.active / dashData?.systemStats?.users?.total) * 100)
+                    : 0,
+                  icon: Server,
+                },
+                {
+                  label: 'Published Courses',
+                  val: dashData?.systemStats?.courses?.total > 0
+                    ? Math.round((dashData?.systemStats?.courses?.published / dashData?.systemStats?.courses?.total) * 100)
+                    : 0,
+                  icon: Globe,
+                },
+                {
+                  label: 'Content Load',
+                  val: dashData?.systemStats?.content?.videos > 0
+                    ? Math.min(Math.round((dashData?.systemStats?.content?.attempts / (dashData?.systemStats?.content?.videos * 10)) * 100), 100)
+                    : 0,
+                  icon: BookOpen,
+                },
               ].map((metric, i) => (
                 <div key={i}>
                   <div className="flex justify-between text-sm mb-2">
@@ -218,11 +310,10 @@ const SuperAdminDashboard: React.FC = () => {
                     <span className="font-bold text-gray-900">{metric.val}%</span>
                   </div>
                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-1000 ${
-                        metric.val > 80 ? 'bg-red-500' : metric.val > 60 ? 'bg-yellow-500' : 'bg-black'
-                      }`}
-                      style={{ width: `${metric.val}%` }} 
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${metric.val > 80 ? 'bg-red-500' : metric.val > 60 ? 'bg-yellow-500' : 'bg-black'
+                        }`}
+                      style={{ width: `${metric.val}%` }}
                     />
                   </div>
                 </div>
@@ -230,7 +321,7 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-4 border-t border-gray-100">
-              <Button 
+              <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => setIsServerLogsOpen(true)}
@@ -262,6 +353,11 @@ const SuperAdminDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
+              {recentUsers.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-400">No recent registrations</td>
+                </tr>
+              )}
               {recentUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-3 font-medium text-gray-900">
@@ -278,19 +374,18 @@ const SuperAdminDashboard: React.FC = () => {
                   <td className="px-6 py-3 text-gray-500">{u.role}</td>
                   <td className="px-6 py-3 text-gray-400 text-xs">{u.date}</td>
                   <td className="px-6 py-3">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                      u.status === 'Active' || u.status === 'Verified' 
-                        ? 'bg-emerald-100 text-emerald-700' 
-                        : u.status === 'Suspended'
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${u.status === 'Active' || u.status === 'Verified'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : u.status === 'Suspended'
                         ? 'bg-red-100 text-red-700'
                         : 'bg-amber-100 text-amber-700'
-                    }`}>
+                      }`}>
                       {u.status}
                     </span>
                   </td>
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
                         title="View Details"
                         onClick={() => navigate('/super-admin/manage-users')}
@@ -298,7 +393,7 @@ const SuperAdminDashboard: React.FC = () => {
                         <Eye className="w-4 h-4" />
                       </button>
                       {u.status === 'Pending' && (
-                        <button 
+                        <button
                           onClick={() => handleApproveUser(u.id)}
                           className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-600"
                           title="Approve User"
@@ -306,13 +401,12 @@ const SuperAdminDashboard: React.FC = () => {
                           <UserCheck className="w-4 h-4" />
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={() => handleToggleUserStatus(u.id)}
-                        className={`p-1.5 rounded-lg ${
-                          u.status === 'Active' || u.status === 'Verified'
-                            ? 'hover:bg-red-100 text-red-500'
-                            : 'hover:bg-emerald-100 text-emerald-600'
-                        }`}
+                        className={`p-1.5 rounded-lg ${u.status === 'Active' || u.status === 'Verified'
+                          ? 'hover:bg-red-100 text-red-500'
+                          : 'hover:bg-emerald-100 text-emerald-600'
+                          }`}
                         title="Toggle Status"
                       >
                         {u.status === 'Active' || u.status === 'Verified' ? (
@@ -333,18 +427,18 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Broadcast Modal */}
       <Modal isOpen={isBroadcastOpen} onClose={() => setIsBroadcastOpen(false)} title="Broadcast Announcement" size="md">
         <form onSubmit={handleBroadcast} className="space-y-4">
-          <Input 
-            label="Title" 
-            placeholder="e.g., System Maintenance Notice" 
+          <Input
+            label="Title"
+            placeholder="e.g., System Maintenance Notice"
             value={announcementTitle}
             onChange={(e) => setAnnouncementTitle(e.target.value)}
             required
           />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Message Body</label>
-            <textarea 
-              className="input-field min-h-[120px]" 
-              placeholder="Type your announcement here..." 
+            <textarea
+              className="input-field min-h-[120px]"
+              placeholder="Type your announcement here..."
               value={announcementBody}
               onChange={(e) => setAnnouncementBody(e.target.value)}
               required
@@ -355,8 +449,8 @@ const SuperAdminDashboard: React.FC = () => {
             <div className="flex flex-wrap gap-2">
               {['student', 'teacher', 'admin'].map((role) => (
                 <label key={role} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 border border-gray-200">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={targetRoles.includes(role)}
                     onChange={(e) => {
                       if (e.target.checked) {
@@ -394,14 +488,16 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
           <div className="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto border border-gray-800">
             <div className="space-y-2 font-mono text-sm">
+              {serverLogs.length === 0 && (
+                <p className="text-gray-500 text-center py-4">No logs available</p>
+              )}
               {serverLogs.map((log, i) => (
                 <div key={i} className="flex gap-3">
                   <span className="text-gray-500">[{log.time}]</span>
-                  <span className={`font-bold ${
-                    log.level === 'ERROR' ? 'text-red-400' : 
-                    log.level === 'WARNING' ? 'text-yellow-400' : 
-                    'text-emerald-400'
-                  }`}>
+                  <span className={`font-bold ${log.level === 'ERROR' ? 'text-red-400' :
+                    log.level === 'WARNING' ? 'text-yellow-400' :
+                      'text-emerald-400'
+                    }`}>
                     [{log.level}]
                   </span>
                   <span className="text-gray-300">{log.message}</span>

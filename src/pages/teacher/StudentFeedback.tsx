@@ -1,62 +1,43 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Star, Reply, MessageSquare, Search, Filter } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { useAuth } from '../../hooks/useAuth';
-import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
-
-interface Feedback {
-  id: string;
-  studentName: string;
-  courseName: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
-  reply?: string;
-  repliedAt?: string;
-}
+import { getCourseReviewsApi } from '../../api/teacherApi';
+import { replyToReviewApi } from '../../api/teacherApi';
 
 const StudentFeedback: React.FC = () => {
-  const { user } = useAuth();
-  const { getFeedbackForTeacher, replyToFeedback } = useData();
   const { showToast } = useToast();
 
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  const mockFeedbacks: Feedback[] = [
-    {
-      id: '1',
-      studentName: 'Ali Ahmed',
-      courseName: 'React.js Complete',
-      rating: 5,
-      comment: 'Excellent course!',
-      createdAt: '2024-01-20T10:30:00'
-    },
-    {
-      id: '2',
-      studentName: 'Fatima Khan',
-      courseName: 'Node.js Backend',
-      rating: 4,
-      comment: 'Great course overall.',
-      createdAt: '2024-01-19T14:00:00',
-      reply: 'Thank you!',
-      repliedAt: '2024-01-19T16:00:00'
-    },
-  ];
+  useEffect(() => {
+    loadFeedbacks();
+  }, []);
 
-  const feedbacks = getFeedbackForTeacher?.(user?.id || '') || mockFeedbacks;
+  const loadFeedbacks = async () => {
+    try {
+      const res = await getCourseReviewsApi();
+      setFeedbacks(res.data?.reviews || []);
+    } catch (error) {
+      showToast('Failed to load feedbacks', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     let result = feedbacks;
     if (searchTerm) {
-      result = result.filter(f => 
-        f.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.courseName.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(f =>
+        (f.student?.name || f.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (f.course?.title || f.courseName || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (ratingFilter !== 'all') {
@@ -65,27 +46,33 @@ const StudentFeedback: React.FC = () => {
     return result;
   }, [feedbacks, searchTerm, ratingFilter]);
 
-  const handleReply = (fbId: string) => {
+  const handleReply = async (fbId: string, courseId: string) => {
     if (!replyText.trim()) {
       showToast('Please enter a reply', 'error');
       return;
     }
-    if (replyToFeedback) {
-      replyToFeedback(fbId, replyText);
+    try {
+      await replyToReviewApi(courseId, fbId, replyText);
+      showToast('Reply sent!', 'success');
+      setReplyingTo(null);
+      setReplyText('');
+      await loadFeedbacks();
+    } catch (error) {
+      showToast('Failed to send reply', 'error');
     }
-    showToast('Reply sent!', 'success');
-    setReplyingTo(null);
-    setReplyText('');
   };
 
   const renderStars = (rating: number) => (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
-        <Star 
-          key={s} 
-          className={`w-4 h-4 ${s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} 
-        />
+        <Star key={s} className={`w-4 h-4 ${s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
       ))}
+    </div>
+  );
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900" />
     </div>
   );
 
@@ -132,15 +119,15 @@ const StudentFeedback: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {filtered.map((fb) => (
-            <Card key={fb.id}>
+            <Card key={fb._id || fb.id}>
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600">
-                    {fb.studentName.charAt(0)}
+                    {(fb.student?.name || fb.studentName || 'S').charAt(0)}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{fb.studentName}</p>
-                    <p className="text-sm text-gray-500">{fb.courseName}</p>
+                    <p className="font-semibold text-gray-900">{fb.student?.name || fb.studentName || 'Student'}</p>
+                    <p className="text-sm text-gray-500">{fb.course?.title || fb.courseName || ''}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -161,17 +148,17 @@ const StudentFeedback: React.FC = () => {
                   </div>
                   <p className="text-sm text-gray-700">{fb.reply}</p>
                 </div>
-              ) : replyingTo === fb.id ? (
+              ) : replyingTo === (fb._id || fb.id) ? (
                 <div className="space-y-3">
-                  <textarea 
+                  <textarea
                     className="input-field min-h-[80px]"
-                    placeholder="Write your reply..." 
+                    placeholder="Write your reply..."
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleReply(fb.id)}>
+                    <Button size="sm" onClick={() => handleReply(fb._id || fb.id, fb.course?._id)}>
                       <Reply className="w-3 h-3" /> Send
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => { setReplyingTo(null); setReplyText(''); }}>
@@ -180,7 +167,7 @@ const StudentFeedback: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setReplyingTo(fb.id)}>
+                <Button variant="outline" size="sm" onClick={() => setReplyingTo(fb._id || fb.id)}>
                   <MessageSquare className="w-3 h-3" /> Reply
                 </Button>
               )}

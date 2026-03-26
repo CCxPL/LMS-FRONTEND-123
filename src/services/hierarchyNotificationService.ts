@@ -1,6 +1,5 @@
 import type { Notification, NotificationType } from '../types/notification.types';
 import type { AuthUser } from '../types/auth.types';
-import { mockUsers } from '../mockData/users';
 
 /**
  * Hierarchical Notification Service

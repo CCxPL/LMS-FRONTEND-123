@@ -5,8 +5,10 @@ import VideoPlayer from '../../components/ui/VideoPlayer';
 import { useToast } from '../../context/ToastContext';
 import Button from '../../components/ui/Button';
 import Loader from '../../components/common/Loader';
-import DiscussionBoard from '../../components/ui/DiscussionBoard'; // NEW
-import Leaderboard from '../../components/ui/Leaderboard'; // NEW
+import DiscussionBoard from '../../components/ui/DiscussionBoard';
+import Leaderboard from '../../components/ui/Leaderboard';
+import { getCourseByIdApi } from '../../api/courseApi';
+import { markLectureCompleteApi } from '../../api/studentApi';
 
 interface Lesson {
   id: string;
@@ -22,48 +24,90 @@ const CourseView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
-  const [activeLessonId, setActiveLessonId] = useState<string>('1');
+
+  const [activeLessonId, setActiveLessonId] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'content' | 'discuss' | 'leaderboard'>('content');
-  
-  const [lessons, setLessons] = useState<Lesson[]>([
-    { id: '1', title: 'Introduction to React', type: 'video', duration: '15:00', completed: true, src: 'https://www.w3schools.com/html/mov_bbb.mp4' },
-    { id: '2', title: 'Setting up Environment', type: 'text', duration: '10:00', completed: false, content: '## Setup Instructions\n\n1. Install Node.js\n2. Run `npx create-react-app my-app`\n3. Start coding!' },
-    { id: '3', title: 'JSX Deep Dive', type: 'video', duration: '20:00', completed: false, src: 'https://www.w3schools.com/html/mov_bbb.mp4' },
-    { id: '4', title: 'Components & Props', type: 'video', duration: '25:00', completed: false, src: 'https://www.w3schools.com/html/mov_bbb.mp4' },
-  ]);
+  const [courseTitle, setCourseTitle] = useState('');
+  const [lessons, setLessons] = useState<Lesson[]>([]);
 
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 800);
-  }, []);
+    loadCourse();
+  }, [id]);
+
+  const loadCourse = async () => {
+    if (!id) return;
+    try {
+      const courseRes = await getCourseByIdApi(id);
+      const { course, videos } = courseRes.data;
+
+      setCourseTitle(course.title);
+
+      // ✅ Fix: Backend videos flat array return karta hai — modules nahi
+      const allLessons: Lesson[] = (videos || []).map((v: any) => ({
+        id: v._id || v.id,
+        title: v.title,
+        type: 'video' as const,
+        duration: v.duration || '0:00',
+        completed: false,
+        src: v.videoUrl || v.src,
+        content: v.description,
+      }));
+
+      setLessons(allLessons);
+      if (allLessons.length > 0) {
+        setActiveLessonId(allLessons[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load course:', error);
+      showToast('Failed to load course content', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const currentLesson = lessons.find(l => l.id === activeLessonId) || lessons[0];
   const completedCount = lessons.filter(l => l.completed).length;
-  const progress = Math.round((completedCount / lessons.length) * 100);
+  const progress = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
 
-  const markComplete = (lessonId: string) => {
-    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, completed: true } : l));
-    const currentIndex = lessons.findIndex(l => l.id === lessonId);
-    if (currentIndex < lessons.length - 1) {
-      showToast('Lesson completed! Moving to next...', 'success');
-      setTimeout(() => setActiveLessonId(lessons[currentIndex + 1].id), 1000);
-    } else {
-      showToast('Course Completed! 🎉', 'success');
+  const markComplete = async (lessonId: string) => {
+    if (!id) return;
+    try {
+      await markLectureCompleteApi({ videoId: lessonId, courseId: id });
+      setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, completed: true } : l));
+      const currentIndex = lessons.findIndex(l => l.id === lessonId);
+      if (currentIndex < lessons.length - 1) {
+        showToast('Lesson completed! Moving to next...', 'success');
+        setTimeout(() => setActiveLessonId(lessons[currentIndex + 1].id), 1000);
+      } else {
+        showToast('Course Completed! 🎉', 'success');
+      }
+    } catch (error) {
+      showToast('Failed to mark lesson complete', 'error');
     }
   };
 
   if (isLoading) return <Loader text="Loading course content..." fullScreen />;
 
+  if (lessons.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-gray-500 font-medium">No content available for this course yet.</p>
+        <Button variant="outline" className="mt-4" onClick={() => navigate('/student/my-courses')}>
+          <ArrowLeft className="w-4 h-4" /> Back to Courses
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-30 w-80 bg-white border-r border-gray-200 transform transition-transform duration-300 flex flex-col ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:relative lg:translate-x-0`}>
+      <div className={`fixed inset-y-0 left-0 z-30 w-80 bg-white border-r border-gray-200 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:relative lg:translate-x-0`}>
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="font-bold text-gray-900 truncate">React.js Complete Course</h2>
+          <h2 className="font-bold text-gray-900 truncate">{courseTitle}</h2>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -81,14 +125,13 @@ const CourseView: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {lessons.map((l, i) => (
-            <button 
-              key={l.id} 
-              onClick={() => { setActiveLessonId(l.id); setActiveTab('content'); }} 
-              className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
-                activeLessonId === l.id 
-                  ? 'bg-black text-white' 
-                  : 'hover:bg-gray-100 text-gray-700'
-              }`}
+            <button
+              key={l.id}
+              onClick={() => { setActiveLessonId(l.id); setActiveTab('content'); }}
+              className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${activeLessonId === l.id
+                ? 'bg-black text-white'
+                : 'hover:bg-gray-100 text-gray-700'
+                }`}
             >
               <div className="shrink-0">
                 {l.completed ? (
@@ -102,7 +145,7 @@ const CourseView: React.FC = () => {
                   {i + 1}. {l.title}
                 </p>
                 <span className={`text-xs flex items-center gap-1 mt-1 ${activeLessonId === l.id ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {l.type === 'video' ? <Play className="w-3 h-3" /> : <FileText className="w-3 h-3" />} 
+                  {l.type === 'video' ? <Play className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                   {l.duration}
                 </span>
               </div>
@@ -123,23 +166,21 @@ const CourseView: React.FC = () => {
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-gray-100 rounded-lg">
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          
+
           <div className="flex items-center gap-4">
-             {/* Tab Navigation */}
             <div className="flex bg-gray-100 p-1 rounded-lg">
               {[
                 { id: 'content', label: 'Content' },
                 { id: 'discuss', label: 'Discuss' },
-                { id: 'leaderboard', label: 'Rank' }
+                { id: 'leaderboard', label: 'Rank' },
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                    activeTab === tab.id 
-                      ? 'bg-white text-black shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === tab.id
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -147,25 +188,24 @@ const CourseView: React.FC = () => {
             </div>
 
             <div className="h-6 w-px bg-gray-200 hidden sm:block" />
-            <button 
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                currentLesson.completed 
-                  ? 'bg-gray-100 text-gray-700 cursor-default' 
-                  : 'bg-black text-white hover:bg-gray-800'
-              }`}
-              onClick={() => !currentLesson.completed && markComplete(currentLesson.id)}
-              disabled={currentLesson.completed}
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentLesson?.completed
+                ? 'bg-gray-100 text-gray-700 cursor-default'
+                : 'bg-black text-white hover:bg-gray-800'
+                }`}
+              onClick={() => currentLesson && !currentLesson.completed && markComplete(currentLesson.id)}
+              disabled={currentLesson?.completed}
             >
               <CheckCircle className="w-4 h-4" />
-              {currentLesson.completed ? 'Completed' : 'Mark Complete'}
+              {currentLesson?.completed ? 'Completed' : 'Mark Complete'}
             </button>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-5xl mx-auto space-y-6">
-            
-            {activeTab === 'content' && (
+
+            {activeTab === 'content' && currentLesson && (
               <>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{currentLesson.title}</h1>
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -188,9 +228,9 @@ const CourseView: React.FC = () => {
                 </div>
 
                 <div className="flex justify-between items-center pt-6">
-                  <Button 
-                    variant="outline" 
-                    disabled={activeLessonId === lessons[0].id}
+                  <Button
+                    variant="outline"
+                    disabled={activeLessonId === lessons[0]?.id}
                     onClick={() => {
                       const idx = lessons.findIndex(l => l.id === activeLessonId);
                       if (idx > 0) setActiveLessonId(lessons[idx - 1].id);
@@ -200,8 +240,8 @@ const CourseView: React.FC = () => {
                     Previous
                   </Button>
 
-                  <Button 
-                    disabled={activeLessonId === lessons[lessons.length - 1].id}
+                  <Button
+                    disabled={activeLessonId === lessons[lessons.length - 1]?.id}
                     onClick={() => {
                       const idx = lessons.findIndex(l => l.id === activeLessonId);
                       if (idx < lessons.length - 1) setActiveLessonId(lessons[idx + 1].id);
@@ -217,13 +257,13 @@ const CourseView: React.FC = () => {
 
             {activeTab === 'discuss' && (
               <div className="max-w-3xl mx-auto">
-                <DiscussionBoard />
+                <DiscussionBoard courseId={id || ''} />
               </div>
             )}
 
             {activeTab === 'leaderboard' && (
               <div className="max-w-2xl mx-auto">
-                <Leaderboard courseId={id || '1'} />
+                <Leaderboard courseId={id || ''} />
               </div>
             )}
 

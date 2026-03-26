@@ -1,32 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Clock, Edit, Eye,Search, Filter, RefreshCw, MoreVertical, Star } from 'lucide-react';
+import { Plus, Users, Clock, Edit, Eye, Search, Filter, RefreshCw, MoreVertical, Star } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Loader from '../../components/common/Loader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import type { Course } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
 import { useToast } from '../../context/ToastContext';
+import { getTeacherCoursesApi } from '../../api/teacherApi';
+import { deleteCourseApi } from '../../api/courseApi';
 
 const TeacherMyCourses: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
-  const [courses, setCourses] = useState<Course[]>([]);
+
+  const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<Course | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     loadCourses();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = () => setActiveDropdown(null);
     document.addEventListener('click', handleClick);
@@ -35,12 +34,13 @@ const TeacherMyCourses: React.FC = () => {
 
   const loadCourses = async () => {
     try {
-      const data = await courseService.getCoursesByInstructor('3');
-      setCourses(data);
+      const res = await getTeacherCoursesApi({ limit: 100 });
+      setCourses(res.data?.courses || []);
     } catch (error) {
       showToast('Failed to load courses', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleRefresh = async () => {
@@ -50,50 +50,40 @@ const TeacherMyCourses: React.FC = () => {
     showToast('Courses refreshed', 'success');
   };
 
-  // Filter courses
   const filtered = courses.filter(c => {
-    const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchesSearch =
+      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.category || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const isPublished = c.isPublished ? 'published' : 'draft';
+    const matchesStatus = statusFilter === 'all' || isPublished === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  // Delete course
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteConfirm) return;
-    setCourses(prev => prev.filter(c => c.id !== deleteConfirm.id));
-    showToast(`Course "${deleteConfirm.title}" deleted`, 'info');
-    setDeleteConfirm(null);
+    try {
+      await deleteCourseApi(deleteConfirm._id || deleteConfirm.id);
+      showToast(`Course "${deleteConfirm.title}" deleted`, 'info');
+      setDeleteConfirm(null);
+      await loadCourses();
+    } catch (error) {
+      showToast('Failed to delete course', 'error');
+    }
   };
 
-  // Duplicate course
-  const handleDuplicate = (course: Course) => {
-    const duplicated: Course = {
-      ...course,
-      id: `course-${Date.now()}`,
-      title: `${course.title} (Copy)`,
-      status: 'draft',
-      enrolledStudents: 0,
-      rating: 0
-    };
-    setCourses(prev => [duplicated, ...prev]);
-    showToast('Course duplicated as draft', 'success');
-    setActiveDropdown(null);
-  };
-
-  // Stats
   const stats = {
     total: courses.length,
-    published: courses.filter(c => c.status === 'published').length,
-    draft: courses.filter(c => c.status === 'draft').length,
-    totalStudents: courses.reduce((sum, c) => sum + c.enrolledStudents, 0)
+    published: courses.filter(c => c.isPublished).length,
+    draft: courses.filter(c => !c.isPublished).length,
+    totalStudents: new Set(
+      courses.flatMap(c => (c.enrolledStudents || []).map((s: any) => s._id || s))
+    ).size,
   };
 
   if (isLoading) return <Loader text="Loading courses..." />;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="page-title">My Courses</h1>
@@ -109,7 +99,6 @@ const TeacherMyCourses: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="text-center p-4">
           <p className="text-2xl font-black text-gray-900">{stats.total}</p>
@@ -129,7 +118,6 @@ const TeacherMyCourses: React.FC = () => {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -150,16 +138,12 @@ const TeacherMyCourses: React.FC = () => {
               <option value="all">All Status</option>
               <option value="published">Published</option>
               <option value="draft">Draft</option>
-              <option value="pending">Pending</option>
             </select>
           </div>
-          <span className="text-sm text-gray-500 self-center">
-            {filtered.length} course(s)
-          </span>
+          <span className="text-sm text-gray-500 self-center">{filtered.length} course(s)</span>
         </div>
       </Card>
 
-      {/* Courses Grid */}
       {filtered.length === 0 ? (
         <Card className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -174,28 +158,30 @@ const TeacherMyCourses: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((course) => (
-            <Card key={course.id} hover className="flex flex-col h-full group">
-              {/* Thumbnail */}
-              <div 
+            <Card key={course._id || course.id} hover className="flex flex-col h-full group">
+              <div
                 className="h-40 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg mb-4 flex items-center justify-center cursor-pointer relative overflow-hidden"
-                onClick={() => navigate(`/teacher/course/${course.id}`)}
+                onClick={() => navigate(`/teacher/course/${course._id || course.id}`)}
               >
-                <span className="text-4xl">📚</span>
+                {course.thumbnail ? (
+                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <span className="text-4xl">📚</span>
+                )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <Eye className="w-8 h-8 text-white" />
                 </div>
               </div>
 
               <div className="flex-1">
-                {/* Status & Level */}
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`badge ${
-                    course.status === 'published' ? 'badge-success' :
-                    course.status === 'draft' ? 'badge-warning' : 'badge-info'
-                  }`}>
-                    {course.status}
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${course.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                    {course.isPublished ? 'published' : 'draft'}
                   </span>
-                  <span className="badge badge-gray capitalize">{course.level}</span>
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
+                    {course.level}
+                  </span>
                   {course.rating > 0 && (
                     <span className="flex items-center gap-1 text-xs text-amber-600">
                       <Star className="w-3 h-3 fill-current" /> {course.rating}
@@ -203,66 +189,54 @@ const TeacherMyCourses: React.FC = () => {
                   )}
                 </div>
 
-                {/* Title & Description */}
-                <h3 
+                <h3
                   className="font-semibold text-gray-800 text-lg mb-2 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => navigate(`/teacher/course/${course.id}`)}
+                  onClick={() => navigate(`/teacher/course/${course._id || course.id}`)}
                 >
                   {course.title}
                 </h3>
                 <p className="text-sm text-gray-500 line-clamp-2 mb-4">{course.description}</p>
 
-                {/* Stats */}
                 <div className="flex items-center gap-4 text-sm text-gray-400">
                   <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4" /> {course.enrolledStudents}
+                    <Users className="w-4 h-4" /> {course.enrolledStudents?.length || 0}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> {course.duration}
+                    <Clock className="w-4 h-4" /> {course.duration || 'N/A'}
                   </span>
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="flex-1"
-                  onClick={() => navigate(`/teacher/course/${course.id}`)}
+                  onClick={() => navigate(`/teacher/course/${course._id || course.id}`)}
                 >
                   <Eye className="w-4 h-4" /> View
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="flex-1"
-                  onClick={() => navigate(`/teacher/course/${course.id}`)}
+                  onClick={() => navigate(`/teacher/course/${course._id || course.id}`)}
                 >
                   <Edit className="w-4 h-4" /> Edit
                 </Button>
-                
-                {/* More Options */}
                 <div className="relative">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveDropdown(activeDropdown === course.id ? null : course.id);
+                      setActiveDropdown(activeDropdown === (course._id || course.id) ? null : (course._id || course.id));
                     }}
                   >
                     <MoreVertical className="w-4 h-4" />
                   </Button>
-                  
-                  {activeDropdown === course.id && (
+                  {activeDropdown === (course._id || course.id) && (
                     <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                      <button
-                        onClick={() => handleDuplicate(course)}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        Duplicate
-                      </button>
                       <button
                         onClick={() => { setDeleteConfirm(course); setActiveDropdown(null); }}
                         className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
@@ -278,7 +252,6 @@ const TeacherMyCourses: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}

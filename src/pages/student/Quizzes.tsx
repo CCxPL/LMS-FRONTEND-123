@@ -7,18 +7,17 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import Loader from '../../components/common/Loader';
 import { useToast } from '../../context/ToastContext';
-import type { Quiz } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
+import { getMyQuizzesApi } from '../../api/quizApi';
 
 const StudentQuizzes: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+
+  const [quizzes, setQuizzes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [viewQuiz, setViewQuiz] = useState<Quiz | null>(null);
+  const [viewQuiz, setViewQuiz] = useState<any | null>(null);
 
   useEffect(() => {
     loadQuizzes();
@@ -26,16 +25,32 @@ const StudentQuizzes: React.FC = () => {
 
   const loadQuizzes = async () => {
     try {
-      const data = await courseService.getQuizzes();
+      const res = await getMyQuizzesApi();
+      const data = (res.data.quizzes || []).map((q: any) => ({
+        id: q._id,
+        title: q.title,
+        courseName: q.course?.title || q.courseName || '',
+        totalQuestions: q.questions?.length || q.totalQuestions || 0,
+        totalMarks: q.totalMarks,
+        duration: q.duration,
+        passingPercentage: q.passingPercentage || 60,
+        maxAttempts: q.maxAttempts || 1,
+        attempts: q.userAttempts || 0,
+        status: q.userAttempts > 0 ? 'completed' : 'not-started',
+        obtainedMarks: q.lastScore ?? undefined,        // actual marks
+        lastPercentage: q.lastPercentage ?? undefined,
+      }));
       setQuizzes(data);
     } catch (error) {
       showToast('Failed to load quizzes', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const filtered = quizzes.filter(q => {
-    const matchesSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       q.courseName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -47,15 +62,15 @@ const StudentQuizzes: React.FC = () => {
     notStarted: quizzes.filter(q => q.status === 'not-started').length,
     avgScore: quizzes.filter(q => q.obtainedMarks !== undefined).length > 0
       ? Math.round(
-          quizzes
-            .filter(q => q.obtainedMarks !== undefined)
-            .reduce((sum, q) => sum + ((q.obtainedMarks! / q.totalMarks) * 100), 0) /
-          quizzes.filter(q => q.obtainedMarks !== undefined).length
-        )
-      : 0
+        quizzes
+          .filter(q => q.obtainedMarks !== undefined)
+          .reduce((sum, q) => sum + q.lastPercentage!, 0) /
+        quizzes.filter(q => q.obtainedMarks !== undefined).length
+      )
+      : 0,
   };
 
-  const handleStartQuiz = (quiz: Quiz) => {
+  const handleStartQuiz = (quiz: any) => {
     if (quiz.attempts >= quiz.maxAttempts) {
       showToast('Maximum attempts reached', 'error');
       return;
@@ -171,7 +186,7 @@ const StudentQuizzes: React.FC = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Your Score</span>
                     <span className="font-bold text-gray-900">
-                      {quiz.obtainedMarks}/{quiz.totalMarks}
+                      {quiz.lastPercentage}%
                     </span>
                   </div>
                 )}
@@ -202,7 +217,7 @@ const StudentQuizzes: React.FC = () => {
                   </Button>
                 ) : (
                   <Button fullWidth onClick={() => handleStartQuiz(quiz)}>
-                    <Play className="w-4 h-4" /> 
+                    <Play className="w-4 h-4" />
                     {quiz.status === 'in-progress' ? 'Continue' : 'Start Quiz'}
                   </Button>
                 )}
@@ -222,24 +237,21 @@ const StudentQuizzes: React.FC = () => {
             </div>
 
             <div className="bg-gray-100 rounded-xl p-8 text-center">
-              <Trophy className={`w-16 h-16 mx-auto mb-4 ${
-                viewQuiz.obtainedMarks !== undefined && 
-                (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
-                  ? 'text-gray-900'
-                  : 'text-gray-400'
-              }`} />
+              <Trophy className={`w-16 h-16 mx-auto mb-4 ${(viewQuiz.lastPercentage ?? 0) >= viewQuiz.passingPercentage
+                ? 'text-gray-900'
+                : 'text-gray-400' 
+                }`} />
               <p className="text-5xl font-bold text-gray-900">
-                {viewQuiz.obtainedMarks}/{viewQuiz.totalMarks}
+                {viewQuiz.lastPercentage}%
               </p>
               <p className="text-lg text-gray-600 mt-2">
-                {Math.round(((viewQuiz.obtainedMarks || 0) / viewQuiz.totalMarks) * 100)}%
+                {viewQuiz.obtainedMarks}/{viewQuiz.totalMarks} marks
               </p>
               <p className="text-sm mt-2 font-medium text-gray-700">
-                {viewQuiz.obtainedMarks !== undefined && 
-                (viewQuiz.obtainedMarks / viewQuiz.totalMarks) >= (viewQuiz.passingPercentage / 100)
+                {viewQuiz.obtainedMarks !== undefined &&
+                  (viewQuiz.lastPercentage ?? 0) >= viewQuiz.passingPercentage
                   ? 'Passed!'
-                  : `Need ${viewQuiz.passingPercentage}% to pass`
-                }
+                  : `Need ${viewQuiz.passingPercentage}% to pass`}
               </p>
             </div>
 
@@ -260,7 +272,7 @@ const StudentQuizzes: React.FC = () => {
 
             <div className="flex gap-3">
               {viewQuiz.attempts < viewQuiz.maxAttempts && (
-                <Button 
+                <Button
                   fullWidth
                   onClick={() => {
                     setViewQuiz(null);

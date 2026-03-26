@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 
 const Toast: React.FC = () => {
   const { toasts, removeToast } = useToast();
-  
+
   if (toasts.length === 0) return null;
 
   const icons = {
@@ -24,13 +24,23 @@ const Toast: React.FC = () => {
   return (
     <div className="fixed top-4 right-4 z-9999 space-y-2 pointer-events-none">
       {toasts.map((t) => (
-        <div 
-          key={t.id} 
+        <div
+          key={t.id}
           className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border text-sm font-medium w-80 animate-slide-in ${styles[t.type]}`}
         >
           <span className="shrink-0">{icons[t.type]}</span>
-          <span className="flex-1">{t.message}</span>
-          <button 
+          <span
+            className={`flex-1 ${t.onClick ? 'cursor-pointer hover:underline' : ''}`}
+            onClick={() => {
+              if (t.onClick) {
+                t.onClick();
+                removeToast(t.id);
+              }
+            }}
+          >
+            {t.message}
+          </span>
+          <button
             onClick={() => removeToast(t.id)}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
           >

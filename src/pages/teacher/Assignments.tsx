@@ -6,137 +6,122 @@ import Input from '../../components/ui/Input';
 import Loader from '../../components/common/Loader';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import type { Assignment } from '../../types/course.types';
-import { courseService } from '../../services/courseService';
 import { useToast } from '../../context/ToastContext';
+import {
+  getTeacherAssignmentsApi,
+  createAssignmentApi,
+  deleteAssignmentApi,
+} from '../../api/assignmentApi';
+import { getTeacherCoursesApi } from '../../api/teacherApi';
 
 const TeacherAssignments: React.FC = () => {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [viewAssignment, setViewAssignment] = useState<Assignment | null>(null);
-  const [editAssignment, setEditAssignment] = useState<Assignment | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Assignment | null>(null);
-  
+  const [viewAssignment, setViewAssignment] = useState<any | null>(null);
+  const [editAssignment, setEditAssignment] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    courseName: '',
     courseId: '',
     dueDate: '',
-    totalMarks: 100
+    totalMarks: 100,
   });
-
+  
   const { showToast } = useToast();
 
   useEffect(() => {
-    loadAssignments();
+    loadData();
   }, []);
 
-  const loadAssignments = async () => {
+  const loadData = async () => {
     try {
-      const data = await courseService.getAssignments();
-      setAssignments(data);
+      const [assignRes, courseRes] = await Promise.all([
+        getTeacherAssignmentsApi(),
+        getTeacherCoursesApi(),
+      ]);
+      setAssignments(assignRes.data?.assignments || []);
+      setCourses(courseRes.data?.courses || []);
     } catch (error) {
-      showToast('Failed to load assignments', 'error');
+      showToast('Failed to load data', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadAssignments();
+    await loadData();
     setIsRefreshing(false);
     showToast('Assignments refreshed', 'success');
   };
 
   const filtered = assignments.filter(a => {
-    const matchesSearch = a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.courseName.toLowerCase().includes(searchTerm.toLowerCase());
+    const courseName = a.course?.title || a.courseName || '';
+    const matchesSearch =
+      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      courseName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.courseId || !formData.dueDate) {
       showToast('Please fill all required fields', 'error');
       return;
     }
-
-    const newAssignment: Assignment = {
-      id: `assignment-${Date.now()}`,
-      title: formData.title,
-      description: formData.description,
-      courseName: formData.courseName,
-      courseId: formData.courseId,
-      dueDate: formData.dueDate,
-      totalMarks: formData.totalMarks,
-      status: 'pending',
-      submissionsCount: 0,
-      createdAt: new Date().toISOString()
-    };
-
-    setAssignments(prev => [newAssignment, ...prev]);
-    showToast('Assignment created successfully!', 'success');
-    setIsCreateModalOpen(false);
-    resetForm();
+    setIsSubmitting(true);
+    try {
+      await createAssignmentApi({
+        title: formData.title,
+        courseId: formData.courseId,
+        dueDate: formData.dueDate,
+        description: formData.description,
+        totalMarks: formData.totalMarks,
+      });
+      showToast('Assignment created successfully!', 'success');
+      setIsCreateModalOpen(false);
+      resetForm();
+      await loadData();
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to create assignment', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editAssignment) return;
-
-    setAssignments(prev => prev.map(a => 
-      a.id === editAssignment.id 
-        ? { ...a, ...formData }
-        : a
-    ));
-    showToast('Assignment updated successfully!', 'success');
-    setEditAssignment(null);
-    resetForm();
-  };
-
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteConfirm) return;
-    setAssignments(prev => prev.filter(a => a.id !== deleteConfirm.id));
-    showToast('Assignment deleted successfully', 'info');
-    setDeleteConfirm(null);
-  };
-
-  const openEditModal = (assignment: Assignment) => {
-    setFormData({
-      title: assignment.title,
-      description: assignment.description || '',
-      courseName: assignment.courseName,
-      courseId: assignment.courseId,
-      dueDate: assignment.dueDate,
-      totalMarks: assignment.totalMarks
-    });
-    setEditAssignment(assignment);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      courseName: '',
-      courseId: '',
-      dueDate: '',
-      totalMarks: 100
-    });
+    try {
+      await deleteAssignmentApi(deleteConfirm._id || deleteConfirm.id);
+      showToast('Assignment deleted successfully', 'info');
+      setDeleteConfirm(null);
+      await loadData();
+    } catch (error) {
+      showToast('Failed to delete assignment', 'error');
+    }
   };
 
   const handleExport = () => {
     const csv = [
-      ['Title', 'Course', 'Due Date', 'Marks', 'Status', 'Submissions'].join(','),
-      ...filtered.map(a => [a.title, a.courseName, a.dueDate, a.totalMarks, a.status, a.submissionsCount || 0].join(','))
+      ['Title', 'Course', 'Due Date', 'Marks', 'Status'].join(','),
+      ...filtered.map(a => [
+        a.title,
+        a.course?.title || a.courseName || '',
+        a.dueDate ? new Date(a.dueDate).toLocaleDateString() : 'N/A',
+        a.totalMarks,
+        a.status || 'pending',
+      ].join(','))
     ].join('\n');
-    
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -146,15 +131,19 @@ const TeacherAssignments: React.FC = () => {
     showToast('Assignments exported', 'success');
   };
 
+  const resetForm = () => {
+    setFormData({ title: '', description: '', courseId: '', dueDate: '', totalMarks: 100 });
+  };
+
   const stats = {
     total: assignments.length,
-    pending: assignments.filter(a => a.status === 'pending').length,
+    pending: assignments.filter(a => a.status === 'pending' || !a.status).length,
     submitted: assignments.filter(a => a.status === 'submitted').length,
-    graded: assignments.filter(a => a.status === 'graded').length
+    graded: assignments.filter(a => a.status === 'graded').length,
   };
 
   const getStatusStyle = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'submitted': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'graded': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -167,7 +156,6 @@ const TeacherAssignments: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
@@ -186,7 +174,6 @@ const TeacherAssignments: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="text-center p-4">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -206,7 +193,6 @@ const TeacherAssignments: React.FC = () => {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -231,13 +217,10 @@ const TeacherAssignments: React.FC = () => {
               <option value="overdue">Overdue</option>
             </select>
           </div>
-          <span className="text-sm text-gray-500 self-center">
-            {filtered.length} assignment(s)
-          </span>
+          <span className="text-sm text-gray-500 self-center">{filtered.length} assignment(s)</span>
         </div>
       </Card>
 
-      {/* Assignments List */}
       {filtered.length === 0 ? (
         <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -264,7 +247,7 @@ const TeacherAssignments: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((assignment) => (
-                  <tr key={assignment.id} className="hover:bg-gray-50 transition-colors group">
+                  <tr key={assignment._id || assignment.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-medium text-gray-900">{assignment.title}</p>
@@ -274,11 +257,12 @@ const TeacherAssignments: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-gray-600">{assignment.courseName}</span>
+                      <span className="text-sm text-gray-600">{assignment.course?.title || assignment.courseName || ''}</span>
                     </td>
                     <td className="px-4 py-4 text-center">
                       <span className="text-sm text-gray-600 flex items-center justify-center gap-1">
-                        <Calendar className="w-3 h-3" /> {assignment.dueDate}
+                        <Calendar className="w-3 h-3" />
+                        {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
@@ -290,8 +274,8 @@ const TeacherAssignments: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full border ${getStatusStyle(assignment.status)}`}>
-                        {assignment.status}
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full border ${getStatusStyle(assignment.status || 'pending')}`}>
+                        {assignment.status || 'pending'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -302,13 +286,6 @@ const TeacherAssignments: React.FC = () => {
                           title="View"
                         >
                           <Eye className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(assignment)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Pencil className="w-4 h-4 text-gray-500" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(assignment)}
@@ -328,25 +305,25 @@ const TeacherAssignments: React.FC = () => {
       )}
 
       {/* Create Modal */}
-      <Modal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => { setIsCreateModalOpen(false); resetForm(); }} 
-        title="Create Assignment" 
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => { setIsCreateModalOpen(false); resetForm(); }}
+        title="Create Assignment"
         size="lg"
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <Input 
-            label="Assignment Title *" 
-            placeholder="Enter assignment title" 
+          <Input
+            label="Assignment Title *"
+            placeholder="Enter assignment title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            required 
+            required
           />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea 
-              className="input-field min-h-[100px]" 
-              placeholder="Describe the assignment..." 
+            <textarea
+              className="input-field min-h-[100px]"
+              placeholder="Describe the assignment..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
@@ -354,134 +331,72 @@ const TeacherAssignments: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Due Date *</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="input-field"
                 value={formData.dueDate}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                required 
+                required
               />
             </div>
-            <Input 
-              label="Total Marks *" 
-              type="number" 
-              placeholder="100" 
+            <Input
+              label="Total Marks *"
+              type="number"
+              placeholder="100"
               value={formData.totalMarks}
               onChange={(e) => setFormData({ ...formData, totalMarks: parseInt(e.target.value) || 0 })}
-              required 
+              required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Course *</label>
-            <select 
-              className="input-field" 
+            <select
+              className="input-field"
               value={formData.courseId}
-              onChange={(e) => {
-                const selected = e.target.selectedOptions[0];
-                setFormData({ 
-                  ...formData, 
-                  courseId: e.target.value,
-                  courseName: selected?.text || ''
-                });
-              }}
+              onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
               required
             >
               <option value="">Select Course</option>
-              <option value="1">React.js Complete Course</option>
-              <option value="2">Python for Data Science</option>
-              <option value="3">Node.js Backend Development</option>
+              {courses.map((c: any) => (
+                <option key={c._id} value={c._id}>{c.title}</option>
+              ))}
             </select>
           </div>
           <div className="flex gap-3 pt-4">
-            <Button type="submit" className="flex-1">Create Assignment</Button>
-            <Button type="button" variant="secondary" onClick={() => { setIsCreateModalOpen(false); resetForm(); }}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal 
-        isOpen={!!editAssignment} 
-        onClose={() => { setEditAssignment(null); resetForm(); }} 
-        title="Edit Assignment" 
-        size="lg"
-      >
-        <form onSubmit={handleEdit} className="space-y-4">
-          <Input 
-            label="Assignment Title *" 
-            placeholder="Enter assignment title" 
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            required 
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea 
-              className="input-field min-h-[100px]" 
-              placeholder="Describe the assignment..." 
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Due Date *</label>
-              <input 
-                type="date" 
-                className="input-field"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                required 
-              />
-            </div>
-            <Input 
-              label="Total Marks *" 
-              type="number" 
-              placeholder="100" 
-              value={formData.totalMarks}
-              onChange={(e) => setFormData({ ...formData, totalMarks: parseInt(e.target.value) || 0 })}
-              required 
-            />
-          </div>
-          <div className="flex gap-3 pt-4">
-            <Button type="submit" className="flex-1">Save Changes</Button>
-            <Button type="button" variant="secondary" onClick={() => { setEditAssignment(null); resetForm(); }}>
-              Cancel
-            </Button>
+            <Button type="submit" className="flex-1" isLoading={isSubmitting}>Create Assignment</Button>
+            <Button type="button" variant="secondary" onClick={() => { setIsCreateModalOpen(false); resetForm(); }}>Cancel</Button>
           </div>
         </form>
       </Modal>
 
       {/* View Modal */}
-      <Modal 
-        isOpen={!!viewAssignment} 
-        onClose={() => setViewAssignment(null)} 
-        title="Assignment Details" 
+      <Modal
+        isOpen={!!viewAssignment}
+        onClose={() => setViewAssignment(null)}
+        title="Assignment Details"
         size="md"
       >
         {viewAssignment && (
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-bold text-lg text-gray-900">{viewAssignment.title}</h3>
-              <p className="text-sm text-gray-500">{viewAssignment.courseName}</p>
-              <span className={`text-xs font-medium px-2 py-1 rounded-full border mt-2 inline-block ${getStatusStyle(viewAssignment.status)}`}>
-                {viewAssignment.status}
+              <p className="text-sm text-gray-500">{viewAssignment.course?.title || viewAssignment.courseName || ''}</p>
+              <span className={`text-xs font-medium px-2 py-1 rounded-full border mt-2 inline-block ${getStatusStyle(viewAssignment.status || 'pending')}`}>
+                {viewAssignment.status || 'pending'}
               </span>
             </div>
-            
             {viewAssignment.description && (
               <div>
                 <h4 className="text-sm font-bold text-gray-900 mb-1">Description</h4>
                 <p className="text-sm text-gray-600">{viewAssignment.description}</p>
               </div>
             )}
-
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <Calendar className="w-5 h-5 text-gray-500 mx-auto mb-1" />
-                <p className="font-bold text-gray-900">{viewAssignment.dueDate}</p>
+                <p className="font-bold text-gray-900">
+                  {viewAssignment.dueDate ? new Date(viewAssignment.dueDate).toLocaleDateString() : 'N/A'}
+                </p>
                 <p className="text-xs text-gray-500">Due Date</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -490,26 +405,16 @@ const TeacherAssignments: React.FC = () => {
                 <p className="text-xs text-gray-500">Total Marks</p>
               </div>
             </div>
-
             <div className="bg-blue-50 rounded-lg p-3 text-center">
               <Users className="w-5 h-5 text-blue-500 mx-auto mb-1" />
               <p className="font-bold text-blue-600">{viewAssignment.submissionsCount || 0}</p>
               <p className="text-xs text-blue-600">Submissions</p>
             </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button className="flex-1" onClick={() => { setViewAssignment(null); openEditModal(viewAssignment); }}>
-                <Pencil className="w-4 h-4" /> Edit
-              </Button>
-              <Button variant="secondary" onClick={() => setViewAssignment(null)}>
-                Close
-              </Button>
-            </div>
+            <Button variant="secondary" fullWidth onClick={() => setViewAssignment(null)}>Close</Button>
           </div>
         )}
       </Modal>
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}

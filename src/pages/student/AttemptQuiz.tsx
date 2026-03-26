@@ -1,59 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Clock, CheckCircle, ArrowLeft, ArrowRight, } from 'lucide-react';
+import { Clock, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Loader from '../../components/common/Loader';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import { useAuth } from '../../hooks/useAuth'; 
-import { courseService } from '../../services/courseService';
-import type { QuizQuestion } from '../../types/course.types';
+import { getQuizByIdApi, attemptQuizApi } from '../../api/quizApi';
 
 const AttemptQuiz: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth(); // Getting user details
 
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [quizTitle, setQuizTitle] = useState('');
+  const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [timeLeft, setTimeLeft] = useState(1800);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     loadQuizData();
   }, [id]);
 
   useEffect(() => {
+    if (submitted) return;
     if (timeLeft <= 0) {
       handleSubmit();
       return;
     }
     const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+      setTimeLeft(prev => prev - 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, submitted]);
 
   const loadQuizData = async () => {
-    setTimeout(() => {
-      setQuestions([
-        { id: '1', question: 'What is React?', options: ['Database', 'JavaScript Library', 'CSS Framework', 'OS'], correctAnswer: 1, marks: 10 },
-        { id: '2', question: 'What is JSX?', options: ['JavaScript XML', 'Java Extension', 'JSON Extra', 'Java Syntax'], correctAnswer: 0, marks: 10 },
-        { id: '3', question: 'Which hook manages state in React?', options: ['useEffect', 'useContext', 'useState', 'useRef'], correctAnswer: 2, marks: 10 },
-        { id: '4', question: 'What does useEffect do?', options: ['Manages state', 'Handles side effects', 'Creates context', 'Routes pages'], correctAnswer: 1, marks: 10 },
-        { id: '5', question: 'React is developed by?', options: ['Google', 'Microsoft', 'Facebook/Meta', 'Apple'], correctAnswer: 2, marks: 10 },
-      ]);
+    if (!id) return;
+    try {
+      const res = await getQuizByIdApi(id);
+      const quiz = res.data.quiz;
+      setQuizTitle(quiz.title);
+      setTimeLeft((quiz.timeLimit || quiz.duration || 30) * 60);
+      const mapped = (quiz.questions || []).map((q: any) => ({
+        id: q._id || q.id,
+        question: q.question,
+        options: q.options,
+        marks: q.marks || q.points || 10,
+      }));
+      setQuestions(mapped);
+    } catch (error) {
+      showToast('Failed to load quiz', 'error');
+      navigate('/student/quizzes');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleOptionSelect = (optionIndex: number) => {
-    setAnswers((prev) => ({
+    setAnswers(prev => ({
       ...prev,
       [questions[currentQuestion].id]: optionIndex,
     }));
@@ -61,54 +70,49 @@ const AttemptQuiz: React.FC = () => {
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion((prev) => prev + 1);
+      setCurrentQuestion(prev => prev + 1);
     }
   };
 
   const handlePrev = () => {
     if (currentQuestion > 0) {
-      setCurrentQuestion((prev) => prev - 1);
+      setCurrentQuestion(prev => prev - 1);
     }
-  };
-
-  const calculateScore = () => {
-    let score = 0;
-    let totalMarks = 0;
-    questions.forEach((q) => {
-      totalMarks += q.marks;
-      if (answers[q.id] === q.correctAnswer) {
-        score += q.marks;
-      }
-    });
-    return { score, totalMarks };
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting || submitted) return;
     setIsSubmitting(true);
-    const { score, totalMarks } = calculateScore();
-    const percentage = Math.round((score / totalMarks) * 100);
+    setSubmitted(true);
+    setShowConfirmSubmit(false);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const answersPayload = questions.map(q => ({
+        questionId: q.id,
+        selectedAnswer: answers[q.id] ?? -1,
+      }));
 
-    if (courseService.submitQuiz) {
-      await courseService.submitQuiz(id || '', score);
+      const res = await attemptQuizApi(id!, { answers: answersPayload });
+
+      // ✅ Fix: backend res.data.attempt mein data bhejta hai
+      const attempt = res.data?.attempt ?? res.data ?? {};
+      const score = attempt.score ?? 0;
+      const totalPoints = attempt.totalPoints ?? questions.reduce((sum: number, q: any) => sum + q.marks, 0);
+      const percentage = attempt.percentage ?? (totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0);
+      const passed = attempt.passed ?? percentage >= 60;
+
+      if (passed) {
+        showToast(`Passed! You scored ${score}/${totalPoints} (${percentage}%) 🎉`, 'success');
+      } else {
+        showToast(`You scored ${score}/${totalPoints} (${percentage}%). Keep practicing!`, 'info');
+      }
+
+      navigate('/student/quizzes');
+    } catch (error) {
+      showToast('Failed to submit quiz. Please try again.', 'error');
+      setIsSubmitting(false);
+      setSubmitted(false);
     }
-
-    // ✅ UPDATE LEADERBOARD POINTS (Local Storage Logic)
-    if (user) {
-      const currentPoints = parseInt(localStorage.getItem(`points_${user.id}`) || '0');
-      const newPoints = currentPoints + score;
-      localStorage.setItem(`points_${user.id}`, newPoints.toString());
-    }
-
-    if (percentage >= 60) {
-      showToast(`Passed! You earned ${score} points! 🎉`, 'success');
-    } else {
-      showToast(`You scored ${score} points. Keep practicing!`, 'info');
-    }
-
-    navigate('/student/quizzes');
   };
 
   const formatTime = (seconds: number) => {
@@ -119,7 +123,18 @@ const AttemptQuiz: React.FC = () => {
 
   if (isLoading) return <Loader text="Loading quiz..." fullScreen />;
 
-  const progress = ((Object.keys(answers).length) / questions.length) * 100;
+  if (questions.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-gray-500">No questions found for this quiz.</p>
+        <Button className="mt-4" onClick={() => navigate('/student/quizzes')}>
+          Back to Quizzes
+        </Button>
+      </div>
+    );
+  }
+
+  const progress = (Object.keys(answers).length / questions.length) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -127,21 +142,20 @@ const AttemptQuiz: React.FC = () => {
       <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold text-gray-900">React Basics Quiz</h1>
+            <h1 className="text-lg font-bold text-gray-900">{quizTitle}</h1>
             <span className="text-sm text-gray-500">
               Question {currentQuestion + 1} of {questions.length}
             </span>
           </div>
-          <div className={`flex items-center gap-2 font-mono font-bold text-lg ${
-            timeLeft < 300 ? 'text-red-600 animate-pulse' : 'text-gray-700'
-          }`}>
+          <div className={`flex items-center gap-2 font-mono font-bold text-lg ${timeLeft < 300 ? 'text-red-600 animate-pulse' : 'text-gray-700'
+            }`}>
             <Clock className="w-5 h-5" />
             {formatTime(timeLeft)}
           </div>
         </div>
         {/* Progress Bar */}
         <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100">
-          <div 
+          <div
             className="h-full bg-black transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
@@ -161,17 +175,16 @@ const AttemptQuiz: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {questions[currentQuestion].options.map((option, idx) => {
+            {questions[currentQuestion].options.map((option: string, idx: number) => {
               const isSelected = answers[questions[currentQuestion].id] === idx;
               return (
                 <button
                   key={idx}
                   onClick={() => handleOptionSelect(idx)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between group ${
-                    isSelected
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between group ${isSelected
                       ? 'border-black bg-gray-50 text-black font-medium'
                       : 'border-gray-200 hover:border-gray-400 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <span>{option}</span>
                   {isSelected && <CheckCircle className="w-5 h-5 text-black" />}
@@ -199,7 +212,7 @@ const AttemptQuiz: React.FC = () => {
               Submit Quiz
             </Button>
           ) : (
-            <Button 
+            <Button
               onClick={handleNext}
               icon={<ArrowRight className="w-4 h-4" />}
               iconPosition="right"
@@ -222,22 +235,14 @@ const AttemptQuiz: React.FC = () => {
             <CheckCircle className="w-8 h-8 text-gray-700" />
           </div>
           <p className="text-gray-600 mb-6">
-            You have answered <strong>{Object.keys(answers).length}</strong> out of <strong>{questions.length}</strong> questions.
-            Are you sure you want to submit?
+            You have answered <strong>{Object.keys(answers).length}</strong> out of{' '}
+            <strong>{questions.length}</strong> questions. Are you sure you want to submit?
           </p>
           <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              fullWidth
-              onClick={() => setShowConfirmSubmit(false)}
-            >
+            <Button variant="outline" fullWidth onClick={() => setShowConfirmSubmit(false)}>
               Review Answers
             </Button>
-            <Button 
-              fullWidth
-              onClick={handleSubmit}
-              isLoading={isSubmitting}
-            >
+            <Button fullWidth onClick={handleSubmit} isLoading={isSubmitting}>
               Yes, Submit
             </Button>
           </div>

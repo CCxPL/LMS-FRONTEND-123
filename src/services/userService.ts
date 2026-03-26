@@ -1,188 +1,114 @@
-import type { User, Admin, Teacher, Student } from '../types/user.types';
 import type { UserRole } from '../types/auth.types';
-import { MOCK_USERS_DATA } from '../utils/constants';
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// ✅ ADDED: Generate default password (1-8 digits based on user ID)
-const generateDefaultPassword = (userId: string): string => {
-  const last8 = userId.slice(-8).replace(/[^0-9]/g, '');
-  return last8.padStart(8, '1'); // Minimum 8 digits: "12345678"
-};
-
-let users: User[] = [...MOCK_USERS_DATA as User[]];
+import {
+  getAllUsersApi,
+  getUserByIdApi,
+  updateUserApi,
+  deleteUserApi,
+} from '../api/userApi';
+import { getAdminStudentsApi, getAdminTeachersApi } from '../api/adminApi';
 
 const isUserNew = (createdAt: string) => {
   const diffTime = Math.abs(new Date().getTime() - new Date(createdAt).getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays <= 3;
 };
 
+const mapUser = (u: any) => ({
+  id: u._id,
+  name: u.name,
+  email: u.email,
+  role: u.role?.toLowerCase().replace('superadmin', 'super-admin'),
+  status: u.status || 'active',
+  createdAt: u.createdAt,
+  phone: u.phone,
+  avatar: u.avatar,
+  mustChangePassword: u.mustChangePassword || false,
+});
+
 export const userService = {
-  getAllUsers: async (): Promise<User[]> => {
-    await delay(500);
-    return users;
+  getAllUsers: async () => {
+    const res = await getAllUsersApi();
+    return res.data.users.map(mapUser);
   },
 
-  // ✅ UPDATED: Add mustChangePassword and defaultPassword
-  importBulkUsers: async (newUsers: any[]): Promise<{ added: number; roles: Record<string, number> }> => {
-    await delay(800);
-    
-    const counts: Record<string, number> = { student: 0, teacher: 0, admin: 0, 'super-admin': 0 };
-    
-    const formattedUsers: User[] = newUsers.map((u, idx) => {
-      let role = (u.role?.toLowerCase() || 'student') as UserRole;
-      if (!['student', 'teacher', 'admin', 'super-admin'].includes(role)) {
-        role = 'student';
-      }
-
-      if (counts[role] !== undefined) counts[role]++;
-
-      const userId = `imported-${Date.now()}-${idx}`;
-      const defaultPassword = generateDefaultPassword(userId); // ✅ ADDED
-
-      return {
-        id: userId,
-        name: u.name || 'Unknown User',
-        email: u.email || `user${idx}@university.com`,
-        role: role,
-        status: (u.status?.toLowerCase() === 'active' ? 'active' : 'pending') as User['status'],
-        createdAt: new Date().toISOString(),
-        phone: u.phone || '',
-        avatar: '',
-        mustChangePassword: true, // ✅ ADDED
-        defaultPassword: defaultPassword, // ✅ ADDED
-        specialization: role === 'teacher' ? u.specialization || 'General' : undefined,
-        permissions: role === 'admin' ? ['view-analytics'] : undefined
-      } as User;
-    });
-
-    users = [...formattedUsers, ...users];
-
-    return { added: formattedUsers.length, roles: counts };
+  getTeachers: async () => {
+    const res = await getAdminTeachersApi();
+    return res.data.teachers.map((u: any) => ({
+      ...mapUser(u),
+      specialization: u.specialization || 'General',
+      coursesCount: u.coursesCount || 0,
+      studentsCount: u.studentsCount || 0,
+      rating: u.rating || 0,
+      joinedDate: u.createdAt,
+      bio: u.bio,
+      isNew: isUserNew(u.createdAt),
+    }));
   },
 
-  getTeachers: async (): Promise<(Teacher & { isNew: boolean })[]> => {
-    await delay(400);
-    return users
-      .filter((u): u is User & { role: 'teacher' } => u.role === 'teacher')
-      .map(u => ({
-        ...u,
-        specialization: (u as any).specialization || 'General',
-        coursesCount: (u as any).coursesCount || 0,
-        studentsCount: (u as any).studentsCount || 0,
-        rating: (u as any).rating || 0,
-        joinedDate: u.createdAt,
-        bio: (u as any).bio,
-        isNew: isUserNew(u.createdAt)
-      } as Teacher & { isNew: boolean }));
+  getStudents: async () => {
+    const res = await getAdminStudentsApi();
+    return res.data.students.map((u: any) => ({
+      ...mapUser(u),
+      enrolledCourses: u.enrolledCourses || 0,
+      completedCourses: u.completedCourses || 0,
+      averageScore: u.averageScore || 0,
+      grade: u.grade || 'N/A',
+      totalSpent: u.totalSpent || 0,
+      isNew: isUserNew(u.createdAt),
+    }));
   },
 
-  getStudents: async (): Promise<(Student & { isNew: boolean })[]> => {
-    await delay(400);
-    return users
-      .filter((u): u is User & { role: 'student' } => u.role === 'student')
-      .map(u => ({
-        ...u,
-        enrolledCourses: (u as any).enrolledCourses || 0,
-        completedCourses: (u as any).completedCourses || 0,
-        averageScore: (u as any).averageScore || 0,
-        grade: (u as any).grade || 'N/A',
-        totalSpent: (u as any).totalSpent || 0,
-        isNew: isUserNew(u.createdAt)
-      } as Student & { isNew: boolean }));
+  getAdmins: async () => {
+    const res = await getAllUsersApi();
+    return res.data.users
+      .filter((u: any) => u.role === 'Admin' || u.role === 'SuperAdmin')
+      .map((u: any) => ({
+        ...mapUser(u),
+        permissions: u.permissions || ['manage-teachers', 'manage-courses', 'manage-students', 'view-analytics'],
+        managedTeachers: u.managedTeachers || 0,
+        managedStudents: u.managedStudents || 0,
+        isNew: isUserNew(u.createdAt),
+      }));
   },
 
-  getAdmins: async (): Promise<(Admin & { isNew: boolean })[]> => {
-    await delay(400);
-    return users
-      .filter((u): u is User & { role: 'admin' | 'super-admin' } => u.role === 'admin' || u.role === 'super-admin')
-      .map(u => ({
-        ...u,
-        permissions: (u as any).permissions || ['manage-teachers', 'manage-courses', 'manage-students', 'view-analytics'],
-        managedTeachers: (u as any).managedTeachers || 0,
-        managedStudents: (u as any).managedStudents || 0,
-        isNew: isUserNew(u.createdAt)
-      } as Admin & { isNew: boolean }));
+  getUserById: async (id: string) => {
+    const res = await getUserByIdApi(id);
+    return mapUser(res.data.user);
   },
 
-  getUserById: async (id: string): Promise<User | undefined> => {
-    await delay(300);
-    return users.find(u => u.id === id);
+  updateUser: async (id: string, updates: any) => {
+    const res = await updateUserApi(id, updates);
+    return mapUser(res.data.user);
   },
 
-  // ✅ UPDATED: Add mustChangePassword and defaultPassword on creation
-  createUser: async (userData: Partial<User>): Promise<User> => {
-    await delay(500);
-    
-    const userId = Date.now().toString();
-    const defaultPassword = generateDefaultPassword(userId); // ✅ ADDED
-    
-    const newUser: User = {
-      id: userId,
-      name: userData.name || 'Unknown User',
-      email: userData.email || '',
-      role: (userData.role as UserRole) || 'student',
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      phone: userData.phone,
-      avatar: userData.avatar,
-      mustChangePassword: true, // ✅ ADDED
-      defaultPassword: defaultPassword // ✅ ADDED
-    };
-    
-    users = [newUser, ...users];
-    return newUser;
+  deleteUser: async (id: string) => {
+    await deleteUserApi(id);
+    return true;
   },
 
-  updateUser: async (id: string, updates: Partial<User>): Promise<User | null> => {
-    await delay(400);
-    const index = users.findIndex(u => u.id === id);
-    if (index === -1) return null;
-    
-    users[index] = { ...users[index], ...updates };
-    return users[index];
+  updateUserStatus: async (id: string, status: string) => {
+    const res = await updateUserApi(id, { status });
+    return mapUser(res.data.user);
   },
 
-  deleteUser: async (id: string): Promise<boolean> => {
-    await delay(400);
-    const initialLength = users.length;
-    users = users.filter(u => u.id !== id);
-    return users.length < initialLength;
-  },
-
-  updateUserStatus: async (id: string, status: User['status']): Promise<User | null> => {
-    await delay(300);
-    const index = users.findIndex(u => u.id === id);
-    if (index === -1) return null;
-    
-    users[index] = { ...users[index], status };
-    return users[index];
-  },
-
-  searchUsers: async (query: string): Promise<User[]> => {
-    await delay(300);
-    const lowerQuery = query.toLowerCase();
-    return users.filter(u => 
-      u.name.toLowerCase().includes(lowerQuery) ||
-      u.email.toLowerCase().includes(lowerQuery)
-    );
-  },
-
-  getUsersByRole: async (role: UserRole): Promise<User[]> => {
-    await delay(300);
-    return users.filter(u => u.role === role);
+  getUsersByRole: async (role: UserRole) => {
+    const res = await getAllUsersApi();
+    const backendRole = role === 'super-admin' ? 'SuperAdmin' : role.charAt(0).toUpperCase() + role.slice(1);
+    return res.data.users
+      .filter((u: any) => u.role === backendRole)
+      .map(mapUser);
   },
 
   getStats: async () => {
-    await delay(300);
+    const res = await getAllUsersApi();
+    const users = res.data.users;
     return {
       totalUsers: users.length,
-      totalTeachers: users.filter(u => u.role === 'teacher').length,
-      totalStudents: users.filter(u => u.role === 'student').length,
-      totalAdmins: users.filter(u => u.role === 'admin' || u.role === 'super-admin').length,
-      activeUsers: users.filter(u => u.status === 'active').length,
-      suspendedUsers: users.filter(u => u.status === 'suspended').length
+      totalTeachers: users.filter((u: any) => u.role === 'Teacher').length,
+      totalStudents: users.filter((u: any) => u.role === 'Student').length,
+      totalAdmins: users.filter((u: any) => u.role === 'Admin' || u.role === 'SuperAdmin').length,
+      activeUsers: users.filter((u: any) => u.status === 'active').length,
+      suspendedUsers: users.filter((u: any) => u.status === 'suspended').length,
     };
-  }
+  },
 };

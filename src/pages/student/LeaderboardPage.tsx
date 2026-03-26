@@ -1,15 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Leaderboard from '../../components/ui/Leaderboard';
 import Card from '../../components/ui/Card';
+import { getMyEnrolledCoursesApi } from '../../api/studentApi';
+
+interface Course {
+  id: string;
+  name: string;
+}
 
 const LeaderboardPage: React.FC = () => {
-  const [selectedCourse, setSelectedCourse] = useState('1');
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const courses = [
-    { id: '1', name: 'React.js Complete Course' },
-    { id: '2', name: 'Python for Data Science' },
-    { id: '3', name: 'AWS Cloud Practitioner' }
-  ];
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const res = await getMyEnrolledCoursesApi();
+      const raw: any[] = res.data?.courses ?? [];
+      const mapped: Course[] = raw.map((c: any) => ({
+        id: c._id,
+        name: c.title,
+      }));
+      setCourses(mapped);
+      if (mapped.length > 0) setSelectedCourse(mapped[0].id);
+    } catch (err) {
+      console.error('Courses fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -25,27 +49,40 @@ const LeaderboardPage: React.FC = () => {
         <div className="space-y-4">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Select Course</h3>
-            <div className="space-y-2">
-              {courses.map((course) => (
-                <button
-                  key={course.id}
-                  onClick={() => setSelectedCourse(course.id)}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    selectedCourse === course.id
-                      ? 'bg-black text-white shadow-md'
-                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {course.name}
-                </button>
-              ))}
-            </div>
+            {loading ? (
+              <div className="flex items-center justify-center h-20">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900" />
+              </div>
+            ) : courses.length === 0 ? (
+              <p className="text-sm text-gray-400">No courses enrolled yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {courses.map((course) => (
+                  <button
+                    key={course.id}
+                    onClick={() => setSelectedCourse(course.id)}
+                    className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${selectedCourse === course.id
+                        ? 'bg-black text-white shadow-md'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                  >
+                    {course.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
-        {/* Right: Leaderboard Display */}
+        {/* Right: Leaderboard */}
         <div className="lg:col-span-2">
-          <Leaderboard courseId={selectedCourse} />
+          {selectedCourse ? (
+            <Leaderboard courseId={selectedCourse} />
+          ) : (
+            <Card className="h-full flex items-center justify-center">
+              <p className="text-gray-400">Select a course to view leaderboard.</p>
+            </Card>
+          )}
         </div>
       </div>
     </div>

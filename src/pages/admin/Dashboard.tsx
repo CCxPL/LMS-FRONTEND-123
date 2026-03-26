@@ -7,6 +7,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { getActivitiesApi } from '../../api/activityApi';
 import {
   Users,
   GraduationCap,
@@ -21,9 +22,11 @@ import {
   Eye,
   Bell
 } from 'lucide-react';
+import { getAdminDashboardApi } from '../../api/dashboardApi';
+import { approveCourseApi, rejectCourseApi, getPendingCoursesApi } from '../../api/adminApi';
 
 interface PendingItem {
-  id: number;
+  id: string;
   type: 'Course' | 'Teacher';
   title: string;
   by: string;
@@ -35,60 +38,101 @@ interface PendingItem {
 const AdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dashData, setDashData] = useState<any>(null);
+  const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
+  const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [pendingItems, setPendingItems] = useState<PendingItem[]>([
-    { id: 1, type: 'Course', title: 'Advanced Node.js', by: 'Prof. Ahmad', date: '2h ago', avatar: 'PA', description: 'Complete Node.js course.' },
-    { id: 2, type: 'Teacher', title: 'New Instructor', by: 'Dr. Sarah', date: '5h ago', avatar: 'DS', description: 'Dr. Sarah applied as instructor.' },
-    { id: 3, type: 'Course', title: 'Docker Basics', by: 'Eng. Hassan', date: '1d ago', avatar: 'EH', description: 'Docker for beginners.' },
-  ]);
-
-  const [liveFeed, setLiveFeed] = useState([
-    { id: 1, text: 'New student registration', time: '2m ago' },
-    { id: 2, text: 'Course "React" updated', time: '15m ago' },
-    { id: 3, text: 'Server backup completed', time: '1h ago' },
-    { id: 4, text: '5 assignments submitted', time: '2h ago' },
-  ]);
-
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ item: PendingItem; action: 'approve' | 'reject' } | null>(null);
 
+  const fetchDashboard = async () => {
+    try {
+      const [dashRes, pendingRes, activityRes] = await Promise.all([
+        getAdminDashboardApi(),
+        getPendingCoursesApi(),
+        getActivitiesApi({ limit: 5 }),
+      ]);
+
+      setDashData(dashRes.data);
+
+      const pending: PendingItem[] = (pendingRes.data.courses || []).map((c: any) => ({
+        id: c._id,
+        type: 'Course' as const,
+        title: c.title,
+        by: c.teacher?.name || 'Unknown',
+        date: new Date(c.createdAt).toLocaleDateString(),
+        avatar: (c.teacher?.name || 'UN').substring(0, 2).toUpperCase(),
+        description: c.description,
+      }));
+
+      setPendingItems(pending);
+
+      const feed = (activityRes.data?.activities || []).map((a: any) => ({
+        id: a._id,
+        text: a.detail,
+        time: new Date(a.createdAt).toLocaleDateString(),
+      }));
+      setLiveFeed(feed.length > 0 ? feed : [
+        { id: 1, text: 'Dashboard loaded', time: 'Just now' },
+      ]);
+    } catch (error) {
+      console.error('Failed to fetch dashboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(t);
+    fetchDashboard();
   }, []);
 
-  const handleApprove = (item: PendingItem) => {
-    setPendingItems(prev => prev.filter(p => p.id !== item.id));
-    showToast(`${item.type} "${item.title}" approved!`, 'success');
-    setLiveFeed(prev => [{ id: Date.now(), text: `${item.type} approved`, time: 'Just now' }, ...prev.slice(0, 3)]);
-    setConfirmAction(null);
-    setSelectedItem(null);
+  const handleApprove = async (item: PendingItem) => {
+    try {
+      await approveCourseApi(item.id);
+      setPendingItems(prev => prev.filter(p => p.id !== item.id));
+      showToast(`${item.type} "${item.title}" approved!`, 'success');
+      setLiveFeed(prev => [{ id: Date.now(), text: `${item.type} "${item.title}" approved`, time: 'Just now' }, ...prev.slice(0, 3)]);
+    } catch (error) {
+      showToast('Failed to approve', 'error');
+    } finally {
+      setConfirmAction(null);
+      setSelectedItem(null);
+    }
   };
 
-  const handleReject = (item: PendingItem) => {
-    setPendingItems(prev => prev.filter(p => p.id !== item.id));
-    showToast(`${item.type} "${item.title}" rejected.`, 'error');
-    setConfirmAction(null);
-    setSelectedItem(null);
+  const handleReject = async (item: PendingItem) => {
+    try {
+      await rejectCourseApi(item.id);
+      setPendingItems(prev => prev.filter(p => p.id !== item.id));
+      showToast(`${item.type} "${item.title}" rejected.`, 'error');
+      setLiveFeed(prev => [{ id: Date.now(), text: `${item.type} "${item.title}" rejected`, time: 'Just now' }, ...prev.slice(0, 3)]);
+    } catch (error) {
+      showToast('Failed to reject', 'error');
+    } finally {
+      setConfirmAction(null);
+      setSelectedItem(null);
+    }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await fetchDashboard();
       showToast('Dashboard refreshed', 'success');
-    }, 1000);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   if (isLoading) return <Loader />;
 
   const stats = [
-    { title: 'Total Teachers', value: '45', change: '+5 this week', icon: <Users className="w-5 h-5" />, path: '/admin/manage-teachers' },
-    { title: 'Active Students', value: '1,234', change: '98% retention', icon: <GraduationCap className="w-5 h-5" />, path: '/admin/manage-students' },
-    { title: 'Course Completion', value: '78%', change: '+12% vs last mo', icon: <Activity className="w-5 h-5" />, path: '/admin/manage-courses' },
+    { title: 'Total Teachers', value: dashData?.users?.teachers ?? '0', change: 'Manage teachers', icon: <Users className="w-5 h-5" />, path: '/admin/manage-teachers' },
+    { title: 'Active Students', value: dashData?.users?.students ?? '0', change: 'View students', icon: <GraduationCap className="w-5 h-5" />, path: '/admin/manage-students' },
+    { title: 'Total Courses', value: dashData?.courses?.total ?? '0', change: 'View courses', icon: <Activity className="w-5 h-5" />, path: '/admin/manage-courses' },
     { title: 'Pending Reviews', value: String(pendingItems.length), change: 'Requires action', icon: <ClipboardCheck className="w-5 h-5" />, path: '#' },
   ];
 
@@ -117,7 +161,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex flex-wrap gap-2 mt-6">
           <Button variant="secondary" size="sm" onClick={() => navigate('/admin/manage-teachers')}>
             <Users className="w-4 h-4" /> Teachers
@@ -216,12 +260,12 @@ const AdminDashboard: React.FC = () => {
           </div>
           <div className="space-y-6 relative">
             <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-100" />
-            {liveFeed.map((a) => (
-              <div key={a.id} className="relative flex items-center gap-4 pl-6">
+            {liveFeed.map((a: any) => (
+              <div key={a.id || a._id} className="relative flex items-center gap-4 pl-6">
                 <div className="absolute left-0 w-4 h-4 rounded-full border-4 border-white bg-gray-400" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{a.text}</p>
-                  <p className="text-xs text-gray-400">{a.time}</p>
+                  <p className="text-sm font-medium text-gray-800">{a.text || a.message}</p>
+                  <p className="text-xs text-gray-400">{a.time || new Date(a.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             ))}

@@ -4,7 +4,7 @@
   body {
     @apply bg-white text-gray-900 font-sans antialiased selection:bg-black selection:text-white;
   }
-  
+
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
@@ -12,6 +12,7 @@
 }
 
 @layer components {
+
   /* --- Minimalist Card --- */
   .card {
     @apply bg-white rounded-xl border border-gray-200 shadow-sm p-6 transition-all duration-200 hover:border-gray-300 hover:shadow-md;
@@ -25,6 +26,7 @@
   html {
     scroll-behavior: smooth;
   }
+
   body {
     font-family: sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -55,7 +57,8 @@
 .dark select,
 .dark textarea {
   background-color: #000000 !important;
-  border-color: #333333 !important; /* Thoda sa visible border separation ke liye */
+  border-color: #333333 !important;
+  /* Thoda sa visible border separation ke liye */
   color: #ffffff !important;
 }
 
@@ -92,194 +95,4 @@
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: #888888 !important;
-}
-
-/* =========================================
-   COMPONENT STYLES (Light Mode Default)
-   ========================================= */
-
-@layer components {
-  /* Card */
-  .card {
-    background-color: white;
-    border-radius: 0.75rem;
-    border: 1px solid #e5e7eb;
-    padding: 1.5rem;
-    transition: all 0.2s;
-  }
-  .card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Input Fields */
-  .input-field {
-    width: 100%;
-    padding: 0.625rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    background-color: white;
-    color: #000000;
-    outline: none;
-    transition: all 0.2s;
-  }
-  
-  /* Page Headers */
-  .page-header {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-  @media (min-width: 640px) {
-    .page-header {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-    }
-  }
-  .page-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #000000;
-  }
-  .page-subtitle {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-top: 0.25rem;
-  }
-
-  /* Badges - Simple B&W Logic */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.125rem 0.625rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-width: 1px;
-    white-space: nowrap;
-  }
-
-  /* Light Mode Badges */
-  .badge-success { background-color: white; border-color: black; color: black; }
-  .badge-warning { background-color: #f9fafb; border-color: #9ca3af; color: #374151; }
-  .badge-danger  { background-color: white; border-color: #d1d5db; color: #dc2626; }
-  .badge-info    { background-color: black; border-color: black; color: white; }
-  .badge-gray    { background-color: #f3f4f6; border-color: #d1d5db; color: #4b5563; }
-
-  /* Dark Mode Badges Override */
-  .dark .badge {
-    background-color: #000000 !important;
-    border-color: #ffffff !important;
-    color: #ffffff !important;
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-out forwards;
-  }
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
-  border-radius: 9999px;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background-color: #ffffff; /* White Scrollbar in Dark Mode */
-}
-
-/* ============================================
-   GLOBAL THEME STYLES - ADD AT END OF FILE
-   ============================================ */
-
-:root {
-  --sidebar-bg: #000000;
-  --sidebar-text: #ffffff;
-  --content-bg: #f9fafb;
-  --content-text: #111827;
-  --font-family: 'Inter', sans-serif;
-}
-
-/* Global Font */
-* {
-  font-family: var(--font-family) !important;
-}
-
-/* Sidebar Styling */
-aside,
-.sidebar {
-  background-color: var(--sidebar-bg) !important;
-  color: var(--sidebar-text) !important;
-}
-
-aside *,
-.sidebar * {
-  color: var(--sidebar-text) !important;
-}
-
-aside a.active,
-.sidebar a.active {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-}
-
-/* Content Area Styling */
-main {
-  background-color: var(--content-bg) !important;
-  color: var(--content-text) !important;
-}
-
-main h1,
-main h2,
-main h3,
-main h4,
-main h5,
-main h6,
-main p,
-main span,
-main label,
-main td,
-main th,
-main li {
-  color: var(--content-text) !important;
-}
-
-/* Page titles */
-.page-title {
-  color: var(--content-text) !important;
-}
-
-.page-subtitle {
-  color: var(--content-text) !important;
-  opacity: 0.7;
-}
-
-/* Cards - keep white background */
-.card {
-  background-color: #ffffff !important;
-}
-
-.card h3,
-.card p,
-.card span {
-  color: var(--content-text) !important;
-}
-
-/* Muted text */
-.text-gray-500,
-.text-gray-400 {
-  color: var(--content-text) !important;
-  opacity: 0.6;
 }

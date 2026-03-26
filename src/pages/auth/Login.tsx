@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Mail, Lock, ArrowRight, GraduationCap, Loader } from 'lucide-react';
 
-// Demo users for quick login
 const DEMO_USERS = [
-  { id: '1', email: 'superadmin@lms.com', role: 'super-admin' },
-  { id: '2', email: 'admin@lms.com', role: 'admin' },
-  { id: '3', email: 'teacher@lms.com', role: 'teacher' },
-  { id: '4', email: 'student@lms.com', role: 'student' },
+  { id: '1', email: 'superadmin@lms.com', password: 'password123', role: 'super-admin' },
+  { id: '2', email: 'admin@lms.com', password: 'password123', role: 'admin' },
+  { id: '3', email: 'teacher@lms.com', password: 'password123', role: 'teacher' },
+  { id: '4', email: 'student@lms.com', password: 'password123', role: 'student' },
 ];
 
 const Login: React.FC = () => {
@@ -18,37 +17,23 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // ============ GLOW CONTROL SETTINGS ============
   const GLOW_INTENSITY = {
-    layer1: 0.2,
-    layer2: 0.1,
-    layer3: 0.1,
-    layer4: 0.1,
-    layer5: 0.1,
-    layer6: 0.1,
-    radial1: 0.1,
-    radial2: 0.05,
+    layer1: 0.2, layer2: 0.1, layer3: 0.1,
+    layer4: 0.1, layer5: 0.1, layer6: 0.1,
+    radial1: 0.1, radial2: 0.05,
   };
 
   const GLOW_SPREAD = {
-    radius1: 20,
-    radius2: 40,
-    radius3: 60,
-    radius4: 80,
-    radius5: 100,
-    radius6: 120,
+    radius1: 20, radius2: 40, radius3: 60,
+    radius4: 80, radius5: 100, radius6: 120,
   };
 
-  const RADIAL_SCALE = {
-    scale1: 1.3,
-    scale2: 1.5,
-  };
-  // ============================================
+  const RADIAL_SCALE = { scale1: 1.3, scale2: 1.5 };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !password) {
       setError('Please fill in all fields');
       return;
@@ -56,7 +41,6 @@ const Login: React.FC = () => {
 
     try {
       await login({ email, password });
-      
       const storedUser = localStorage.getItem('lms_auth_user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
@@ -67,14 +51,13 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail: string) => {
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
     setEmail(demoEmail);
-    setPassword('password');
+    setPassword(demoPassword);
     setError('');
-    
+
     try {
-      await login({ email: demoEmail, password: 'password' });
-      
+      await login({ email: demoEmail, password: demoPassword });
       const storedUser = localStorage.getItem('lms_auth_user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
@@ -87,10 +70,9 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-50 to-gray-100 items-center justify-center p-4 lg:p-10">
-
       <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl flex overflow-hidden relative">
 
-        {/* Left: Form Section - ALL BLUE */}
+        {/* Left: Form Section */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16 relative z-10">
           <div className="max-w-md w-full">
 
@@ -102,12 +84,8 @@ const Login: React.FC = () => {
             </div>
 
             <div className="mb-8">
-              <h1 className="text-4xl font-bold text-gray-900 mb-3">
-                Welcome Back!
-              </h1>
-              <p className="text-gray-500 text-lg">
-                Sign in to continue your learning journey
-              </p>
+              <h1 className="text-4xl font-bold text-gray-900 mb-3">Welcome Back!</h1>
+              <p className="text-gray-500 text-lg">Sign in to continue your learning journey</p>
             </div>
 
             {error && (
@@ -117,10 +95,8 @@ const Login: React.FC = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-
-              {/* Email */}
               <div className="relative">
-                <Mail className="absolute left-4 top-4 w-5 h-5 text-gray-400"/>
+                <Mail className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
                 <input
                   type="email"
                   placeholder="Email Address"
@@ -130,9 +106,8 @@ const Login: React.FC = () => {
                 />
               </div>
 
-              {/* Password */}
               <div className="relative">
-                <Lock className="absolute left-4 top-4 w-5 h-5 text-gray-400"/>
+                <Lock className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
                 <input
                   type="password"
                   placeholder="Password"
@@ -142,16 +117,11 @@ const Login: React.FC = () => {
                 />
               </div>
 
-              {/* Remember Me & Forgot Password */}
               <div className="flex justify-between items-center">
                 <label className="flex items-center gap-2 text-gray-600 cursor-pointer hover:text-gray-900 transition-colors group">
-                  <input 
-                    type="checkbox" 
-                    className="w-4 h-4 accent-blue-600 cursor-pointer rounded focus:ring-2 focus:ring-blue-500"
-                  />
+                  <input type="checkbox" className="w-4 h-4 accent-blue-600 cursor-pointer rounded focus:ring-2 focus:ring-blue-500" />
                   <span className="text-sm font-medium select-none">Remember me</span>
                 </label>
-
                 <button
                   type="button"
                   onClick={() => navigate('/forgot-password')}
@@ -159,27 +129,19 @@ const Login: React.FC = () => {
                 >
                   Forgot Password?
                 </button>
-              </div>  
+              </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl font-medium mt-6"
               >
                 {isLoading ? (
-                  <>
-                    <Loader className="w-5 h-5 animate-spin"/>
-                    Signing in...
-                  </>
+                  <><Loader className="w-5 h-5 animate-spin" />Signing in...</>
                 ) : (
-                  <>
-                    Sign In
-                    <ArrowRight className="w-5 h-5"/>
-                  </>
+                  <>Sign In<ArrowRight className="w-5 h-5" /></>
                 )}
               </button>
-
             </form>
 
             {/* Demo Accounts */}
@@ -187,12 +149,11 @@ const Login: React.FC = () => {
               <p className="text-xs text-center text-gray-500 mb-4 uppercase tracking-wider font-semibold">
                 Quick Demo Login
               </p>
-
               <div className="grid grid-cols-2 gap-3">
                 {DEMO_USERS.map(u => (
                   <button
                     key={u.id}
-                    onClick={() => handleDemoLogin(u.email)}
+                    onClick={() => handleDemoLogin(u.email, u.password)}
                     className="text-sm p-3 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-all font-medium capitalize"
                   >
                     {u.role.replace('-', ' ')}
@@ -204,16 +165,10 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-
-        {/* Right Side Design - BLUE GLOW ON IMAGE */}
+        {/* Right Side Design */}
         <div className="hidden lg:block w-1/2 relative overflow-visible bg-white">
-
-          {/* Content Container - Centered Laptop Image */}
           <div className="relative h-full flex items-center justify-center z-10">
-            
             <div className="relative flex items-center justify-center">
-              
-              {/* Laptop Image with BLUE Glow */}
               <img
                 src="/laptop.png"
                 alt="Learning Platform"
@@ -229,35 +184,27 @@ const Login: React.FC = () => {
                   `
                 }}
               />
-              
-              {/* Additional Radial Glow Layer 1 - BLUE */}
-              <div 
+              <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background: `radial-gradient(ellipse at center, rgba(59, 130, 246, ${GLOW_INTENSITY.radial1}) 0%, transparent 70%)`,
                   filter: 'blur(40px)',
                   transform: `scale(${RADIAL_SCALE.scale1})`
                 }}
-              ></div>
-              
-              {/* Additional Radial Glow Layer 2 - BLUE */}
-              <div 
+              />
+              <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background: `radial-gradient(ellipse at center, rgba(37, 99, 235, ${GLOW_INTENSITY.radial2}) 0%, transparent 70%)`,
                   filter: 'blur(60px)',
                   transform: `scale(${RADIAL_SCALE.scale2})`
                 }}
-              ></div>
-
+              />
             </div>
-
           </div>
-
         </div>
 
       </div>
-
     </div>
   );
 };
