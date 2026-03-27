@@ -1,3 +1,5 @@
+// src/types/data.types.ts
+
 export interface User {
   id: string;
   name: string;
@@ -144,22 +146,40 @@ export interface Attendance {
   markedAt: string;
 }
 
+// ============================================
+// UPDATED TYPES FOR dataService.ts
+// ============================================
+
+export interface TaskComment {
+  id: string;
+  fromId: string;
+  fromName: string;
+  fromRole: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'overdue';
   priority: 'low' | 'medium' | 'high';
-  status: 'pending' | 'in_progress' | 'completed';
-  assignedTo: string;
-  assignedBy: string;
   dueDate: string;
+  assignedById: string;
+  assignedByName: string;
+  assignedByRole: string;
+  assignedToId: string;
+  assignedToName: string;
+  assignedToRole: string;
+  comments: TaskComment[];
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface Notification {
   id: string;
   userId: string;
+  userRole: string;
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
@@ -168,30 +188,48 @@ export interface Notification {
   actionUrl?: string;
 }
 
+export interface MessageReply {
+  id: string;
+  fromId: string;
+  fromName: string;
+  fromRole: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface Message {
   id: string;
-  senderId: string;
-  senderName: string;
-  recipientId: string;
-  content: string;
-  sentAt: string;
+  fromId: string;
+  fromName: string;
+  fromRole: string;
+  toId: string;
+  toName: string;
+  toRole: string;
+  subject: string;
+  body: string;
   read: boolean;
-  attachments?: string[];
+  createdAt: string;
+  replies: MessageReply[];
 }
 
 export interface Feedback {
   id: string;
-  fromUserId: string;
-  fromUserName: string;
-  toUserId: string;
-  toUserName: string;
-  courseId?: string;
-  courseName?: string;
+  studentId: string;
+  studentName: string;
+  teacherId: string;
+  teacherName: string;
+  courseId: string;
+  courseName: string;
   rating: number;
   comment: string;
+  reply?: string;
+  repliedAt?: string;
   createdAt: string;
-  type: 'course' | 'instructor' | 'general';
 }
+
+// ============================================
+// OTHER TYPES
+// ============================================
 
 export interface Leave {
   id: string;
