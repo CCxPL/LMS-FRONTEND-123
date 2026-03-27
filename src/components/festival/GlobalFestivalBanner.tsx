@@ -30,7 +30,7 @@ const GlobalFestivalBanner: React.FC = () => {
       `}</style>
 
       {/* Floating Banner at Bottom Right */}
-      <div className="fixed top-6 left-165 z-9999 animate-slide-up">
+      <div className="fixed top-5 left-150 z-9999 animate-slide-up">
         <div 
           className="relative flex items-center gap-4 p-3 pr-4 rounded-2xl overflow-hidden text-white"
           style={{ 
