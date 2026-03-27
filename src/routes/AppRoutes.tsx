@@ -73,6 +73,8 @@ import StudentAttendanceReport from '../pages/teacher/StudentAttendanceReport';
 import FeedbackManagement from '../pages/super-admin/FeedbackManagement';
 import BatchSelection from '../pages/teacher/BatchSelection';
 import TeacherLeaves from '../pages/teacher/TeacherLeaves';
+import CertificateApprovals from '../pages/teacher/CertificateApprovals';
+import CertificateManagement from '../pages/admin/CertificateManagement';
 
 
 const AppRoutes: React.FC = () => {
@@ -125,6 +127,7 @@ const AppRoutes: React.FC = () => {
         <Route path="tasks" element={<Tasks />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="manage-teachers" element={<ManageTeachers />} />
+        <Route path="certificate-management" element={<CertificateManagement />} />
         <Route path="manage-courses" element={<ManageCourses />} />
         <Route path="manage-students" element={<ManageStudents />} />
         <Route path="activity" element={<Activity />} />
@@ -153,6 +156,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/teacher/course/:courseId/batches" element={<BatchSelection />} />
         <Route path="assignments" element={<TeacherAssignments />} />
         <Route path="grade-assignments" element={<GradeAssignment />} />
+        <Route path="certificate-approvals" element={<CertificateApprovals />} />
         <Route path="quizzes" element={<TeacherQuizzes />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="create-quiz" element={<CreateQuiz />} />

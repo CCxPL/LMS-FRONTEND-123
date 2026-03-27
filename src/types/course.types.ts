@@ -105,6 +105,7 @@ export interface Certificate {
   courseName: string;
   studentId: string;
   studentName: string;
+  instructorId?: string;
   instructorName: string;
   issueDate: string;
   grade: string;

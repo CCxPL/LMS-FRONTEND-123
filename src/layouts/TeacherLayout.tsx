@@ -17,7 +17,8 @@ import {
   ListTodo,
   Calendar,
   FileText,
-  Umbrella, // ✅ NEW ICON
+  Umbrella,
+  Award, // ✅ Certificate icon
 } from 'lucide-react';
 
 const sidebarItems = [
@@ -32,7 +33,8 @@ const sidebarItems = [
   { label: 'Create Quiz', path: '/teacher/create-quiz', icon: <FilePlus className="w-5 h-5" /> },
   { label: 'My Students', path: '/teacher/my-students', icon: <Users className="w-5 h-5" /> },
   { label: 'Attendance Report', path: '/teacher/attendance-report', icon: <FileText className="w-5 h-5" /> },
-  { label: 'Student Leaves', path: '/teacher/leaves', icon: <Umbrella className="w-5 h-5" /> }, // ✅ NEW ITEM
+  { label: 'Student Leaves', path: '/teacher/leaves', icon: <Umbrella className="w-5 h-5" /> },
+  { label: 'Certificate Approvals', path: '/teacher/certificate-approvals', icon: <Award className="w-5 h-5" /> }, // ✅ NEW
   { label: 'Messages', path: '/teacher/messages', icon: <MessageSquare className="w-5 h-5" /> },
   { label: 'Feedback', path: '/teacher/feedback', icon: <Star className="w-5 h-5" /> },
   { label: 'Notifications', path: '/teacher/notifications', icon: <Bell className="w-5 h-5" /> },
