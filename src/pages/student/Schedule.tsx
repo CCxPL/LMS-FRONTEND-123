@@ -105,9 +105,7 @@ const StudentSchedule: React.FC = () => {
   // ✅ Extract all leave days from all leave requests
   const allLeaveDays = leaves.flatMap(leave => leave.days);
 
-  // Debug log
-  console.log('🔴 All Leave Days being passed to Calendar:', allLeaveDays);
-  console.log('📋 Total Leaves:', leaves);
+
 
   if (loading) {
     return (

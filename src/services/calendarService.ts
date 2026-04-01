@@ -1,5 +1,5 @@
 // ============================================
-// CALENDAR SERVICE - With Recurring Events
+// CALENDAR SERVICE - COMPLETE FILE
 // ============================================
 
 import type { 
@@ -7,7 +7,6 @@ import type {
   EventFormData, 
   RecurrenceRule,
   RecurringEditType,
- 
 } from '../types/calendar.types';
 import { mockEvents } from '../mockData/events';
 import { mockCourses } from '../mockData/courses';
@@ -21,12 +20,8 @@ import {
 class CalendarService {
   private events: CalendarEvent[] = [...mockEvents];
 
-  // ============================================
-  // EXISTING METHODS (Unchanged)
-  // ============================================
-
   getAllEvents(): CalendarEvent[] {
-    console.log('CalendarService - getAllEvents:', this.events.length);
+   
     return sortEventsByTime(this.events.filter(e => e.isActive));
   }
 
@@ -39,9 +34,9 @@ class CalendarService {
   }
 
   getEventsByTeacher(teacherId: string): CalendarEvent[] {
-    console.log('CalendarService - getEventsByTeacher:', teacherId);
+    
     const filtered = filterEventsByTeacher(this.events, teacherId);
-    console.log('Filtered events:', filtered);
+  
     return sortEventsByTime(filtered);
   }
 
@@ -56,14 +51,12 @@ class CalendarService {
     formData: EventFormData, 
     user: AuthUser
   ): Promise<CalendarEvent[]> {
-    console.log('CalendarService - createEvent called');
-    console.log('FormData:', formData);
-    console.log('User:', user);
+   
 
     const course = mockCourses.find(c => c.id === formData.courseId);
     const now = new Date().toISOString();
 
-    // ✅ NEW: Handle Recurring Events
+    // Handle Recurring Events
     if (formData.isRecurring && formData.recurrenceRule) {
       const seriesId = `series-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const dates = this.generateRecurringDates(formData.date, formData.recurrenceRule);
@@ -91,7 +84,7 @@ class CalendarService {
       }));
 
       this.events.push(...newEvents);
-      console.log('Recurring events created:', newEvents.length);
+    
       return newEvents;
     }
 
@@ -114,9 +107,9 @@ class CalendarService {
       isRecurring: false,
     };
 
-    console.log('New event created:', newEvent);
+   
     this.events.push(newEvent);
-    console.log('Total events now:', this.events.length);
+   
     
     return [newEvent];
   }
@@ -125,7 +118,7 @@ class CalendarService {
     eventId: string, 
     formData: Partial<EventFormData>
   ): Promise<CalendarEvent> {
-    console.log('CalendarService - updateEvent:', eventId, formData);
+    
     const eventIndex = this.events.findIndex(e => e.id === eventId);
     if (eventIndex === -1) throw new Error('Event not found');
 
@@ -160,12 +153,153 @@ class CalendarService {
   }
 
   // ============================================
-  // ✅ NEW: RECURRING EVENT METHODS
+  // ✅ FIXED: Update Recurring Events
   // ============================================
+  updateRecurringEvent(
+    eventId: string,
+    updates: Partial<EventFormData>,
+    editType: RecurringEditType
+  ): CalendarEvent[] {
+    const targetEvent = this.events.find(e => e.id === eventId);
+    if (!targetEvent) throw new Error('Event not found');
 
-  /**
-   * Generate dates for recurring events
-   */
+
+
+    // If not recurring, treat as normal update
+    if (!targetEvent.isRecurring || !targetEvent.seriesId) {
+   
+      const eventIndex = this.events.findIndex(e => e.id === eventId);
+      if (eventIndex === -1) throw new Error('Event not found');
+
+      this.events[eventIndex] = {
+        ...this.events[eventIndex],
+        title: updates.title ?? this.events[eventIndex].title,
+        type: updates.type ?? this.events[eventIndex].type,
+        courseId: updates.courseId ?? this.events[eventIndex].courseId,
+        meetingLink: updates.meetingLink ?? this.events[eventIndex].meetingLink,
+        date: updates.date ?? this.events[eventIndex].date,
+        startTime: updates.startTime ?? this.events[eventIndex].startTime,
+        endTime: updates.endTime ?? this.events[eventIndex].endTime,
+        isRecurring: updates.isRecurring ?? this.events[eventIndex].isRecurring,
+        recurrenceRule: updates.recurrenceRule ?? this.events[eventIndex].recurrenceRule,
+        updatedAt: new Date().toISOString(),
+      };
+
+      return [this.events[eventIndex]];
+    }
+
+    const now = new Date().toISOString();
+
+    if (editType === 'THIS_EVENT') {
+    
+      // Only update this specific event
+      const eventIndex = this.events.findIndex(e => e.id === eventId);
+      if (eventIndex === -1) throw new Error('Event not found');
+
+      this.events[eventIndex] = {
+        ...this.events[eventIndex],
+        title: updates.title ?? this.events[eventIndex].title,
+        type: updates.type ?? this.events[eventIndex].type,
+        courseId: updates.courseId ?? this.events[eventIndex].courseId,
+        meetingLink: updates.meetingLink ?? this.events[eventIndex].meetingLink,
+        date: updates.date ?? this.events[eventIndex].date,
+        startTime: updates.startTime ?? this.events[eventIndex].startTime,
+        endTime: updates.endTime ?? this.events[eventIndex].endTime,
+        isException: true,
+        updatedAt: now,
+      };
+
+      return [this.events[eventIndex]];
+    } else {
+      // THIS_AND_FOLLOWING: Update this and all future events
+     
+      const targetDate = new Date(targetEvent.date);
+     
+      
+      const updatedEvents: CalendarEvent[] = [];
+      
+      this.events = this.events.map(e => {
+        if (e.seriesId === targetEvent.seriesId && new Date(e.date) >= targetDate) {
+        
+          const updated: CalendarEvent = {
+            ...e,
+            title: updates.title ?? e.title,
+            type: updates.type ?? e.type,
+            courseId: updates.courseId ?? e.courseId,
+            meetingLink: updates.meetingLink ?? e.meetingLink,
+            startTime: updates.startTime ?? e.startTime,
+            endTime: updates.endTime ?? e.endTime,
+            updatedAt: now,
+          };
+          updatedEvents.push(updated);
+          return updated;
+        }
+        return e;
+      });
+
+     
+      return updatedEvents;
+    }
+  }
+
+  // ============================================
+  // ✅ FIXED: Delete Recurring Events
+  // ============================================
+  deleteRecurringEvent(
+    eventId: string,
+    editType: RecurringEditType
+  ): string[] {
+    const targetEvent = this.events.find(e => e.id === eventId);
+    if (!targetEvent) throw new Error('Event not found');
+
+   
+
+    // If not recurring, treat as normal delete
+    if (!targetEvent.isRecurring || !targetEvent.seriesId) {
+      const eventIndex = this.events.findIndex(e => e.id === eventId);
+      if (eventIndex !== -1) {
+        this.events[eventIndex].isActive = false;
+        this.events[eventIndex].updatedAt = new Date().toISOString();
+      }
+      return [eventId];
+    }
+
+    const now = new Date().toISOString();
+    const deletedIds: string[] = [];
+
+    if (editType === 'THIS_EVENT') {
+      // Only delete this specific event
+      const eventIndex = this.events.findIndex(e => e.id === eventId);
+      if (eventIndex !== -1) {
+        this.events[eventIndex].isActive = false;
+        this.events[eventIndex].updatedAt = now;
+        deletedIds.push(eventId);
+      }
+      return deletedIds;
+    } else {
+      // THIS_AND_FOLLOWING: Delete this and all future events
+      const targetDate = new Date(targetEvent.date);
+      
+      this.events = this.events.map(e => {
+        if (e.seriesId === targetEvent.seriesId && new Date(e.date) >= targetDate) {
+          deletedIds.push(e.id);
+          return {
+            ...e,
+            isActive: false,
+            updatedAt: now,
+          };
+        }
+        return e;
+      });
+
+     
+      return deletedIds;
+    }
+  }
+
+  // ============================================
+  // Generate Recurring Dates
+  // ============================================
   private generateRecurringDates(
     startDate: string, 
     rule: RecurrenceRule
@@ -181,10 +315,8 @@ class CalendarService {
       : null;
 
     while (count < maxCount) {
-      // Check end date
       if (endDate && currentDate > endDate) break;
 
-      // Check if this day is valid for weekly recurrence
       if (rule.type === 'WEEKLY') {
         if (rule.daysOfWeek?.includes(currentDate.getDay())) {
           dates.push(currentDate.toISOString().split('T')[0]);
@@ -195,7 +327,6 @@ class CalendarService {
         count++;
       }
 
-      // Move to next occurrence
       switch (rule.type) {
         case 'DAILY':
           currentDate.setDate(currentDate.getDate() + (rule.interval || 1));
@@ -208,7 +339,6 @@ class CalendarService {
           break;
       }
 
-      // Safety: max 1 year ahead
       if (currentDate.getTime() - start.getTime() > 365 * 24 * 60 * 60 * 1000) {
         break;
       }
@@ -217,107 +347,11 @@ class CalendarService {
     return dates;
   }
 
-  /**
-   * Update recurring event
-   * editType: 'THIS_EVENT' or 'THIS_AND_FOLLOWING'
-   */
-  updateRecurringEvent(
-    eventId: string,
-    updates: Partial<EventFormData>,
-    editType: RecurringEditType
-  ): CalendarEvent {
-    const targetEvent = this.events.find(e => e.id === eventId);
-    if (!targetEvent) throw new Error('Event not found');
-
-    if (!targetEvent.isRecurring || !targetEvent.seriesId) {
-      // Not a recurring event, just update normally
-      return this.updateEvent(eventId, updates) as unknown as CalendarEvent;
-    }
-
-    const now = new Date().toISOString();
-
-    if (editType === 'THIS_EVENT') {
-      // Only update this specific event, mark as exception
-      const eventIndex = this.events.findIndex(e => e.id === eventId);
-      if (eventIndex === -1) throw new Error('Event not found');
-
-      this.events[eventIndex] = {
-        ...this.events[eventIndex],
-        ...updates,
-        isException: true,
-        updatedAt: now,
-      };
-
-      return this.events[eventIndex];
-    } else {
-      // THIS_AND_FOLLOWING: Update this and all future events in series
-      const targetDate = new Date(targetEvent.date);
-      
-      this.events = this.events.map(e => {
-        if (e.seriesId === targetEvent.seriesId && new Date(e.date) >= targetDate) {
-          return {
-            ...e,
-            ...updates,
-            updatedAt: now,
-          };
-        }
-        return e;
-      });
-
-      return this.events.find(e => e.id === eventId) || targetEvent;
-    }
-  }
-
-  /**
-   * Delete recurring event
-   * editType: 'THIS_EVENT' or 'THIS_AND_FOLLOWING'
-   */
-  deleteRecurringEvent(
-    eventId: string,
-    editType: RecurringEditType
-  ): void {
-    const targetEvent = this.events.find(e => e.id === eventId);
-    if (!targetEvent) throw new Error('Event not found');
-
-    if (!targetEvent.isRecurring || !targetEvent.seriesId) {
-      // Not a recurring event, just delete
-      this.deleteEvent(eventId);
-      return;
-    }
-
-    const now = new Date().toISOString();
-
-    if (editType === 'THIS_EVENT') {
-      // Only delete this specific event
-      this.deleteEvent(eventId);
-    } else {
-      // THIS_AND_FOLLOWING: Delete this and all future events in series
-      const targetDate = new Date(targetEvent.date);
-      
-      this.events = this.events.map(e => {
-        if (e.seriesId === targetEvent.seriesId && new Date(e.date) >= targetDate) {
-          return {
-            ...e,
-            isActive: false,
-            updatedAt: now,
-          };
-        }
-        return e;
-      });
-    }
-  }
-
-  /**
-   * Check if event is recurring
-   */
   isRecurringEvent(eventId: string): boolean {
     const event = this.events.find(e => e.id === eventId);
     return event?.isRecurring || false;
   }
 
-  /**
-   * Get events by series ID
-   */
   getEventsBySeries(seriesId: string): CalendarEvent[] {
     return this.events.filter(e => e.seriesId === seriesId && e.isActive);
   }

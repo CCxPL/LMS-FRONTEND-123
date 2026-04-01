@@ -1,4 +1,3 @@
-// src/components/calendar/CalendarView.tsx (COMPLETE FILE WITH DEBUG)
 import React, { useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -15,7 +14,7 @@ import {
   endOfWeek
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import type { CalendarEvent, EventFormData } from '../../types/calendar.types';
+import type { CalendarEvent, EventFormData, RecurringEditType } from '../../types/calendar.types';
 import DraggableEvent from './DraggableEvent';
 import DroppableDay from './DroppableDay';
 import EventModal from './EventModal';
@@ -27,18 +26,22 @@ interface CalendarViewProps {
   events: CalendarEvent[];
   onCreateEvent?: (formData: EventFormData) => Promise<boolean> | void;
   onEditEvent?: (event: CalendarEvent) => void;
-  onDeleteEvent?: (eventId: string) => void;
   onRescheduleEvent?: (eventId: string, newDate: string) => void;
   leaveDays?: string[];
+  
+  // ✅ FIXED: Add eventId parameter
+  onRecurringEdit?: (formData: EventFormData, editType: RecurringEditType, eventId: string) => Promise<boolean> | void;
+  onRecurringDelete?: (editType: RecurringEditType, eventId: string) => Promise<boolean> | void;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
   events,
   onCreateEvent,
   onEditEvent,
-  onDeleteEvent,
   onRescheduleEvent,
   leaveDays = [],
+  onRecurringEdit,
+  onRecurringDelete,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -48,9 +51,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   const { showToast } = useToast();
   const { canCreateEvent, canEditEvent } = usePermissions();
 
-  // ✅ Debug: Log whenever leaveDays changes
   useEffect(() => {
-    console.log('📅 CalendarView received leaveDays:', leaveDays);
+   
   }, [leaveDays]);
 
   const monthStart = startOfMonth(currentDate);
@@ -98,31 +100,70 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return filterEventsByDate(events, dateStr);
   };
 
-  // ✅ Check if date is a leave day
   const isLeaveDay = (date: Date): boolean => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const result = leaveDays.includes(dateStr);
     if (result) {
-      console.log('🔴 Found leave day:', dateStr);
+      
     }
     return result;
   };
 
+  // ============================================
+  // ✅ FIXED: handleSaveEvent (NON-RECURRING)
+  // ============================================
   const handleSaveEvent = async (formData: EventFormData) => {
-    if (editingEvent && onEditEvent) {
+   
+    
+    // DON'T USE THIS FOR RECURRING EVENTS
+    if (editingEvent && onEditEvent && !editingEvent.isRecurring) {
+      
       onEditEvent({ ...editingEvent, ...formData });
       showToast('Event updated successfully', 'success');
+      setShowEventModal(false);
+      setEditingEvent(null);
     } else if (onCreateEvent) {
+  
       await onCreateEvent(formData);
-      showToast('Event created successfully', 'success');
+      setShowEventModal(false);
+      setEditingEvent(null);
     }
-    setShowEventModal(false);
-    setEditingEvent(null);
   };
 
+  // ============================================
+  // ✅ FIXED: Pass eventId to parent
+  // ============================================
+  const handleRecurringEdit = async (formData: EventFormData, editType: RecurringEditType) => {
+
+
+    if (editingEvent && onRecurringEdit) {
+      // ✅ Pass the editing event's ID
+      await onRecurringEdit(formData, editType, editingEvent.id);
+      setShowEventModal(false);
+      setEditingEvent(null);
+    }
+  };
+
+  // ============================================
+  // ✅ FIXED: Pass eventId to parent
+  // ============================================
+  const handleRecurringDeleteEvent = async (editType: RecurringEditType) => {
+    
+
+    if (editingEvent && onRecurringDelete) {
+      // ✅ Pass the editing event's ID
+      await onRecurringDelete(editType, editingEvent.id);
+      setShowEventModal(false);
+      setEditingEvent(null);
+    }
+  };
+
+  // ============================================
+  // Regular Delete (Non-Recurring)
+  // ============================================
   const handleDeleteEvent = () => {
-    if (editingEvent && onDeleteEvent) {
-      onDeleteEvent(editingEvent.id);
+    if (editingEvent && onEditEvent) {
+      // Non-recurring delete will be handled by parent
       showToast('Event deleted successfully', 'success');
       setShowEventModal(false);
       setEditingEvent(null);
@@ -142,7 +183,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <h2 className="text-xl font-bold text-gray-900 min-w-45 text-center">
+              <h2 className="text-xl font-bold text-gray-900 min-w-50 text-center">
                 {format(currentDate, 'MMMM yyyy')}
               </h2>
               
@@ -264,7 +305,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               setEditingEvent(null);
             }}
             onSave={handleSaveEvent}
-            onDelete={editingEvent ? handleDeleteEvent : undefined}
+            onDelete={editingEvent && !editingEvent.isRecurring ? handleDeleteEvent : undefined}
+            onRecurringEdit={editingEvent?.isRecurring ? handleRecurringEdit : undefined}
+            onRecurringDelete={editingEvent?.isRecurring ? handleRecurringDeleteEvent : undefined}
           />
         )}
       </div>

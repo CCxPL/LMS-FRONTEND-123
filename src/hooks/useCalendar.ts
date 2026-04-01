@@ -1,8 +1,8 @@
 // ============================================
-// useCalendar Hook - With Recurring Events
+// useCalendar Hook - COMPLETE FILE
 // ============================================
 
-import { useState, useEffect, useCallback, } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { 
   CalendarEvent, 
   EventFormData,
@@ -17,14 +17,10 @@ interface UseCalendarReturn {
   loading: boolean;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
-
-  // Original methods
   createEvent: (formData: EventFormData) => Promise<boolean>;
   updateEvent: (eventId: string, formData: Partial<EventFormData>) => Promise<boolean>;
   deleteEvent: (eventId: string) => Promise<boolean>;
   refreshEvents: () => Promise<void>;
-
-  // ✅ NEW: Recurring methods
   updateRecurringEvent: (
     eventId: string,
     updates: Partial<EventFormData>,
@@ -43,8 +39,6 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const { showToast } = useToast();
-  
-  // const hasFetchedRef = useRef(false);
 
   const fetchEvents = useCallback(async (): Promise<void> => {
     if (!user) {
@@ -78,11 +72,7 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
 
   useEffect(() => {
     fetchEvents();
-  }, [user?.id, user?.role, courseId]);
-
-  // ============================================
-  // EXISTING METHODS (Unchanged)
-  // ============================================
+  }, [fetchEvents]);
 
   const createEvent = useCallback(async (formData: EventFormData): Promise<boolean> => {
     if (!user) {
@@ -137,9 +127,8 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
   }, [showToast]);
 
   // ============================================
-  // ✅ NEW: RECURRING EVENT METHODS
+  // ✅ FIXED: Update Recurring Events
   // ============================================
-
   const updateRecurringEvent = useCallback(
     async (
       eventId: string,
@@ -147,13 +136,31 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
       editType: RecurringEditType
     ): Promise<boolean> => {
       try {
-        const updatedEvent = calendarService.updateRecurringEvent(
+       
+
+        const updatedEvents = calendarService.updateRecurringEvent(
           eventId,
           updates,
           editType
         );
-        setEvents(prev => prev.map(e => e.id === eventId ? updatedEvent : e));
-        showToast('Event updated successfully', 'success');
+
+   
+
+        // Update all affected events in state
+        setEvents(prev => {
+  
+          const updatedMap = new Map(updatedEvents.map(e => [e.id, e]));
+          const newEvents = prev.map(e => updatedMap.get(e.id) || e);
+   
+          return newEvents;
+        });
+
+        showToast(
+          editType === 'THIS_EVENT'
+            ? 'Event updated successfully'
+            : `${updatedEvents.length} events updated successfully`,
+          'success'
+        );
         return true;
       } catch (error) {
         console.error('Error updating recurring event:', error);
@@ -164,15 +171,29 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
     [showToast]
   );
 
+  // ============================================
+  // ✅ FIXED: Delete Recurring Events
+  // ============================================
   const deleteRecurringEvent = useCallback(
     async (eventId: string, editType: RecurringEditType): Promise<boolean> => {
       try {
-        calendarService.deleteRecurringEvent(eventId, editType);
-        setEvents(prev => prev.filter(e => e.id !== eventId));
+       
+
+        const deletedIds = calendarService.deleteRecurringEvent(eventId, editType);
+
+      
+
+        // Remove all deleted events from state
+        setEvents(prev => {
+          const newEvents = prev.filter(e => !deletedIds.includes(e.id));
+          
+          return newEvents;
+        });
+
         showToast(
           editType === 'THIS_EVENT'
             ? 'Event deleted successfully'
-            : 'Events deleted successfully',
+            : `${deletedIds.length} events deleted successfully`,
           'success'
         );
         return true;
