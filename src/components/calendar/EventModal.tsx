@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Trash2, Clock, Link, FileText, Calendar, BookOpen, Repeat } from 'lucide-react';
+import { X, Trash2, Link, FileText, Calendar, BookOpen, Repeat } from 'lucide-react';
 import type { EventFormData, CalendarEvent, RecurrenceRule, RecurrenceType, EventType, RecurringEditType } from '../../types/calendar.types';
 import { mockCourses } from '../../mockData/courses';
 import { useAuth } from '../../hooks/useAuth';
