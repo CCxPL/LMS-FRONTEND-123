@@ -36,7 +36,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(loggedUser);
       setIsAuthenticated(true);
       
-      // ✅ ADDED: Check first login
       if (loggedUser.mustChangePassword) {
         showToast(`Welcome! Please change your default password.`, 'info');
       } else {
@@ -74,15 +73,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Logged out successfully', 'info');
   }, [showToast]);
 
-  // ✅ ADDED: Change Password
-  const changePassword = useCallback(async (oldPassword: string,): Promise<boolean> => {
+  const changePassword = useCallback(async (oldPassword: string, newPassword: string): Promise<boolean> => {
     if (!user) return false;
 
     if (oldPassword !== user.defaultPassword) {
       return false;
     }
 
-    const updatedUser = await authService.updateUser({
+    if (newPassword.length < 6) {
+      return false;
+    }
+
+    if (oldPassword === newPassword) {
+      return false;
+    }
+
+    const updatedUser = authService.updateUser({
       mustChangePassword: false,
       defaultPassword: undefined
     });
@@ -95,7 +101,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   }, [user]);
 
-  // ✅ ADDED: Check Must Change Password
   const checkMustChangePassword = useCallback((): boolean => {
     return user?.mustChangePassword === true;
   }, [user]);
@@ -108,8 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       register,
       logout,
-      changePassword, // ✅ ADDED
-      checkMustChangePassword // ✅ ADDED
+      changePassword,
+      checkMustChangePassword
     }}>
       {children}
     </AuthContext.Provider>

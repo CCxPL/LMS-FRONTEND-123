@@ -13,6 +13,7 @@ import StudentLayout from '../layouts/StudentLayout';
 import Login from '../pages/auth/Login';
 import NotFound from '../pages/shared/NotFound';
 import ForgotPassword from '../pages/auth/ForgotPassword';
+import ForcePasswordChange from '../pages/auth/ForcePasswordChange';
 
 // Shared Pages
 import Messages from '../pages/shared/Messages';
@@ -49,8 +50,6 @@ import StudentFeedback from '../pages/teacher/StudentFeedback';
 import CourseDetail from '../pages/teacher/CourseDetail';
 import TeacherSchedule from '../pages/teacher/Schedule';
 
-
-
 // Student Pages
 import StudentDashboard from '../pages/student/Dashboard';
 import StudentMyCourses from '../pages/student/MyCourses';
@@ -68,7 +67,6 @@ import LeaderboardPage from '../pages/student/LeaderboardPage';
 import DiscussionPage from '../pages/student/DiscussionPage';
 import StudentSchedule from '../pages/student/Schedule';
 
-// ✅ ADD: Attendance Report Page
 import StudentAttendanceReport from '../pages/teacher/StudentAttendanceReport';
 import FeedbackManagement from '../pages/super-admin/FeedbackManagement';
 import BatchSelection from '../pages/teacher/BatchSelection';
@@ -76,13 +74,17 @@ import TeacherLeaves from '../pages/teacher/TeacherLeaves';
 import CertificateApprovals from '../pages/teacher/CertificateApprovals';
 import CertificateManagement from '../pages/admin/CertificateManagement';
 
-
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* ✅ NEW: Force Password Change Route */}
+      <Route
+        path="/force-password-change"  element={ <ForcePasswordChange />  }
+      />
 
       {/* Super Admin Routes */}
       <Route
@@ -107,7 +109,7 @@ const AppRoutes: React.FC = () => {
         <Route path="feedback-management" element={<FeedbackManagement />} />
         <Route path="settings" element={<Settings />} />
         <Route path="schedule" element={<SuperAdminSchedule />} />
-        <Route path="attendance-report" element={<StudentAttendanceReport />} /> {/* ✅ ADD */}
+        <Route path="attendance-report" element={<StudentAttendanceReport />} />
       </Route>
 
       {/* Admin Routes */}
@@ -132,7 +134,7 @@ const AppRoutes: React.FC = () => {
         <Route path="manage-students" element={<ManageStudents />} />
         <Route path="activity" element={<Activity />} />
         <Route path="schedule" element={<AdminSchedule />} />
-        <Route path="attendance-report" element={<StudentAttendanceReport />} /> {/* ✅ ADD */}
+        <Route path="attendance-report" element={<StudentAttendanceReport />} />
       </Route>
 
       {/* Teacher Routes */}
@@ -163,8 +165,8 @@ const AppRoutes: React.FC = () => {
         <Route path="my-students" element={<MyStudents />} />
         <Route path="feedback" element={<StudentFeedback />} />
         <Route path="schedule" element={<TeacherSchedule />} />
-        <Route path="attendance-report" element={<StudentAttendanceReport />} /> 
-        <Route path="leaves" element={<TeacherLeaves />} />{/* ✅ ADD */}
+        <Route path="attendance-report" element={<StudentAttendanceReport />} />
+        <Route path="leaves" element={<TeacherLeaves />} />
       </Route>
 
       {/* Student Routes */}
