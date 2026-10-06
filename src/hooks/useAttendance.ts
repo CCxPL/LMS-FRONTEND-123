@@ -1,106 +1,173 @@
-import { useState, useCallback } from 'react';
-import type { AttendanceRecord, StudentActivity } from '../types/attendance.types';
+import { useMemo, useCallback, useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from './useAuth';
 
 export const useAttendance = (eventId: string) => {
   const { user } = useAuth();
-  const { 
-    attendanceRecords, 
-    addAttendanceRecord, 
-    updateAttendanceRecord,
-    addStudentActivity 
+
+  const {
+    attendanceRecords,
   } = useData();
-  
+
   const [isJoined, setIsJoined] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const eventAttendance = attendanceRecords.filter(r => r.eventId === eventId);
-
-  const joinClass = useCallback(() => {
-    if (!user || isJoined) return;
-
-    const now = new Date().toISOString();
-
-    // ✅ FIXED: Added all required properties
-    const record: AttendanceRecord = {
-      id: `attendance-${eventId}-${user.id}-${Date.now()}`,
-      eventId,
-      studentId: user.id,
-      studentName: user.name,
-      studentEmail: user.email || '', // Added
-      courseId: '', // Added dummy
-      courseName: '', // Added dummy
-      eventTitle: '', // Added dummy
-      teacherId: '', // Added dummy
-      teacherName: '', // Added dummy
-      date: now.split('T')[0], // Added date
-      isPresent: true,
-      joinedAt: now,
-      joinTime: now, // Added to match type
-      leaveTime: null, // Added
-      duration: 0, // Added
-      status: 'present', // Added
-      createdAt: now, // Added
-    };
-
-    addAttendanceRecord(record);
-
-    const activity: StudentActivity = {
-      id: `activity-${Date.now()}`,
-      eventId,
-      studentId: user.id,
-      studentName: user.name,
-      action: 'joined',
-      timestamp: now,
-    };
-
-    addStudentActivity(activity);
-    setIsJoined(true);
-
-    console.log(`✅ ${user.name} joined the class`);
-  }, [user, eventId, isJoined, addAttendanceRecord, addStudentActivity]);
-
-  const leaveClass = useCallback(() => {
-    if (!user || !isJoined) return;
-
-    const now = new Date().toISOString();
-
-    const record = attendanceRecords.find(
-      r => r.eventId === eventId && r.studentId === user.id && !r.leftAt
+  const eventAttendance = useMemo(() => {
+    return attendanceRecords.filter(
+      (record) => record.eventId === eventId
     );
+  }, [attendanceRecords, eventId]);
 
-    if (record) {
-      const joinedTime = new Date(record.joinedAt || now).getTime();
-      const leftTime = new Date(now).getTime();
-      const duration = Math.round((leftTime - joinedTime) / 60000);
-
-      updateAttendanceRecord(record.id, {
-        leftAt: now,
-        leaveTime: now, // Added update
-        duration,
-      });
+  const currentUserAttendance = useMemo(() => {
+    if (!user) {
+      return undefined;
     }
 
-    const activity: StudentActivity = {
-      id: `activity-${Date.now()}`,
-      eventId,
-      studentId: user.id,
-      studentName: user.name,
-      action: 'left',
-      timestamp: now,
-    };
+    return eventAttendance.find(
+      (record) =>
+        record.studentId === user.id
+    );
+  }, [eventAttendance, user]);
 
-    addStudentActivity(activity);
-    setIsJoined(false);
+  const joinClass = useCallback(async () => {
+    if (!user) {
+      setError('User is not logged in.');
+      return;
+    }
 
-    console.log(`👋 ${user.name} left the class`);
-  }, [user, eventId, isJoined, attendanceRecords, updateAttendanceRecord, addStudentActivity]);
+    if (!eventId) {
+      setError('Invalid class/event.');
+      return;
+    }
+
+    if (isJoined) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      /*
+       * IMPORTANT:
+       *
+       * Attendance backend API is not implemented yet.
+       *
+       * Do NOT create fake attendance records here.
+       * Do NOT use Date.now() as database ID.
+       * Do NOT add dummy course/teacher values.
+       *
+       * When backend attendance API is ready,
+       * replace this block with:
+       *
+       * const response = await axiosInstance.post(
+       *   '/attendance/join',
+       *   {
+       *     eventId,
+       *   }
+       * );
+       *
+       * const attendance =
+       *   response.data?.data?.attendance;
+       *
+       * Then refresh attendance from backend.
+       */
+
+      console.warn(
+        'Attendance join API is not implemented yet. Nothing was saved to MySQL.'
+      );
+
+      setError(
+        'Attendance service is not available yet.'
+      );
+    } catch (err) {
+      console.error(
+        'Failed to join class:',
+        err
+      );
+
+      setError(
+        'Unable to mark attendance. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, eventId, isJoined]);
+
+  const leaveClass = useCallback(async () => {
+    if (!user) {
+      setError('User is not logged in.');
+      return;
+    }
+
+    if (!eventId) {
+      setError('Invalid class/event.');
+      return;
+    }
+
+    if (!isJoined) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      /*
+       * IMPORTANT:
+       *
+       * When backend API is ready,
+       * replace this block with:
+       *
+       * await axiosInstance.patch(
+       *   '/attendance/leave',
+       *   {
+       *     eventId,
+       *   }
+       * );
+       */
+
+      console.warn(
+        'Attendance leave API is not implemented yet. Nothing was updated in MySQL.'
+      );
+
+      setError(
+        'Attendance service is not available yet.'
+      );
+    } catch (err) {
+      console.error(
+        'Failed to leave class:',
+        err
+      );
+
+      setError(
+        'Unable to update attendance. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, eventId, isJoined]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   return {
     isJoined,
+    isLoading,
+    error,
+    clearError,
+
     joinClass,
     leaveClass,
+
     eventAttendance,
-    presentCount: eventAttendance.filter(r => r.isPresent).length,
+    currentUserAttendance,
+
+    presentCount:
+      eventAttendance.filter(
+        (record) => record.isPresent
+      ).length,
   };
 };

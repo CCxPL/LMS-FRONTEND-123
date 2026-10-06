@@ -1,14 +1,28 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { AttendanceRecord, ClassSummary, StudentActivity } from '../types/attendance.types';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
+
+import type {
+  AttendanceRecord,
+  ClassSummary,
+  StudentActivity,
+} from '../types/attendance.types';
+
 import type { Activity } from '../types/activity.types';
 import type { Feedback as FeedbackType } from '../types/feedback.types';
 import type { LeaveRequest } from '../types/leave.types';
+
 import axiosInstance from '../api/axiosInstance';
 import { useAuth } from '../hooks/useAuth';
 
-// =====================
-// Types
-// =====================
+/* =========================================================
+   TYPES
+========================================================= */
+
 interface Message {
   id: string;
   fromId: string;
@@ -79,17 +93,22 @@ interface ExtendedTask {
   id: string;
   title: string;
   description: string;
+
   assignedById: string;
   assignedByName: string;
   assignedByRole: string;
+
   assignedToId: string;
   assignedToName: string;
   assignedToRole: string;
+
   status: 'pending' | 'in-progress' | 'completed';
   priority: 'low' | 'medium' | 'high';
+
   dueDate: string;
   createdAt: string;
   completedAt?: string;
+
   comments: TaskComment[];
 }
 
@@ -106,463 +125,1404 @@ interface Announcement {
 interface Assignment {
   id: string;
   title: string;
+
   studentId: string;
   studentName: string;
+
   courseId: string;
   courseName: string;
+
   submittedText: string;
   totalMarks: number;
+
   submittedAt?: string;
   status?: string;
   dueDate?: string;
 }
 
+/* =========================================================
+   CONTEXT TYPE
+========================================================= */
+
 interface DataContextType {
-  // Attendance
+  /* ---------------- ATTENDANCE ---------------- */
+
   attendanceRecords: AttendanceRecord[];
-  addAttendanceRecord: (record: AttendanceRecord) => void;
-  updateAttendanceRecord: (id: string, updates: Partial<AttendanceRecord>) => void;
 
-  // Class Summaries
+  addAttendanceRecord: (
+    record: AttendanceRecord
+  ) => void;
+
+  updateAttendanceRecord: (
+    id: string,
+    updates: Partial<AttendanceRecord>
+  ) => void;
+
+  /* ---------------- CLASS SUMMARY ---------------- */
+
   classSummaries: ClassSummary[];
-  addClassSummary: (summary: ClassSummary) => void;
-  getClassSummary: (eventId: string) => ClassSummary | undefined;
 
-  // Student Activities
+  addClassSummary: (
+    summary: ClassSummary
+  ) => void;
+
+  getClassSummary: (
+    eventId: string
+  ) => ClassSummary | undefined;
+
+  /* ---------------- STUDENT ACTIVITIES ---------------- */
+
   studentActivities: StudentActivity[];
-  addStudentActivity: (activity: StudentActivity) => void;
-  getActivitiesForEvent: (eventId: string) => StudentActivity[];
 
-  // General Activities
+  addStudentActivity: (
+    activity: StudentActivity
+  ) => void;
+
+  getActivitiesForEvent: (
+    eventId: string
+  ) => StudentActivity[];
+
+  /* ---------------- GENERAL ACTIVITIES ---------------- */
+
   activities: Activity[];
-  addActivity: (activity: Activity) => void;
-  getActivities: (filter?: { type?: string; actorId?: string }) => Activity[];
 
-  // Messages
+  addActivity: (
+    activity: Activity
+  ) => void;
+
+  getActivities: (
+    filter?: {
+      type?: string;
+      actorId?: string;
+    }
+  ) => Activity[];
+
+  /* ---------------- MESSAGES ---------------- */
+
   messages: Message[];
-  sendMessage: (msg: Omit<Message, 'id' | 'read' | 'createdAt' | 'replies'>) => void;
-  replyMessage: (msgId: string, reply: Omit<MessageReply, 'id' | 'createdAt'>) => void;
-  markMessageRead: (msgId: string) => void;
-  deleteMessage: (msgId: string) => void;
 
-  // Notifications
+  sendMessage: (
+    msg: Omit<
+      Message,
+      'id' | 'read' | 'createdAt' | 'replies'
+    >
+  ) => Promise<void>;
+
+  replyMessage: (
+    msgId: string,
+    reply: Omit<
+      MessageReply,
+      'id' | 'createdAt'
+    >
+  ) => Promise<void>;
+
+  markMessageRead: (
+    msgId: string
+  ) => Promise<void>;
+
+  deleteMessage: (
+    msgId: string
+  ) => Promise<void>;
+
+  /* ---------------- NOTIFICATIONS ---------------- */
+
   notifications: NotificationItem[];
-  addNotificationItem: (notif: Omit<NotificationItem, 'id' | 'read' | 'createdAt'>) => void;
-  markRead: (id: string) => void;
-  markAllRead: (userId: string) => void;
-  clearNotification: (id: string) => void;
 
-  // Feedback
+  addNotificationItem: (
+    notif: Omit<
+      NotificationItem,
+      'id' | 'read' | 'createdAt'
+    >
+  ) => Promise<void>;
+
+  markRead: (
+    id: string
+  ) => Promise<void>;
+
+  markAllRead: (
+    userId: string
+  ) => Promise<void>;
+
+  clearNotification: (
+    id: string
+  ) => Promise<void>;
+
+  /* ---------------- FEEDBACK ---------------- */
+
   feedbacks: FeedbackType[];
-  submitFeedback: (fb: Omit<FeedbackType, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  getFeedbackByStudent: (studentId: string) => FeedbackType[];
-  getFeedbackByRecipient: (recipientId: string) => FeedbackType[];
-  updateFeedback: (id: string, updates: Partial<Omit<FeedbackType, 'id' | 'createdAt' | 'createdBy'>>) => void;
-  deleteFeedback: (id: string) => void;
 
-  // Certificates
+  submitFeedback: (
+    fb: Omit<
+      FeedbackType,
+      'id' | 'createdAt' | 'updatedAt'
+    >
+  ) => Promise<void>;
+
+  getFeedbackByStudent: (
+    studentId: string
+  ) => FeedbackType[];
+
+  getFeedbackByRecipient: (
+    recipientId: string
+  ) => FeedbackType[];
+
+  updateFeedback: (
+    id: string,
+    updates: Partial<
+      Omit<
+        FeedbackType,
+        'id' | 'createdAt' | 'createdBy'
+      >
+    >
+  ) => Promise<void>;
+
+  deleteFeedback: (
+    id: string
+  ) => Promise<void>;
+
+  /* ---------------- CERTIFICATES ---------------- */
+
   certificates: Certificate[];
-  addCertificate: (cert: Omit<Certificate, 'id'>) => void;
-  getCertificatesForStudent: (studentId: string) => Certificate[];
 
-  // Tasks
+  addCertificate: (
+    cert: Omit<Certificate, 'id'>
+  ) => Promise<void>;
+
+  getCertificatesForStudent: (
+    studentId: string
+  ) => Certificate[];
+
+  /* ---------------- TASKS ---------------- */
+
   tasks: ExtendedTask[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  getTasksByUser: (userId: string) => Task[];
-  completeTask: (id: string) => void;
-  createTask: (task: Omit<ExtendedTask, 'id' | 'createdAt' | 'comments'>) => void;
-  updateTaskStatus: (id: string, status: ExtendedTask['status']) => void;
-  addTaskComment: (taskId: string, comment: TaskComment) => void;
 
-  // Announcement
-  addAnnouncement: (announcement: Announcement) => void;
+  addTask: (
+    task: Omit<
+      Task,
+      'id' | 'createdAt'
+    >
+  ) => Promise<void>;
 
-  // Assignment
-  submitAssignment: (assignment: Assignment) => void;
+  updateTask: (
+    id: string,
+    updates: Partial<Task>
+  ) => Promise<void>;
 
-  // Leaves
+  deleteTask: (
+    id: string
+  ) => Promise<void>;
+
+  getTasksByUser: (
+    userId: string
+  ) => Task[];
+
+  completeTask: (
+    id: string
+  ) => Promise<void>;
+
+  createTask: (
+    task: Omit<
+      ExtendedTask,
+      'id' | 'createdAt' | 'comments'
+    >
+  ) => Promise<void>;
+
+  updateTaskStatus: (
+    id: string,
+    status: ExtendedTask['status']
+  ) => Promise<void>;
+
+  addTaskComment: (
+    taskId: string,
+    comment: TaskComment
+  ) => Promise<void>;
+
+  /* ---------------- ANNOUNCEMENT ---------------- */
+
+  addAnnouncement: (
+    announcement: Announcement
+  ) => Promise<void>;
+
+  /* ---------------- ASSIGNMENT ---------------- */
+
+  submitAssignment: (
+    assignment: Assignment
+  ) => Promise<void>;
+
+  /* ---------------- LEAVES ---------------- */
+
   leaves: LeaveRequest[];
-  addLeave: (leave: LeaveRequest) => void;
-  getStudentLeaves: (studentId: string) => LeaveRequest[];
+
+  addLeave: (
+    leave: LeaveRequest
+  ) => Promise<void>;
+
+  getStudentLeaves: (
+    studentId: string
+  ) => LeaveRequest[];
+
   getAllApprovedLeaves: () => LeaveRequest[];
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+/* =========================================================
+   CONTEXT
+========================================================= */
 
-// =====================
-// Provider Component
-// =====================
-export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const DataContext =
+  createContext<DataContextType | undefined>(
+    undefined
+  );
+
+/* =========================================================
+   PROVIDER
+========================================================= */
+
+export const DataProvider: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const { user } = useAuth();
 
-  // Live/real-time state — empty initial
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [classSummaries, setClassSummaries] = useState<ClassSummary[]>([]);
-  const [studentActivities, setStudentActivities] = useState<StudentActivity[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  /* =======================================================
+     EMPTY STATE
+     No mock/demo data.
+  ======================================================= */
 
-  // API-backed state — loaded from backend
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [feedbacks, setFeedbacks] = useState<FeedbackType[]>([]);
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [tasks, setTasks] = useState<ExtendedTask[]>([]);
-  const [, setAssignments] = useState<Assignment[]>([]);
+  const [
+    attendanceRecords,
+    setAttendanceRecords,
+  ] = useState<AttendanceRecord[]>([]);
 
-  // ─── Load data from API on mount ──────────────────────────────────────────
+  const [
+    classSummaries,
+    setClassSummaries,
+  ] = useState<ClassSummary[]>([]);
+
+  const [
+    studentActivities,
+    setStudentActivities,
+  ] = useState<StudentActivity[]>([]);
+
+  const [
+    activities,
+    setActivities,
+  ] = useState<Activity[]>([]);
+
+  const [
+    leaves,
+    setLeaves,
+  ] = useState<LeaveRequest[]>([]);
+
+  const [
+    messages,
+    setMessages,
+  ] = useState<Message[]>([]);
+
+  const [
+    notifications,
+    setNotifications,
+  ] = useState<NotificationItem[]>([]);
+
+  const [
+    feedbacks,
+    setFeedbacks,
+  ] = useState<FeedbackType[]>([]);
+
+  const [
+    certificates,
+    setCertificates,
+  ] = useState<Certificate[]>([]);
+
+  const [
+    tasks,
+    setTasks,
+  ] = useState<ExtendedTask[]>([]);
+
+  const [, setAssignments] =
+    useState<Assignment[]>([]);
+
+  /* =======================================================
+     API REFRESH HELPERS
+  ======================================================= */
+
+  const loadMessages =
+    useCallback(async () => {
+      const response =
+        await axiosInstance.get(
+          '/messages/inbox'
+        );
+
+      const data =
+        response.data?.data?.messages;
+
+      setMessages(
+        Array.isArray(data) ? data : []
+      );
+    }, []);
+
+  const loadNotifications =
+    useCallback(async () => {
+      const response =
+        await axiosInstance.get(
+          '/notifications'
+        );
+
+      const data =
+        response.data?.data?.notifications;
+
+      setNotifications(
+        Array.isArray(data) ? data : []
+      );
+    }, []);
+
+  const loadTasks =
+    useCallback(async () => {
+      const response =
+        await axiosInstance.get('/tasks');
+
+      const data =
+        response.data?.data?.tasks;
+
+      setTasks(
+        Array.isArray(data) ? data : []
+      );
+    }, []);
+
+  const loadCertificates =
+    useCallback(async () => {
+      if (user?.role !== 'student') {
+        setCertificates([]);
+        return;
+      }
+
+      const response =
+        await axiosInstance.get(
+          '/certificates/my'
+        );
+
+      const data =
+        response.data?.data?.certificates;
+
+      setCertificates(
+        Array.isArray(data) ? data : []
+      );
+    }, [user?.role]);
+
+  /* =======================================================
+     INITIAL LOAD
+  ======================================================= */
+
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setMessages([]);
+      setNotifications([]);
+      setTasks([]);
+      setCertificates([]);
 
-    const loadAll = async () => {
-      try {
-        // Messages — ✅ FIX: /messages → /messages/inbox
-        const msgRes = await axiosInstance.get('/messages/inbox');
-        setMessages(msgRes.data?.data?.messages || []);
-      } catch { /* silent */ }
+      setFeedbacks([]);
+      setLeaves([]);
 
-      try {
-        // Notifications
-        const notifRes = await axiosInstance.get('/notifications');
-        setNotifications(notifRes.data?.data?.notifications || []);
-      } catch { /* silent */ }
+      setAttendanceRecords([]);
+      setClassSummaries([]);
+      setStudentActivities([]);
+      setActivities([]);
 
-      try {
-        // Tasks
-        const taskRes = await axiosInstance.get('/tasks');
-        setTasks(taskRes.data?.data?.tasks || []);
-      } catch { /* silent */ }
+      return;
+    }
 
+    const loadData = async () => {
       try {
-        // Certificates — ✅ FIX: sirf student ke liye
-        if (user?.role === 'student') {
-          const certRes = await axiosInstance.get('/certificates/my');
-          setCertificates(certRes.data?.data?.certificates || []);
-        }
-      } catch { /* silent */ }
+        await loadMessages();
+      } catch (error) {
+        console.error(
+          'Failed to load messages:',
+          error
+        );
 
-      try {
-        // Feedbacks — ✅ FIX: sirf student ke liye
-        if (user?.role === 'student') {
-          const fbRes = await axiosInstance.get('/feedback/my');
-          setFeedbacks(fbRes.data?.data?.feedbacks || []);
-        }
-      } catch { /* silent */ }
+        setMessages([]);
+      }
 
       try {
-        // Leaves — ✅ FIX: sirf student ke liye
-        if (user?.role === 'student') {
-          const leaveRes = await axiosInstance.get('/leaves/my');
-          setLeaves(leaveRes.data?.data?.leaves || []);
-        }
-      } catch { /* silent */ }
+        await loadNotifications();
+      } catch (error) {
+        console.error(
+          'Failed to load notifications:',
+          error
+        );
+
+        setNotifications([]);
+      }
+
+      try {
+        await loadTasks();
+      } catch (error) {
+        console.error(
+          'Failed to load tasks:',
+          error
+        );
+
+        setTasks([]);
+      }
+
+      try {
+        await loadCertificates();
+      } catch (error) {
+        console.error(
+          'Failed to load certificates:',
+          error
+        );
+
+        setCertificates([]);
+      }
+
+      /*
+       * Feedback backend is currently unavailable.
+       * Do NOT call /feedback/my until backend
+       * route is implemented.
+       */
+      setFeedbacks([]);
+
+      /*
+       * Leave backend is currently unavailable.
+       * Do NOT call /leaves/my until backend
+       * route is implemented.
+       */
+      setLeaves([]);
+
+      /*
+       * Attendance backend is currently unavailable.
+       */
+      setAttendanceRecords([]);
+
+      /*
+       * Class summaries are currently not persisted
+       * in backend.
+       */
+      setClassSummaries([]);
+
+      /*
+       * Student activity backend is currently
+       * not available.
+       */
+      setStudentActivities([]);
+
+      /*
+       * General activity backend is currently
+       * not available.
+       */
+      setActivities([]);
     };
 
-    loadAll();
-  }, [user]);
+    void loadData();
+  }, [
+    user,
+    loadMessages,
+    loadNotifications,
+    loadTasks,
+    loadCertificates,
+  ]);
 
-  // ─── Attendance ────────────────────────────────────────────────────────────
-  const addAttendanceRecord = useCallback((record: AttendanceRecord) => {
-    setAttendanceRecords(prev => [...prev, record]);
-  }, []);
+  /* =======================================================
+     ATTENDANCE
+     Disabled until real backend API exists.
+  ======================================================= */
 
-  const updateAttendanceRecord = useCallback((id: string, updates: Partial<AttendanceRecord>) => {
-    setAttendanceRecords(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
-  }, []);
+  const addAttendanceRecord =
+    useCallback(
+      (_record: AttendanceRecord) => {
+        console.warn(
+          'Attendance API is not implemented. Attendance was not saved.'
+        );
+      },
+      []
+    );
 
-  // ─── Class Summaries ───────────────────────────────────────────────────────
-  const addClassSummary = useCallback((summary: ClassSummary) => {
-    setClassSummaries(prev => {
-      if (prev.some(s => s.eventId === summary.eventId)) return prev;
-      return [...prev, summary];
-    });
-  }, []);
+  const updateAttendanceRecord =
+    useCallback(
+      (
+        _id: string,
+        _updates: Partial<AttendanceRecord>
+      ) => {
+        console.warn(
+          'Attendance API is not implemented. Attendance was not updated.'
+        );
+      },
+      []
+    );
 
-  const getClassSummary = useCallback((eventId: string) => {
-    return classSummaries.find(s => s.eventId === eventId);
-  }, [classSummaries]);
+  /* =======================================================
+     CLASS SUMMARIES
+     Disabled until backend API exists.
+  ======================================================= */
 
-  // ─── Student Activities ────────────────────────────────────────────────────
-  const addStudentActivity = useCallback((activity: StudentActivity) => {
-    setStudentActivities(prev => [...prev, activity]);
-  }, []);
+  const addClassSummary =
+    useCallback(
+      (_summary: ClassSummary) => {
+        console.warn(
+          'Class Summary API is not implemented. Summary was not saved.'
+        );
+      },
+      []
+    );
 
-  const getActivitiesForEvent = useCallback((eventId: string) => {
-    return studentActivities.filter(a => a.eventId === eventId);
-  }, [studentActivities]);
+  const getClassSummary =
+    useCallback(
+      (
+        eventId: string
+      ): ClassSummary | undefined => {
+        return classSummaries.find(
+          (summary) =>
+            summary.eventId === eventId
+        );
+      },
+      [classSummaries]
+    );
 
-  // ─── General Activities ────────────────────────────────────────────────────
-  const addActivity = useCallback((activity: Activity) => {
-    setActivities(prev => [activity, ...prev]);
-  }, []);
+  /* =======================================================
+     STUDENT ACTIVITIES
+     Disabled until backend API exists.
+  ======================================================= */
 
-  const getActivities = useCallback((filter?: { type?: string; actorId?: string }) => {
-    if (!filter) return activities;
-    return activities.filter(a => {
-      if (filter.type && a.type !== filter.type) return false;
-      if (filter.actorId && a.actorId !== filter.actorId) return false;
-      return true;
-    });
-  }, [activities]);
+  const addStudentActivity =
+    useCallback(
+      (_activity: StudentActivity) => {
+        console.warn(
+          'Student Activity API is not implemented. Activity was not saved.'
+        );
+      },
+      []
+    );
 
-  // ─── Messages ──────────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async (msg: Omit<Message, 'id' | 'read' | 'createdAt' | 'replies'>) => {
-    try {
-      const res = await axiosInstance.post('/messages', msg);
-      const newMsg = res.data?.data?.message;
-      if (newMsg) setMessages(prev => [newMsg, ...prev]);
-    } catch {
-      // Optimistic update on failure
-      setMessages(prev => [{
-        ...msg,
-        id: `msg-${Date.now()}`,
-        read: false,
-        createdAt: new Date().toISOString(),
-        replies: [],
-      }, ...prev]);
-    }
-  }, []);
+  const getActivitiesForEvent =
+    useCallback(
+      (
+        eventId: string
+      ): StudentActivity[] => {
+        return studentActivities.filter(
+          (activity) =>
+            activity.eventId === eventId
+        );
+      },
+      [studentActivities]
+    );
 
-  const replyMessage = useCallback(async (msgId: string, reply: Omit<MessageReply, 'id' | 'createdAt'>) => {
-    try {
-      await axiosInstance.post(`/messages/${msgId}/reply`, reply);
-      setMessages(prev => prev.map(msg => {
-        if (msg.id === msgId) {
-          return {
-            ...msg,
-            replies: [...msg.replies, {
-              ...reply,
-              id: `reply-${Date.now()}`,
-              createdAt: new Date().toISOString(),
-            }],
-          };
+  /* =======================================================
+     GENERAL ACTIVITIES
+     Disabled until backend API exists.
+  ======================================================= */
+
+  const addActivity =
+    useCallback(
+      (_activity: Activity) => {
+        console.warn(
+          'Activity API is not implemented. Activity was not saved.'
+        );
+      },
+      []
+    );
+
+  const getActivities =
+    useCallback(
+      (
+        filter?: {
+          type?: string;
+          actorId?: string;
         }
-        return msg;
-      }));
-    } catch { /* silent */ }
-  }, []);
-
-  const markMessageRead = useCallback(async (msgId: string) => {
-    try {
-      await axiosInstance.patch(`/messages/${msgId}/read`);
-      setMessages(prev => prev.map(msg => msg.id === msgId ? { ...msg, read: true } : msg));
-    } catch { /* silent */ }
-  }, []);
-
-  const deleteMessage = useCallback(async (msgId: string) => {
-    try {
-      await axiosInstance.delete(`/messages/${msgId}`);
-      setMessages(prev => prev.filter(msg => msg.id !== msgId));
-    } catch { /* silent */ }
-  }, []);
-
-  // ─── Notifications ─────────────────────────────────────────────────────────
-  const addNotificationItem = useCallback((notif: Omit<NotificationItem, 'id' | 'read' | 'createdAt'>) => {
-    setNotifications(prev => [{
-      ...notif,
-      id: `notif-${Date.now()}`,
-      read: false,
-      createdAt: new Date().toISOString(),
-    }, ...prev]);
-  }, []);
-
-  const markRead = useCallback(async (id: string) => {
-    try {
-      await axiosInstance.patch(`/notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch { /* silent */ }
-  }, []);
-
-  const markAllRead = useCallback(async (userId: string) => {
-    try {
-      await axiosInstance.patch('/notifications/mark-all-read');
-      setNotifications(prev => prev.map(n =>
-        (n.userId === userId || n.userId === 'all') ? { ...n, read: true } : n
-      ));
-    } catch { /* silent */ }
-  }, []);
-
-  const clearNotification = useCallback(async (id: string) => {
-    try {
-      await axiosInstance.delete(`/notifications/${id}`);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch { /* silent */ }
-  }, []);
-
-  // ─── Feedback ──────────────────────────────────────────────────────────────
-  const submitFeedback = useCallback(async (fb: Omit<FeedbackType, 'id' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const res = await axiosInstance.post('/feedback', fb);
-      const newFb = res.data?.data?.feedback;
-      if (newFb) setFeedbacks(prev => [newFb, ...prev]);
-    } catch { /* silent */ }
-  }, []);
-
-  const getFeedbackByStudent = useCallback((studentId: string) => {
-    return feedbacks.filter(f => f.studentId === studentId && !f.isDeleted);
-  }, [feedbacks]);
-
-  const getFeedbackByRecipient = useCallback((recipientId: string) => {
-    return feedbacks.filter(f => f.recipientId === recipientId && !f.isDeleted);
-  }, [feedbacks]);
-
-  const updateFeedback = useCallback(async (id: string, updates: Partial<Omit<FeedbackType, 'id' | 'createdAt' | 'createdBy'>>) => {
-    try {
-      await axiosInstance.put(`/feedback/${id}`, updates);
-      setFeedbacks(prev => prev.map(f =>
-        f.id === id ? { ...f, ...updates, updatedAt: new Date().toISOString() } : f
-      ));
-    } catch { /* silent */ }
-  }, []);
-
-  const deleteFeedback = useCallback(async (id: string) => {
-    try {
-      await axiosInstance.delete(`/feedback/${id}`);
-      setFeedbacks(prev => prev.map(f =>
-        f.id === id ? { ...f, isDeleted: true } : f
-      ));
-    } catch { /* silent */ }
-  }, []);
-
-  // ─── Certificates ──────────────────────────────────────────────────────────
-  const addCertificate = useCallback((cert: Omit<Certificate, 'id'>) => {
-    setCertificates(prev => [...prev, { ...cert, id: `cert-${Date.now()}` }]);
-  }, []);
-
-  const getCertificatesForStudent = useCallback((studentId: string) => {
-    return certificates.filter(c => c.studentId === studentId);
-  }, [certificates]);
-
-  // ─── Tasks ─────────────────────────────────────────────────────────────────
-  const addTask = useCallback(async (task: Omit<Task, 'id' | 'createdAt'>) => {
-    try {
-      const res = await axiosInstance.post('/tasks', task);
-      const newTask = res.data?.data?.task;
-      if (newTask) setTasks(prev => [newTask, ...prev]);
-    } catch { /* silent */ }
-  }, []);
-
-  const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
-    try {
-      await axiosInstance.put(`/tasks/${id}`, updates);
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-    } catch { /* silent */ }
-  }, []);
-
-  const deleteTask = useCallback(async (id: string) => {
-    try {
-      await axiosInstance.delete(`/tasks/${id}`);
-      setTasks(prev => prev.filter(t => t.id !== id));
-    } catch { /* silent */ }
-  }, []);
-
-  const getTasksByUser = useCallback((userId: string) => {
-    return tasks.filter(t => t.assignedToId === userId || t.assignedById === userId) as unknown as Task[];
-  }, [tasks]);
-
-  const completeTask = useCallback(async (id: string) => {
-    try {
-      await axiosInstance.patch(`/tasks/${id}/status`, { status: 'completed' });
-      setTasks(prev => prev.map(t =>
-        t.id === id ? { ...t, status: 'completed' as const, completedAt: new Date().toISOString() } : t
-      ));
-    } catch { /* silent */ }
-  }, []);
-
-  const createTask = useCallback(async (task: Omit<ExtendedTask, 'id' | 'createdAt' | 'comments'>) => {
-    try {
-      const res = await axiosInstance.post('/tasks', task);
-      const newTask = res.data?.data?.task;
-      if (newTask) setTasks(prev => [newTask, ...prev]);
-    } catch { /* silent */ }
-  }, []);
-
-  const updateTaskStatus = useCallback(async (id: string, status: ExtendedTask['status']) => {
-    try {
-      await axiosInstance.patch(`/tasks/${id}/status`, { status });
-      setTasks(prev => prev.map(t => {
-        if (t.id === id) {
-          return {
-            ...t,
-            status,
-            completedAt: status === 'completed' ? new Date().toISOString() : undefined,
-          };
+      ) => {
+        if (!filter) {
+          return activities;
         }
-        return t;
-      }));
-    } catch { /* silent */ }
-  }, []);
 
-  const addTaskComment = useCallback(async (taskId: string, comment: TaskComment) => {
-    try {
-      await axiosInstance.post(`/tasks/${taskId}/comments`, comment);
-      setTasks(prev => prev.map(t => {
-        if (t.id === taskId) {
-          return { ...t, comments: [...t.comments, comment] };
+        return activities.filter(
+          (activity) => {
+            if (
+              filter.type &&
+              activity.type !== filter.type
+            ) {
+              return false;
+            }
+
+            if (
+              filter.actorId &&
+              activity.actorId !==
+                filter.actorId
+            ) {
+              return false;
+            }
+
+            return true;
+          }
+        );
+      },
+      [activities]
+    );
+
+  /* =======================================================
+     MESSAGES
+     Backend / MySQL backed.
+  ======================================================= */
+
+  const sendMessage =
+    useCallback(
+      async (
+        msg: Omit<
+          Message,
+          | 'id'
+          | 'read'
+          | 'createdAt'
+          | 'replies'
+        >
+      ) => {
+        try {
+          await axiosInstance.post(
+            '/messages',
+            msg
+          );
+
+          /*
+           * Reload from backend.
+           * Backend/MySQL remains source of truth.
+           */
+          await loadMessages();
+        } catch (error) {
+          console.error(
+            'Failed to send message:',
+            error
+          );
+
+          throw error;
         }
-        return t;
-      }));
-    } catch { /* silent */ }
-  }, []);
+      },
+      [loadMessages]
+    );
 
-  // ─── Announcement ──────────────────────────────────────────────────────────
-  const addAnnouncement = useCallback((announcement: Announcement) => {
-    addNotificationItem({
-      userId: 'all',
-      title: announcement.title,
-      message: announcement.message,
-      type: announcement.type,
-    });
-  }, [addNotificationItem]);
+  const replyMessage =
+    useCallback(
+      async (
+        msgId: string,
+        reply: Omit<
+          MessageReply,
+          'id' | 'createdAt'
+        >
+      ) => {
+        try {
+          await axiosInstance.post(
+            `/messages/${msgId}/reply`,
+            reply
+          );
 
-  // ─── Assignment ────────────────────────────────────────────────────────────
-  const submitAssignment = useCallback(async (assignment: Assignment) => {
-    try {
-      const res = await axiosInstance.post(`/assignments/${assignment.id}/submit`, {
-        submittedText: assignment.submittedText,
-      });
-      const submitted = res.data?.data?.assignment;
-      if (submitted) {
-        setAssignments(prev => [...prev, submitted]);
-        addNotificationItem({
-          userId: assignment.studentId,
-          title: 'Assignment Submitted',
-          message: `Your assignment "${assignment.title}" has been submitted successfully`,
-          type: 'success',
+          /*
+           * No fake reply-${Date.now()} ID.
+           * Reload server-generated data.
+           */
+          await loadMessages();
+        } catch (error) {
+          console.error(
+            'Failed to reply to message:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadMessages]
+    );
+
+  const markMessageRead =
+    useCallback(
+      async (msgId: string) => {
+        try {
+          await axiosInstance.patch(
+            `/messages/${msgId}/read`
+          );
+
+          await loadMessages();
+        } catch (error) {
+          console.error(
+            'Failed to mark message as read:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadMessages]
+    );
+
+  const deleteMessage =
+    useCallback(
+      async (msgId: string) => {
+        try {
+          await axiosInstance.delete(
+            `/messages/${msgId}`
+          );
+
+          await loadMessages();
+        } catch (error) {
+          console.error(
+            'Failed to delete message:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadMessages]
+    );
+
+  /* =======================================================
+     NOTIFICATIONS
+     Backend / MySQL backed.
+  ======================================================= */
+
+  const addNotificationItem =
+    useCallback(
+      async (
+        notif: Omit<
+          NotificationItem,
+          'id' | 'read' | 'createdAt'
+        >
+      ) => {
+        try {
+          await axiosInstance.post(
+            '/notifications',
+            notif
+          );
+
+          /*
+           * No notif-${Date.now()}.
+           */
+          await loadNotifications();
+        } catch (error) {
+          console.error(
+            'Failed to create notification:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadNotifications]
+    );
+
+  const markRead =
+    useCallback(
+      async (id: string) => {
+        try {
+          await axiosInstance.patch(
+            `/notifications/${id}/read`
+          );
+
+          await loadNotifications();
+        } catch (error) {
+          console.error(
+            'Failed to mark notification read:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadNotifications]
+    );
+
+  const markAllRead =
+    useCallback(
+      async (_userId: string) => {
+        try {
+          await axiosInstance.patch(
+            '/notifications/mark-all-read'
+          );
+
+          await loadNotifications();
+        } catch (error) {
+          console.error(
+            'Failed to mark all notifications read:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadNotifications]
+    );
+
+  const clearNotification =
+    useCallback(
+      async (id: string) => {
+        try {
+          await axiosInstance.delete(
+            `/notifications/${id}`
+          );
+
+          await loadNotifications();
+        } catch (error) {
+          console.error(
+            'Failed to delete notification:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadNotifications]
+    );
+
+  /* =======================================================
+     FEEDBACK
+     Backend route not implemented yet.
+     No local fake data.
+  ======================================================= */
+
+  const submitFeedback =
+    useCallback(
+      async (
+        _fb: Omit<
+          FeedbackType,
+          'id' | 'createdAt' | 'updatedAt'
+        >
+      ) => {
+        console.error(
+          'Feedback API is not implemented yet.'
+        );
+
+        throw new Error(
+          'Feedback service is currently unavailable.'
+        );
+      },
+      []
+    );
+
+  const getFeedbackByStudent =
+    useCallback(
+      (
+        studentId: string
+      ): FeedbackType[] => {
+        return feedbacks.filter(
+          (feedback) =>
+            feedback.studentId ===
+              studentId &&
+            !feedback.isDeleted
+        );
+      },
+      [feedbacks]
+    );
+
+  const getFeedbackByRecipient =
+    useCallback(
+      (
+        recipientId: string
+      ): FeedbackType[] => {
+        return feedbacks.filter(
+          (feedback) =>
+            feedback.recipientId ===
+              recipientId &&
+            !feedback.isDeleted
+        );
+      },
+      [feedbacks]
+    );
+
+  const updateFeedback =
+    useCallback(
+      async (
+        _id: string,
+        _updates: Partial<
+          Omit<
+            FeedbackType,
+            'id' | 'createdAt' | 'createdBy'
+          >
+        >
+      ) => {
+        console.error(
+          'Feedback API is not implemented yet.'
+        );
+
+        throw new Error(
+          'Feedback service is currently unavailable.'
+        );
+      },
+      []
+    );
+
+  const deleteFeedback =
+    useCallback(
+      async (_id: string) => {
+        console.error(
+          'Feedback API is not implemented yet.'
+        );
+
+        throw new Error(
+          'Feedback service is currently unavailable.'
+        );
+      },
+      []
+    );
+
+  /* =======================================================
+     CERTIFICATES
+     Backend / MySQL backed where endpoint supports it.
+  ======================================================= */
+
+  const addCertificate =
+    useCallback(
+      async (
+        cert: Omit<
+          Certificate,
+          'id'
+        >
+      ) => {
+        try {
+          await axiosInstance.post(
+            '/certificates/issue',
+            cert
+          );
+
+          /*
+           * Student certificate list can be refreshed
+           * from backend when current role is student.
+           */
+          if (user?.role === 'student') {
+            await loadCertificates();
+          }
+        } catch (error) {
+          console.error(
+            'Failed to issue certificate:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [
+        user?.role,
+        loadCertificates,
+      ]
+    );
+
+  const getCertificatesForStudent =
+    useCallback(
+      (
+        studentId: string
+      ): Certificate[] => {
+        return certificates.filter(
+          (certificate) =>
+            certificate.studentId ===
+            studentId
+        );
+      },
+      [certificates]
+    );
+
+  /* =======================================================
+     TASKS
+     Backend / MySQL backed.
+  ======================================================= */
+
+  const addTask =
+    useCallback(
+      async (
+        task: Omit<
+          Task,
+          'id' | 'createdAt'
+        >
+      ) => {
+        try {
+          await axiosInstance.post(
+            '/tasks',
+            task
+          );
+
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to add task:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  const updateTask =
+    useCallback(
+      async (
+        id: string,
+        updates: Partial<Task>
+      ) => {
+        try {
+          await axiosInstance.put(
+            `/tasks/${id}`,
+            updates
+          );
+
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to update task:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  const deleteTask =
+    useCallback(
+      async (id: string) => {
+        try {
+          await axiosInstance.delete(
+            `/tasks/${id}`
+          );
+
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to delete task:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  const getTasksByUser =
+    useCallback(
+      (
+        userId: string
+      ): Task[] => {
+        return tasks.filter(
+          (task) =>
+            task.assignedToId ===
+              userId ||
+            task.assignedById ===
+              userId
+        ) as unknown as Task[];
+      },
+      [tasks]
+    );
+
+  const completeTask =
+    useCallback(
+      async (id: string) => {
+        try {
+          await axiosInstance.patch(
+            `/tasks/${id}/status`,
+            {
+              status: 'completed',
+            }
+          );
+
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to complete task:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  const createTask =
+    useCallback(
+      async (
+        task: Omit<
+          ExtendedTask,
+          | 'id'
+          | 'createdAt'
+          | 'comments'
+        >
+      ) => {
+        try {
+          await axiosInstance.post(
+            '/tasks',
+            task
+          );
+
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to create task:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  const updateTaskStatus =
+    useCallback(
+      async (
+        id: string,
+        status: ExtendedTask['status']
+      ) => {
+        try {
+          await axiosInstance.patch(
+            `/tasks/${id}/status`,
+            {
+              status,
+            }
+          );
+
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to update task status:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  const addTaskComment =
+    useCallback(
+      async (
+        taskId: string,
+        comment: TaskComment
+      ) => {
+        try {
+          await axiosInstance.post(
+            `/tasks/${taskId}/comments`,
+            comment
+          );
+
+          /*
+           * Do not append the client object directly.
+           * Reload backend-generated comment/ID.
+           */
+          await loadTasks();
+        } catch (error) {
+          console.error(
+            'Failed to add task comment:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [loadTasks]
+    );
+
+  /* =======================================================
+     ANNOUNCEMENT
+     Uses real notification API.
+  ======================================================= */
+
+  const addAnnouncement =
+    useCallback(
+      async (
+        announcement: Announcement
+      ) => {
+        await addNotificationItem({
+          userId: 'all',
+          title:
+            announcement.title,
+          message:
+            announcement.message,
+          type:
+            announcement.type,
         });
-      }
-    } catch { /* silent */ }
-  }, [addNotificationItem]);
+      },
+      [addNotificationItem]
+    );
 
-  // ─── Leaves ────────────────────────────────────────────────────────────────
-  const addLeave = useCallback((leave: LeaveRequest) => {
-    setLeaves(prev => [...prev, leave]);
-  }, []);
+  /* =======================================================
+     ASSIGNMENT
+     Backend / MySQL backed.
+  ======================================================= */
 
-  const getStudentLeaves = useCallback((studentId: string) => {
-    return leaves.filter(l => l.studentId === studentId);
-  }, [leaves]);
+  const submitAssignment =
+    useCallback(
+      async (
+        assignment: Assignment
+      ) => {
+        try {
+          const response =
+            await axiosInstance.post(
+              `/assignments/${assignment.id}/submit`,
+              {
+                submittedText:
+                  assignment.submittedText,
+              }
+            );
 
-  const getAllApprovedLeaves = useCallback(() => {
-    return leaves.filter(l => l.status === 'approved');
-  }, [leaves]);
+          const submitted =
+            response.data?.data?.assignment ||
+            response.data?.data?.submission;
+
+          if (submitted) {
+            setAssignments(
+              (previous) => [
+                ...previous,
+                submitted,
+              ]
+            );
+          }
+
+          /*
+           * Notification creation may be restricted
+           * by backend roles.
+           *
+           * Assignment itself is already saved even
+           * if notification creation fails.
+           */
+          try {
+            await addNotificationItem({
+              userId:
+                assignment.studentId,
+              title:
+                'Assignment Submitted',
+              message: `Your assignment "${assignment.title}" has been submitted successfully`,
+              type: 'success',
+            });
+          } catch (notificationError) {
+            console.warn(
+              'Assignment saved, but notification could not be created:',
+              notificationError
+            );
+          }
+        } catch (error) {
+          console.error(
+            'Failed to submit assignment:',
+            error
+          );
+
+          throw error;
+        }
+      },
+      [addNotificationItem]
+    );
+
+  /* =======================================================
+     LEAVES
+     Backend route not implemented yet.
+     No local fake save.
+  ======================================================= */
+
+  const addLeave =
+    useCallback(
+      async (
+        _leave: LeaveRequest
+      ) => {
+        console.error(
+          'Leave API is not implemented yet.'
+        );
+
+        throw new Error(
+          'Leave service is currently unavailable.'
+        );
+      },
+      []
+    );
+
+  const getStudentLeaves =
+    useCallback(
+      (
+        studentId: string
+      ): LeaveRequest[] => {
+        return leaves.filter(
+          (leave) =>
+            leave.studentId === studentId
+        );
+      },
+      [leaves]
+    );
+
+  const getAllApprovedLeaves =
+    useCallback((): LeaveRequest[] => {
+      return leaves.filter(
+        (leave) =>
+          leave.status === 'approved'
+      );
+    }, [leaves]);
+
+  /* =======================================================
+     VALUE
+  ======================================================= */
 
   const value: DataContextType = {
-    attendanceRecords, addAttendanceRecord, updateAttendanceRecord,
-    classSummaries, addClassSummary, getClassSummary,
-    studentActivities, addStudentActivity, getActivitiesForEvent,
-    activities, addActivity, getActivities,
-    messages, sendMessage, replyMessage, markMessageRead, deleteMessage,
-    notifications, addNotificationItem, markRead, markAllRead, clearNotification,
-    feedbacks, submitFeedback, getFeedbackByStudent, getFeedbackByRecipient, updateFeedback, deleteFeedback,
-    certificates, addCertificate, getCertificatesForStudent,
-    tasks, addTask, updateTask, deleteTask, getTasksByUser, completeTask,
-    createTask, updateTaskStatus, addTaskComment,
+    /* Attendance */
+    attendanceRecords,
+    addAttendanceRecord,
+    updateAttendanceRecord,
+
+    /* Class Summary */
+    classSummaries,
+    addClassSummary,
+    getClassSummary,
+
+    /* Student Activities */
+    studentActivities,
+    addStudentActivity,
+    getActivitiesForEvent,
+
+    /* General Activities */
+    activities,
+    addActivity,
+    getActivities,
+
+    /* Messages */
+    messages,
+    sendMessage,
+    replyMessage,
+    markMessageRead,
+    deleteMessage,
+
+    /* Notifications */
+    notifications,
+    addNotificationItem,
+    markRead,
+    markAllRead,
+    clearNotification,
+
+    /* Feedback */
+    feedbacks,
+    submitFeedback,
+    getFeedbackByStudent,
+    getFeedbackByRecipient,
+    updateFeedback,
+    deleteFeedback,
+
+    /* Certificates */
+    certificates,
+    addCertificate,
+    getCertificatesForStudent,
+
+    /* Tasks */
+    tasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    getTasksByUser,
+    completeTask,
+    createTask,
+    updateTaskStatus,
+    addTaskComment,
+
+    /* Announcement */
     addAnnouncement,
+
+    /* Assignment */
     submitAssignment,
-    leaves, addLeave, getStudentLeaves, getAllApprovedLeaves,
+
+    /* Leaves */
+    leaves,
+    addLeave,
+    getStudentLeaves,
+    getAllApprovedLeaves,
   };
 
   return (
@@ -572,12 +1532,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useData = (): DataContextType => {
-  const context = useContext(DataContext);
-  if (!context) {
-    throw new Error('useData must be used within a DataProvider');
-  }
-  return context;
-};
+/* =========================================================
+   HOOK
+========================================================= */
 
-export type { ExtendedTask as Task, TaskComment };
+export const useData =
+  (): DataContextType => {
+    const context =
+      useContext(DataContext);
+
+    if (!context) {
+      throw new Error(
+        'useData must be used within a DataProvider'
+      );
+    }
+
+    return context;
+  };
+
+export type {
+  ExtendedTask as Task,
+  TaskComment,
+};

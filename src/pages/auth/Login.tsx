@@ -1,78 +1,117 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
-import { Mail, Lock, ArrowRight, Loader } from "lucide-react";
-import DeviceConflictModal from "../../components/common/DeviceConflictModal"; // ✅ NEW
-
-const DEMO_USERS = [
-  { id: "1", email: "superadmin@lms.com", password: "Admin@123", role: "super-admin" },
-  { id: "2", email: "admin@lms.com", password: "Password@123", role: "admin" },
-  { id: "3", email: "teacher@lms.com", password: "Password@123", role: "teacher" },
-  { id: "4", email: "student@lms.com", password: "Password@123", role: "student" },
-];
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader,
+} from 'lucide-react';
+import DeviceConflictModal from '../../components/common/DeviceConflictModal';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login, forceLogin, dismissDeviceConflict, deviceConflict, isLoading } = useAuth(); // ✅ 3 new added
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [forceLoading, setForceLoading] = useState(false); // ✅ NEW
+  const {
+    login,
+    forceLogin,
+    dismissDeviceConflict,
+    deviceConflict,
+    isLoading,
+  } = useAuth();
 
-  // ✅ FIXED: mustChangePassword check karo
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [forceLoading, setForceLoading] =
+    useState(false);
+
   const handleLoginSuccess = () => {
-    const storedUser = localStorage.getItem("lms_auth_user");
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      if (user.mustChangePassword) {
-        navigate("/force-password-change", { replace: true });
-      } else {
-        navigate(`/${user.role}/dashboard`, { replace: true });
-      }
-    }
-  };
+    const storedUser =
+      localStorage.getItem('lms_auth_user');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!email || !password) {
-      setError("Please fill in all fields");
+    if (!storedUser) {
+      setError('Unable to load logged in user.');
       return;
     }
 
     try {
-      await login({ email, password });
-      handleLoginSuccess();
-    } catch (err: any) {
-      if (err?.response?.status === 409) return; // ✅ Device conflict modal handle karega
-      setError("Invalid email or password");
+      const user = JSON.parse(storedUser);
+
+      if (user.mustChangePassword) {
+        navigate('/force-password-change', {
+          replace: true,
+        });
+
+        return;
+      }
+
+      navigate(`/${user.role}/dashboard`, {
+        replace: true,
+      });
+    } catch (error) {
+      console.error(
+        'Failed to read logged in user:',
+        error
+      );
+
+      setError(
+        'Something went wrong while logging in.'
+      );
     }
   };
 
-  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError("");
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
+
+    setError('');
+
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
 
     try {
-      await login({ email: demoEmail, password: demoPassword });
+      await login({
+        email: cleanEmail,
+        password,
+      });
+
       handleLoginSuccess();
     } catch (err: any) {
-      if (err?.response?.status === 409) return; // ✅ Device conflict modal handle karega
-      setError("Invalid email or password");
+      if (err?.response?.status === 409) {
+        return;
+      }
+
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Invalid email or password';
+
+      setError(message);
     }
   };
 
-  // ✅ NEW: Force login handler
   const handleForceLogin = async () => {
     setForceLoading(true);
+    setError('');
+
     try {
       await forceLogin();
       handleLoginSuccess();
-    } catch {
-      setError("Force login failed. Please try again.");
+    } catch (error) {
+      console.error(
+        'Force login failed:',
+        error
+      );
+
+      setError(
+        'Force login failed. Please try again.'
+      );
     } finally {
       setForceLoading(false);
     }
@@ -86,35 +125,56 @@ const Login: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-5"
+      >
         <div className="relative">
           <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+
           <input
             type="email"
+            name="email"
+            autoComplete="email"
             placeholder="Email address"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
             className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#0081d1] focus:ring-2 focus:ring-[#0081d1]/20 outline-none text-sm transition-all text-gray-900"
-            style={{ backgroundColor: "#f9fafb", color: "#000000" }}
+            style={{
+              backgroundColor: '#f9fafb',
+              color: '#000000',
+            }}
           />
         </div>
 
         <div className="relative">
           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+
           <input
             type="password"
+            name="password"
+            autoComplete="current-password"
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
             className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#0081d1] focus:ring-2 focus:ring-[#0081d1]/20 outline-none text-sm transition-all text-gray-900"
-            style={{ backgroundColor: "#f9fafb", color: "#000000" }}
+            style={{
+              backgroundColor: '#f9fafb',
+              color: '#000000',
+            }}
           />
         </div>
 
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => navigate("/forgot-password")}
+            onClick={() =>
+              navigate('/forgot-password')
+            }
             className="text-sm text-[#0081d1] hover:text-[#0057a8] font-medium hover:underline transition-all"
           >
             Forgot Password?
@@ -139,32 +199,11 @@ const Login: React.FC = () => {
           )}
         </button>
       </form>
-
-      <div className="mt-8 border-t border-gray-200 pt-6">
-        <p className="text-xs text-center text-gray-500 mb-4 uppercase font-semibold tracking-wider">
-          Quick Demo Login
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {DEMO_USERS.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => handleDemoLogin(u.email, u.password)}
-              disabled={isLoading}
-              className="p-3 border-2 border-gray-200 rounded-xl hover:border-[#0081d1] hover:bg-blue-50 text-xs capitalize font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-gray-900"
-              style={{ backgroundColor: "#ffffff", color: "#000000" }}
-            >
-              {u.role.replace("-", " ")}
-            </button>
-          ))}
-        </div>
-      </div>
     </>
   );
 
   return (
     <div className="auth-page-container min-h-screen w-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center p-4">
-
-      {/* ✅ NEW: Device Conflict Modal */}
       {deviceConflict && (
         <DeviceConflictModal
           onForceLogin={handleForceLogin}
@@ -173,31 +212,59 @@ const Login: React.FC = () => {
         />
       )}
 
-      {/* DESKTOP VIEW */}
+      {/* DESKTOP */}
       <div className="hidden lg:block relative w-full max-w-365.2 h-182.5 mx-auto">
-        <img src="/bg9.png" alt="background" className="w-full h-full object-cover rounded-3xl shadow-2xl" />
+        <img
+          src="/bg9.png"
+          alt="background"
+          className="w-full h-full object-cover rounded-3xl shadow-2xl"
+        />
+
         <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/10 rounded-3xl" />
 
         <div className="auth-card absolute right-8 lg:right-16 top-1/2 -translate-y-1/2 w-full max-w-120 bg-white/98 backdrop-blur-xl rounded-3xl p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
           <div className="flex items-center justify-center mb-8">
-            <img src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png" alt="Logo" className="h-14 w-auto object-contain" />
+            <img
+              src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png"
+              alt="Logo"
+              className="h-14 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">Welcome Back</h1>
-          <p className="text-gray-500 mb-8 text-sm text-center">Sign in to continue your learning journey</p>
+
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
+            Welcome Back
+          </h1>
+
+          <p className="text-gray-500 mb-8 text-sm text-center">
+            Sign in to continue your learning
+            journey
+          </p>
+
           <FormFields />
         </div>
       </div>
 
-      {/* MOBILE VIEW */}
+      {/* MOBILE */}
       <div className="lg:hidden auth-card w-full max-w-120 bg-white/98 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
         <div className="flex items-center justify-center mb-8">
-          <img src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png" alt="Logo" className="h-12 sm:h-14 w-auto object-contain" />
+          <img
+            src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png"
+            alt="Logo"
+            className="h-12 sm:h-14 w-auto object-contain"
+          />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center">Welcome Back</h1>
-        <p className="text-gray-500 mb-8 text-sm text-center">Sign in to continue your learning journey</p>
+
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center">
+          Welcome Back
+        </h1>
+
+        <p className="text-gray-500 mb-8 text-sm text-center">
+          Sign in to continue your learning
+          journey
+        </p>
+
         <FormFields />
       </div>
-
     </div>
   );
 };
