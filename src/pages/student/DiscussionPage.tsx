@@ -25,6 +25,7 @@ const DiscussionPage: React.FC = () => {
         fetchCourses();
     }, []);
 
+    // ─── TERA API LOGIC ───────────────────────────────────────────────────────
     const fetchCourses = async () => {
         try {
             setLoading(true);
@@ -42,6 +43,7 @@ const DiscussionPage: React.FC = () => {
             setLoading(false);
         }
     };
+    // ─────────────────────────────────────────────────────────────────────────
 
     return (
         <div className="space-y-6">
@@ -55,6 +57,7 @@ const DiscussionPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Sidebar */}
                 <div className="space-y-4">
+
                     {/* Course Selection */}
                     <Card>
                         <h3 className="font-bold text-gray-900 mb-4">Select Course</h3>
@@ -70,11 +73,10 @@ const DiscussionPage: React.FC = () => {
                                     <button
                                         key={course.id}
                                         onClick={() => setSelectedCourse(course.id)}
-                                        className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                            selectedCourse === course.id
+                                        className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedCourse === course.id
                                                 ? 'bg-gray-100 text-black border-l-4 border-black'
                                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                                        }`}
+                                            }`}
                                     >
                                         {course.name}
                                     </button>
@@ -91,11 +93,10 @@ const DiscussionPage: React.FC = () => {
                                 <button
                                     key={topic.id}
                                     onClick={() => setSelectedTopic(topic.id)}
-                                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                        selectedTopic === topic.id
+                                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${selectedTopic === topic.id
                                             ? 'bg-gray-100 text-black border-l-4 border-black'
                                             : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                                    }`}
+                                        }`}
                                 >
                                     {topic.name}
                                 </button>

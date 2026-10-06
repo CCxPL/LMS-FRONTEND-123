@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Filter } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { getTeacherCoursesApi } from '../../api/teacherApi';
-import { getMyEnrolledCoursesApi } from '../../api/studentApi';
-import { getAllCoursesApi } from '../../api/courseApi';
 
-interface Course {
-  id: string;
-  name: string;
-}
+
+// ✅ PURA COMPONENT replace karo:
+import React, { useState, useEffect } from 'react';
+import { Filter } from 'lucide-react';
+import axiosInstance from '../../api/axiosInstance';
+import { useAuth } from '../../hooks/useAuth';
 
 interface CourseFilterProps {
   selectedCourseId: string;
@@ -22,48 +18,31 @@ const CourseFilter: React.FC<CourseFilterProps> = ({
   showAllOption = true,
 }) => {
   const { user } = useAuth();
-  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     const fetchCourses = async () => {
-      if (!user || !user.role) return;
-
-      console.log('USER ROLE:', user.role); // ← YE ADD KARO
-      console.log('ROLE LOWERCASE:', user.role?.toLowerCase());
       try {
-        let courses: Course[] = [];
-
-        // ✅ FIX: Case-insensitive role check
-        const role = user.role?.toLowerCase();
-
-        if (role === 'super-admin' || role === 'admin') {
-          const res = await getAllCoursesApi();
-          courses = res.data.courses.map((c: any) => ({
-            id: c._id,
-            name: c.title,
-          }));
-        } else if (role === 'teacher') {
-          const res = await getTeacherCoursesApi();
-          courses = res.data.courses.map((c: any) => ({
-            id: c._id,
-            name: c.title,
-          }));
-        } else if (role === 'student') {
-          const res = await getMyEnrolledCoursesApi();
-          courses = res.data.courses.map((c: any) => ({
-            id: c._id,
-            name: c.title,
-          }));
+        let url = '/courses';
+        if (user?.role === 'teacher') {
+          url = '/courses?teacher=' + user.id;
+        } else if (user?.role === 'student') {
+          url = '/courses?student=' + user.id;
         }
-
-        setAvailableCourses(courses);
-      } catch (error) {
-        console.error('Failed to fetch courses:', error);
+        const res = await axiosInstance.get(url);
+        const data = res.data?.data?.courses || [];
+        setCourses(
+          data.map((c: any) => ({
+            id: c._id || c.id,
+            name: c.title || c.name,
+          }))
+        );
+      } catch {
+        setCourses([]);
       }
     };
-
-    fetchCourses();
-  }, [user?.role]);
+    if (user) fetchCourses();
+  }, [user]);
 
   return (
     <div className="flex items-center gap-3">
@@ -77,10 +56,8 @@ const CourseFilter: React.FC<CourseFilterProps> = ({
         onChange={(e) => onCourseChange(e.target.value)}
         className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-black focus:border-transparent"
       >
-        {showAllOption && (
-          <option value="">All Courses</option>
-        )}
-        {availableCourses.map(course => (
+        {showAllOption && <option value="">All Courses</option>}
+        {courses.map(course => (
           <option key={course.id} value={course.id}>
             {course.name}
           </option>

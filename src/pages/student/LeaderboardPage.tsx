@@ -17,6 +17,7 @@ const LeaderboardPage: React.FC = () => {
     fetchCourses();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const fetchCourses = async () => {
     try {
       setLoading(true);
@@ -34,6 +35,7 @@ const LeaderboardPage: React.FC = () => {
       setLoading(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">

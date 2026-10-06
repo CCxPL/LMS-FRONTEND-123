@@ -1,56 +1,58 @@
-import axiosInstance from "./axiosInstance";
+// src/api/assignmentApi.ts
+import axiosInstance from './axiosInstance';
 
-export const getStudentAssignmentsApi = async () => {
-    const res = await axiosInstance.get("/assignments/student");
-    return res.data;
-};
+// ─── TEACHER ──────────────────────────────────────────────────────────────────
 
-export const submitAssignmentApi = async (
-    id: string,
-    data: { submittedText?: string; submissionType?: string; link?: string; fileUrl?: string }
-) => {
-    const res = await axiosInstance.post(`/assignments/${id}/submit`, data);
-    return res.data;
-};
+export const getTeacherAssignmentsApi = () =>
+    axiosInstance.get('/assignments/teacher');
 
-export const createAssignmentApi = async (data: {
+export const createAssignmentApi = (data: {
     title: string;
     courseId: string;
     dueDate: string;
     description?: string;
     totalMarks?: number;
-}) => {
-    const res = await axiosInstance.post("/assignments", data);
-    return res.data;
-};
+}) => axiosInstance.post('/assignments', data);
 
-export const getTeacherAssignmentsApi = async () => {
-    const res = await axiosInstance.get("/assignments/teacher");
-    return res.data;
-};
+export const updateAssignmentApi = (
+    assignmentId: string,
+    data: {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+        totalMarks?: number;
+    }
+) => axiosInstance.put(`/assignments/${assignmentId}`, data);
 
-export const getAssignmentSubmissionsApi = async (id: string) => {
-    const res = await axiosInstance.get(`/assignments/${id}/submissions`);
-    return res.data;
-};
+export const deleteAssignmentApi = (assignmentId: string) =>
+    axiosInstance.delete(`/assignments/${assignmentId}`);
 
-export const gradeSubmissionApi = async (
+export const getAssignmentSubmissionsApi = (assignmentId: string) =>
+    axiosInstance.get(`/assignments/${assignmentId}/submissions`);
+
+export const gradeSubmissionApi = (
     submissionId: string,
     data: { obtainedMarks: number; feedback?: string }
-) => {
-    const res = await axiosInstance.patch(
-        `/assignments/submission/${submissionId}/grade`,
-        data
-    );
-    return res.data;
-};
+) => axiosInstance.patch(`/assignments/submission/${submissionId}/grade`, data);
 
-export const deleteAssignmentApi = async (id: string) => {
-    const res = await axiosInstance.delete(`/assignments/${id}`);
-    return res.data;
-};
+// ─── STUDENT ──────────────────────────────────────────────────────────────────
 
-export const getAssignmentByIdApi = async (id: string) => {
-    const res = await axiosInstance.get(`/assignments/${id}`);
-    return res.data;
-};
+export const getStudentAssignmentsApi = () =>
+    axiosInstance.get('/assignments/student');
+
+// ✅ NEW: Get single assignment by ID (used in SubmitAssignment.tsx)
+export const getAssignmentByIdApi = (assignmentId: string) =>
+    axiosInstance.get(`/assignments/${assignmentId}`);
+
+export const submitAssignmentApi = (
+    assignmentId: string,
+    data: {
+        submittedText?: string;
+        submissionType?: string;
+        link?: string;
+        fileUrl?: string;
+    }
+) => axiosInstance.post(`/assignments/${assignmentId}/submit`, data);
+
+export const getMySubmissionsApi = () =>
+    axiosInstance.get('/assignments/my-submissions');

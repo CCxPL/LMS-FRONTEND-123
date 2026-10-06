@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { FileText, CheckCircle, XCircle, Clock, TrendingUp, Calendar } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Clock, TrendingUp, Calendar, Umbrella } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useData } from '../../context/DataContext';
 import AttendanceFilters from '../../components/reports/AttendanceFilters';
 import AttendanceTable from '../../components/reports/AttendanceTable';
 import { generateAttendancePDF } from '../../utils/pdfGenerator';
 import type { AttendanceFilter, AttendanceRecord, AttendanceStats } from '../../types/attendance.types';
 import { getCourseAttendanceApi } from '../../api/attendanceApi';
 import { getTeacherCoursesApi } from '../../api/teacherApi';
-import { getAllCoursesApi } from '../../api/courseApi'; // ✅ ADDED
+import { getAllCoursesApi } from '../../api/courseApi';
 
 const StudentAttendanceReport: React.FC = () => {
   const { user } = useAuth();
+  const { leaves } = useData();
   const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<AttendanceFilter>({ dateRange: 'month' });
@@ -21,14 +23,17 @@ const StudentAttendanceReport: React.FC = () => {
     loadData();
   }, [filters.courseId]);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const isTeacher = user?.role === 'teacher'; // ✅ ADDED
+      const isTeacher = user?.role === 'teacher';
 
       const [attendanceRes, coursesRes] = await Promise.all([
-        filters.courseId ? getCourseAttendanceApi(filters.courseId) : Promise.resolve({ data: { attendance: [] } }),
-        isTeacher ? getTeacherCoursesApi() : getAllCoursesApi({ limit: 100 }), // ✅ FIXED
+        filters.courseId
+          ? getCourseAttendanceApi(filters.courseId)
+          : Promise.resolve({ data: { attendance: [] } }),
+        isTeacher ? getTeacherCoursesApi() : getAllCoursesApi({ limit: 100 }),
       ]);
 
       const rawAttendance = attendanceRes.data?.attendance || [];
@@ -62,26 +67,58 @@ const StudentAttendanceReport: React.FC = () => {
       setIsLoading(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ─── DOST KA UI: leave overlay logic ─────────────────────────────────────
+  const isStudentOnLeave = (studentId: string, date: string) => {
+    return leaves.find(leave =>
+      leave.studentId === studentId &&
+      leave.status === 'approved' &&
+      leave.days.includes(date)
+    );
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const filteredRecords = useMemo(() => {
     let records = [...attendanceRecords];
+
     if (filters.studentId) records = records.filter(r => r.studentId === filters.studentId);
     if (filters.courseId) records = records.filter(r => r.courseId === filters.courseId);
+
+    // ─── DOST KA: apply leave overlay ────────────────────────────────────
+    records = records.map(record => {
+      const leaveInfo = isStudentOnLeave(record.studentId, record.date);
+      if (leaveInfo) {
+        return {
+          ...record,
+          status: 'on-leave' as const,
+          leaveReason: leaveInfo.reason,
+          joinTime: null,
+          leaveTime: null,
+          duration: 0,
+        };
+      }
+      return record;
+    });
+    // ─────────────────────────────────────────────────────────────────────
+
     records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return records;
-  }, [attendanceRecords, filters]);
+  }, [attendanceRecords, filters, leaves]);
 
   const stats: AttendanceStats = useMemo(() => {
     const total = filteredRecords.length;
     const present = filteredRecords.filter(r => r.status === 'present').length;
     const absent = filteredRecords.filter(r => r.status === 'absent').length;
     const late = filteredRecords.filter(r => r.status === 'late').length;
+    const onLeave = filteredRecords.filter(r => r.status === 'on-leave').length; // ─── DOST KA
     const totalDuration = filteredRecords.reduce((sum, r) => sum + r.duration, 0);
     return {
       totalClasses: total,
       present,
       absent,
       late,
+      onLeave, // ─── DOST KA
       attendancePercentage: total > 0 ? Math.round(((present + late) / total) * 100) : 0,
       totalDuration,
     };
@@ -98,7 +135,9 @@ const StudentAttendanceReport: React.FC = () => {
 
   const handleExportPDF = () => {
     setIsExporting(true);
-    const courseName = filters.courseId ? courses.find(c => c.id === filters.courseId)?.name : undefined;
+    const courseName = filters.courseId
+      ? courses.find(c => c.id === filters.courseId)?.name
+      : undefined;
     setTimeout(() => {
       generateAttendancePDF({
         title: 'Student Attendance Report',
@@ -139,7 +178,8 @@ const StudentAttendanceReport: React.FC = () => {
         isExporting={isExporting}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* ─── DOST KA: 6 stats cards with On Leave ─────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gray-100 rounded-lg">
@@ -151,6 +191,7 @@ const StudentAttendanceReport: React.FC = () => {
             </div>
           </div>
         </div>
+
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -162,6 +203,7 @@ const StudentAttendanceReport: React.FC = () => {
             </div>
           </div>
         </div>
+
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-100 rounded-lg">
@@ -173,6 +215,7 @@ const StudentAttendanceReport: React.FC = () => {
             </div>
           </div>
         </div>
+
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-yellow-100 rounded-lg">
@@ -184,6 +227,19 @@ const StudentAttendanceReport: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Umbrella className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-600">{stats.onLeave || 0}</p>
+              <p className="text-xs text-gray-500">On Leave</p>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -196,10 +252,11 @@ const StudentAttendanceReport: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* ──────────────────────────────────────────────────────────────── */}
 
       <AttendanceTable
         records={filteredRecords}
-        showStudent={false}
+        showStudent={!filters.studentId}
         showCourse={!filters.courseId}
       />
     </div>

@@ -17,26 +17,28 @@ const ManageStudents: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // ✅ Pagination state
+  // ─── TERA: Pagination states ──────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalStudents, setTotalStudents] = useState(0);
   const LIMIT = 20;
+  // ─────────────────────────────────────────────────────────────────────────
 
   const [viewStudent, setViewStudent] = useState<any | null>(null);
   const [editStudent, setEditStudent] = useState<any | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ student: any; action: 'suspend' | 'activate' | 'delete' } | null>(null);
-
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', grade: '' });
   const { showToast } = useToast();
 
   useEffect(() => { loadStudents(1); }, []);
 
-  // ✅ Search/filter change pe page 1 pe wapas jao
+  // ─── TERA: search/filter change pe page 1 reset ───────────────────────────
   useEffect(() => {
     loadStudents(1);
   }, [searchTerm, statusFilter]);
+  // ─────────────────────────────────────────────────────────────────────────
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadStudents = async (page = 1) => {
     try {
       const res = await getAdminStudentsApi({
@@ -57,18 +59,10 @@ const ManageStudents: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadStudents(1); // ✅ Page 1 se start
+    await loadStudents(1);
     setIsRefreshing(false);
     showToast('Students refreshed', 'success');
   };
-
-  const filtered = students.filter((s) => {
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && s.isActive) ||
-      (statusFilter === 'suspended' && !s.isActive);
-    return matchesStatus;
-  });
 
   const handleStatusChange = async (student: any, newStatus: 'active' | 'suspended') => {
     try {
@@ -117,6 +111,7 @@ const ManageStudents: React.FC = () => {
     setEditStudent(null);
     setFormData({ name: '', email: '', phone: '', grade: '' });
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const openEditModal = (student: any) => {
     setFormData({
@@ -128,6 +123,14 @@ const ManageStudents: React.FC = () => {
     setEditStudent(student);
   };
 
+  const filtered = students.filter((s) => {
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && s.isActive) ||
+      (statusFilter === 'suspended' && !s.isActive);
+    return matchesStatus;
+  });
+
   const handleExport = () => {
     const csv = [
       ['Name', 'Email', 'Status', 'Enrolled', 'Avg Score', 'Grade'].join(','),
@@ -136,7 +139,7 @@ const ManageStudents: React.FC = () => {
         s.isActive ? 'active' : 'suspended',
         s.enrolledCourses ?? 0,
         `${s.averageScore ?? 0}%`,
-        s.grade || 'N/A'
+        s.grade || 'N/A',
       ].join(','))
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -158,6 +161,7 @@ const ManageStudents: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manage Students</h1>
@@ -173,6 +177,7 @@ const ManageStudents: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="text-center">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -188,6 +193,7 @@ const ManageStudents: React.FC = () => {
         </Card>
       </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -216,6 +222,7 @@ const ManageStudents: React.FC = () => {
         </div>
       </Card>
 
+      {/* Students Table */}
       <Card padding="none">
         {filtered.length === 0 ? (
           <div className="text-center py-12">
@@ -246,8 +253,15 @@ const ManageStudents: React.FC = () => {
                             {student.name.charAt(0)}
                           </div>
                           <div>
-                            <p className={`font-medium flex items-center gap-2 ${!student.isActive ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                            <p className={`font-medium flex items-center gap-2 ${!student.isActive ? 'text-gray-400 line-through' : 'text-gray-900'
+                              }`}>
                               {student.name}
+                              {/* ─── DOST KA: NEW badge ── */}
+                              {student.isNew && (
+                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                                  NEW
+                                </span>
+                              )}
                             </p>
                             <p className="text-xs text-gray-500">{student.email}</p>
                           </div>
@@ -265,7 +279,9 @@ const ManageStudents: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <span className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">{student.grade || 'N/A'}</span>
+                        <span className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">
+                          {student.grade || 'N/A'}
+                        </span>
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${student.isActive ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
@@ -275,20 +291,36 @@ const ManageStudents: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => setViewStudent(student)} className="p-2 hover:bg-gray-100 rounded-lg" title="View">
+                          <button
+                            onClick={() => setViewStudent(student)}
+                            className="p-2 hover:bg-gray-100 rounded-lg"
+                            title="View"
+                          >
                             <Eye className="w-4 h-4 text-gray-500" />
                           </button>
-                          <button onClick={() => openEditModal(student)} className="p-2 hover:bg-gray-100 rounded-lg" title="Edit">
+                          <button
+                            onClick={() => openEditModal(student)}
+                            className="p-2 hover:bg-gray-100 rounded-lg"
+                            title="Edit"
+                          >
                             <Pencil className="w-4 h-4 text-gray-500" />
                           </button>
                           <button
                             onClick={() => setConfirmAction({ student, action: student.isActive ? 'suspend' : 'activate' })}
-                            className={`p-2 rounded-lg ${student.isActive ? 'hover:bg-red-100 text-red-500' : 'hover:bg-emerald-100 text-emerald-500'}`}
+                            className={`p-2 rounded-lg ${student.isActive ? 'hover:bg-red-100 text-red-500' : 'hover:bg-emerald-100 text-emerald-500'
+                              }`}
                             title={student.isActive ? 'Suspend' : 'Activate'}
                           >
-                            {student.isActive ? <Ban className="w-4 h-4 text-gray-500" /> : <CheckCircle className="w-4 h-4 text-gray-500" />}
+                            {student.isActive
+                              ? <Ban className="w-4 h-4 text-gray-500" />
+                              : <CheckCircle className="w-4 h-4 text-gray-500" />
+                            }
                           </button>
-                          <button onClick={() => setConfirmAction({ student, action: 'delete' })} className="p-2 hover:bg-red-100 rounded-lg" title="Delete">
+                          <button
+                            onClick={() => setConfirmAction({ student, action: 'delete' })}
+                            className="p-2 hover:bg-red-100 rounded-lg"
+                            title="Delete"
+                          >
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </button>
                         </div>
@@ -299,7 +331,7 @@ const ManageStudents: React.FC = () => {
               </table>
             </div>
 
-            {/* ✅ Pagination */}
+            {/* ─── TERA: Pagination ──────────────────────────────────────── */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
                 <p className="text-sm text-gray-500">
@@ -325,6 +357,7 @@ const ManageStudents: React.FC = () => {
                 </div>
               </div>
             )}
+            {/* ──────────────────────────────────────────────────────────── */}
           </>
         )}
       </Card>
@@ -339,7 +372,15 @@ const ManageStudents: React.FC = () => {
                 {viewStudent.name.charAt(0)}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{viewStudent.name}</h3>
+                {/* ─── DOST KA: NEW badge in modal ── */}
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  {viewStudent.name}
+                  {viewStudent.isNew && (
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      NEW
+                    </span>
+                  )}
+                </h3>
                 <p className="text-gray-500">{viewStudent.email}</p>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full mt-2 inline-block ${viewStudent.isActive ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'
                   }`}>
@@ -347,6 +388,7 @@ const ManageStudents: React.FC = () => {
                 </span>
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-gray-900">{viewStudent.enrolledCourses ?? 0}</p>
@@ -358,7 +400,8 @@ const ManageStudents: React.FC = () => {
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <p className={`text-2xl font-bold ${(viewStudent.averageScore ?? 0) >= 80 ? 'text-emerald-600' :
-                  (viewStudent.averageScore ?? 0) >= 60 ? 'text-amber-600' : 'text-red-600'
+                  (viewStudent.averageScore ?? 0) >= 60 ? 'text-amber-600' :
+                    'text-red-600'
                   }`}>
                   {viewStudent.averageScore ?? 0}%
                 </p>
@@ -369,12 +412,14 @@ const ManageStudents: React.FC = () => {
                 <p className="text-sm text-gray-500">Grade</p>
               </div>
             </div>
+
             {viewStudent.phone && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-sm text-gray-500">Phone</p>
                 <p className="font-medium text-gray-900">{viewStudent.phone}</p>
               </div>
             )}
+
             <div className="flex gap-3">
               <Button className="flex-1" onClick={() => { setViewStudent(null); openEditModal(viewStudent); }}>
                 <Pencil className="w-4 h-4" /> Edit
@@ -382,7 +427,10 @@ const ManageStudents: React.FC = () => {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setViewStudent(null); setConfirmAction({ student: viewStudent, action: viewStudent.isActive ? 'suspend' : 'activate' }); }}
+                onClick={() => {
+                  setViewStudent(null);
+                  setConfirmAction({ student: viewStudent, action: viewStudent.isActive ? 'suspend' : 'activate' });
+                }}
               >
                 {viewStudent.isActive ? 'Suspend' : 'Activate'}
               </Button>
@@ -392,7 +440,11 @@ const ManageStudents: React.FC = () => {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={!!editStudent} onClose={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }} title="Edit Student">
+      <Modal
+        isOpen={!!editStudent}
+        onClose={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }}
+        title="Edit Student"
+      >
         <form onSubmit={handleEditStudent} className="space-y-4">
           <Input label="Full Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
           <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
@@ -400,11 +452,14 @@ const ManageStudents: React.FC = () => {
           <Input label="Grade" value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="e.g., A, B+, C" />
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1">Save Changes</Button>
-            <Button type="button" variant="secondary" onClick={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => { setEditStudent(null); setFormData({ name: '', email: '', phone: '', grade: '' }); }}>
+              Cancel
+            </Button>
           </div>
         </form>
       </Modal>
 
+      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={!!confirmAction}
         onClose={() => setConfirmAction(null)}
@@ -413,8 +468,16 @@ const ManageStudents: React.FC = () => {
           if (confirmAction.action === 'delete') handleDelete(confirmAction.student);
           else handleStatusChange(confirmAction.student, confirmAction.action === 'activate' ? 'active' : 'suspended');
         }}
-        title={confirmAction?.action === 'delete' ? 'Delete Student?' : confirmAction?.action === 'suspend' ? 'Suspend Student?' : 'Activate Student?'}
-        message={confirmAction?.action === 'delete' ? `Are you sure you want to delete "${confirmAction?.student?.name}"? This cannot be undone.` : `Are you sure you want to ${confirmAction?.action} "${confirmAction?.student?.name}"?`}
+        title={
+          confirmAction?.action === 'delete' ? 'Delete Student?' :
+            confirmAction?.action === 'suspend' ? 'Suspend Student?' :
+              'Activate Student?'
+        }
+        message={
+          confirmAction?.action === 'delete'
+            ? `Are you sure you want to delete "${confirmAction?.student?.name}"? This cannot be undone.`
+            : `Are you sure you want to ${confirmAction?.action} "${confirmAction?.student?.name}"?`
+        }
         confirmText={confirmAction?.action === 'delete' ? 'Delete' : confirmAction?.action === 'suspend' ? 'Suspend' : 'Activate'}
         type={confirmAction?.action === 'delete' || confirmAction?.action === 'suspend' ? 'danger' : 'info'}
       />

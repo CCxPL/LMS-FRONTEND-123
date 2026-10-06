@@ -24,8 +24,8 @@ const EventCard: React.FC<EventCardProps> = ({
   const isLive = isEventLive(event);
   const isUpcoming = isEventUpcoming(event);
 
-  const bgColor = event.type === 'class' 
-    ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' 
+  const bgColor = event.type === 'class'
+    ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
     : 'bg-red-50 border-red-200 hover:bg-red-100';
 
   const typeColor = event.type === 'class' ? 'text-blue-600' : 'text-red-600';
@@ -88,7 +88,7 @@ const EventCard: React.FC<EventCardProps> = ({
               {isLive ? 'Join Now' : 'Join Class'}
             </button>
           )}
-          
+
           {event.meetingLink && (
             <a
               href={event.meetingLink}

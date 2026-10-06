@@ -19,8 +19,9 @@ export interface AttendanceRecord {
   joinTime: string | null;
   leaveTime: string | null;
   duration: number;
-  status: 'present' | 'absent' | 'late';
+  status: 'present' | 'absent' | 'late' | 'on-leave'; // ✅ UPDATED
   createdAt: string;
+  leaveReason?: string; // ✅ NEW
 }
 
 export interface StudentActivity {
@@ -67,6 +68,7 @@ export interface AttendanceStats {
   present: number;
   absent: number;
   late: number;
+  onLeave?: number; // ✅ NEW
   attendancePercentage: number;
   totalDuration: number;
 }
@@ -164,7 +166,7 @@ export const formatDuration = (minutes: number): string => {
   return `${hours} hr ${mins} min`;
 };
 
-export const formatDate = (date: string | Date, formatStr?: string): string => {
+export const formatDate = (date: string | Date, _formatStr?: string): string => {
   const d = new Date(date);
   return d.toLocaleDateString('en-US', { 
     year: 'numeric', 

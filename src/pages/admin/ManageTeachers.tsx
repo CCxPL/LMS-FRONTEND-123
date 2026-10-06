@@ -28,6 +28,7 @@ const ManageTeachers: React.FC = () => {
 
   useEffect(() => { loadTeachers(); }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadTeachers = async () => {
     try {
       const res = await getAdminTeachersApi({ limit: 100 });
@@ -45,18 +46,6 @@ const ManageTeachers: React.FC = () => {
     setIsRefreshing(false);
     showToast('Teachers refreshed', 'success');
   };
-
-  const filtered = teachers.filter((t) => {
-    const matchesSearch =
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (t.specialization || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && t.isActive) ||
-      (statusFilter === 'suspended' && !t.isActive);
-    return matchesSearch && matchesStatus;
-  });
 
   const handleStatusChange = async (teacher: any, newStatus: 'active' | 'suspended') => {
     try {
@@ -116,7 +105,12 @@ const ManageTeachers: React.FC = () => {
     e.preventDefault();
     if (!editTeacher) return;
     try {
-      await updateUserApi(editTeacher._id || editTeacher.id, { name: formData.name, email: formData.email });
+      await updateUserApi(editTeacher._id || editTeacher.id, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        specialization: formData.specialization,
+      });
       setTeachers(prev => prev.map(t =>
         (t._id || t.id) === (editTeacher._id || editTeacher.id) ? { ...t, ...formData } : t
       ));
@@ -127,6 +121,7 @@ const ManageTeachers: React.FC = () => {
     setEditTeacher(null);
     resetForm();
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const openEditModal = (teacher: any) => {
     setFormData({
@@ -140,6 +135,18 @@ const ManageTeachers: React.FC = () => {
 
   const resetForm = () => setFormData({ name: '', email: '', phone: '', specialization: '' });
   const resetAddForm = () => setAddFormData({ name: '', email: '', password: '', phone: '', specialization: '' });
+
+  const filtered = teachers.filter((t) => {
+    const matchesSearch =
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.specialization || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && t.isActive) ||
+      (statusFilter === 'suspended' && !t.isActive);
+    return matchesSearch && matchesStatus;
+  });
 
   const handleExport = () => {
     const csv = [
@@ -172,6 +179,7 @@ const ManageTeachers: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manage Teachers</h1>
@@ -190,6 +198,7 @@ const ManageTeachers: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="text-center">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -205,6 +214,7 @@ const ManageTeachers: React.FC = () => {
         </Card>
       </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -233,6 +243,7 @@ const ManageTeachers: React.FC = () => {
         </div>
       </Card>
 
+      {/* Teachers Table */}
       <Card padding="none">
         {filtered.length === 0 ? (
           <div className="text-center py-12">
@@ -293,20 +304,38 @@ const ManageTeachers: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setViewTeacher(teacher)} className="p-2 hover:bg-gray-100 rounded-lg" title="View">
+                        <button
+                          onClick={() => setViewTeacher(teacher)}
+                          className="p-2 hover:bg-gray-100 rounded-lg"
+                          title="View"
+                        >
                           <Eye className="w-4 h-4 text-gray-500" />
                         </button>
-                        <button onClick={() => openEditModal(teacher)} className="p-2 hover:bg-gray-100 rounded-lg" title="Edit">
+                        <button
+                          onClick={() => openEditModal(teacher)}
+                          className="p-2 hover:bg-gray-100 rounded-lg"
+                          title="Edit"
+                        >
                           <Pencil className="w-4 h-4 text-gray-500" />
                         </button>
                         <button
-                          onClick={() => setConfirmAction({ teacher, action: teacher.isActive ? 'suspend' : 'activate' })}
+                          onClick={() => setConfirmAction({
+                            teacher,
+                            action: teacher.isActive ? 'suspend' : 'activate'
+                          })}
                           className="p-2 hover:bg-gray-100 rounded-lg"
                           title={teacher.isActive ? 'Suspend' : 'Activate'}
                         >
-                          {teacher.isActive ? <Ban className="w-4 h-4 text-gray-500" /> : <CheckCircle className="w-4 h-4 text-gray-500" />}
+                          {teacher.isActive
+                            ? <Ban className="w-4 h-4 text-gray-500" />
+                            : <CheckCircle className="w-4 h-4 text-gray-500" />
+                          }
                         </button>
-                        <button onClick={() => setConfirmAction({ teacher, action: 'delete' })} className="p-2 hover:bg-gray-100 rounded-lg" title="Delete">
+                        <button
+                          onClick={() => setConfirmAction({ teacher, action: 'delete' })}
+                          className="p-2 hover:bg-gray-100 rounded-lg"
+                          title="Delete"
+                        >
                           <Trash2 className="w-4 h-4 text-gray-500" />
                         </button>
                       </div>
@@ -354,7 +383,17 @@ const ManageTeachers: React.FC = () => {
               <Button fullWidth onClick={() => { setViewTeacher(null); openEditModal(viewTeacher); }}>
                 <Pencil className="w-4 h-4" /> Edit
               </Button>
-              <Button variant="outline" fullWidth onClick={() => { setViewTeacher(null); setConfirmAction({ teacher: viewTeacher, action: viewTeacher.isActive ? 'suspend' : 'activate' }); }}>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => {
+                  setViewTeacher(null);
+                  setConfirmAction({
+                    teacher: viewTeacher,
+                    action: viewTeacher.isActive ? 'suspend' : 'activate'
+                  });
+                }}
+              >
                 {viewTeacher.isActive ? 'Suspend' : 'Activate'}
               </Button>
             </div>
@@ -391,6 +430,7 @@ const ManageTeachers: React.FC = () => {
         </form>
       </Modal>
 
+      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={!!confirmAction}
         onClose={() => setConfirmAction(null)}
@@ -399,7 +439,10 @@ const ManageTeachers: React.FC = () => {
           if (confirmAction.action === 'delete') handleDelete(confirmAction.teacher);
           else handleStatusChange(confirmAction.teacher, confirmAction.action === 'activate' ? 'active' : 'suspended');
         }}
-        title={confirmAction?.action === 'delete' ? 'Delete Teacher?' : confirmAction?.action === 'suspend' ? 'Suspend Teacher?' : 'Activate Teacher?'}
+        title={
+          confirmAction?.action === 'delete' ? 'Delete Teacher?' :
+            confirmAction?.action === 'suspend' ? 'Suspend Teacher?' : 'Activate Teacher?'
+        }
         message={`Are you sure you want to ${confirmAction?.action} "${confirmAction?.teacher?.name}"?`}
         confirmText={confirmAction?.action === 'delete' ? 'Delete' : confirmAction?.action === 'suspend' ? 'Suspend' : 'Activate'}
         type={confirmAction?.action === 'delete' || confirmAction?.action === 'suspend' ? 'danger' : 'info'}

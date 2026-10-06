@@ -28,13 +28,13 @@ const TeacherLateAlert: React.FC<TeacherLateAlertProps> = ({
     const calculateLateTime = () => {
       const now = new Date();
       const [hours, mins] = event.startTime.split(':').map(Number);
-      
+
       const scheduledTime = new Date(now);
       scheduledTime.setHours(hours, mins, 0, 0);
-      
+
       const diffMs = now.getTime() - scheduledTime.getTime();
       const diffMins = Math.floor(diffMs / 60000);
-      
+
       setLateMinutes(Math.max(0, diffMins));
     };
 
@@ -56,16 +56,16 @@ const TeacherLateAlert: React.FC<TeacherLateAlertProps> = ({
 
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="p-2 bg-red-100 rounded-full flex-shrink-0">
+        <div className="p-2 bg-red-100 rounded-full shrink-0">
           <AlertTriangle className="w-5 h-5 text-red-600" />
         </div>
-        
+
         {/* Content */}
         <div className="flex-1 pr-6">
           <h3 className="font-semibold text-red-800 mb-1">
             Teacher Late Alert
           </h3>
-          
+
           <div className="space-y-1 text-sm">
             <p className="text-red-700">
               <span className="font-medium">{event.teacherName}</span> has not joined the class

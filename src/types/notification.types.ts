@@ -1,9 +1,9 @@
-export type NotificationType = 
-  | 'class_scheduled' 
-  | 'class_updated' 
-  | 'class_cancelled' 
-  | 'teacher_late' 
-  | 'role_changed' 
+export type NotificationType =
+  | 'class_scheduled'
+  | 'class_updated'
+  | 'class_cancelled'
+  | 'teacher_late'
+  | 'role_changed'
   | 'student_enrolled'
   | 'student_joined'
   | 'student_left'

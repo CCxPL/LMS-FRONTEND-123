@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Users, BookOpen, Star, CheckCircle, Video, FileText } from 'lucide-react';
+import { ArrowLeft, Users, Clock, BookOpen, Star, CheckCircle, Video, FileText } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Loader from '../../components/common/Loader';
@@ -22,6 +22,7 @@ const CourseEnroll: React.FC = () => {
     loadCourse();
   }, [id]);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadCourse = async () => {
     if (!id) return;
     try {
@@ -52,6 +53,7 @@ const CourseEnroll: React.FC = () => {
       setIsEnrolling(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleStartLearning = () => {
     navigate(`/student/course/${id}`);
@@ -71,6 +73,10 @@ const CourseEnroll: React.FC = () => {
   }
 
   const instructor = course.teacher?.name || course.instructor?.name || 'Unknown';
+  const totalLessons = course.modules?.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0) || 0;
+  const avgRating = course.reviews?.length > 0
+    ? (course.reviews.reduce((s: number, r: any) => s + r.rating, 0) / course.reviews.length).toFixed(1)
+    : course.rating || 'N/A';
 
   return (
     <div className="space-y-6">
@@ -109,48 +115,58 @@ const CourseEnroll: React.FC = () => {
               </div>
               <div className="w-px h-8 bg-gray-200" />
               <div className="flex items-center gap-1.5">
+                <Star className="w-4 h-4 text-gray-700 fill-gray-700" />
+                <span className="font-bold text-gray-900">{avgRating}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <Users className="w-4 h-4" />
                 <span className="font-bold text-gray-900">
                   {course.enrolledStudents?.length ?? 0} students
                 </span>
               </div>
+              {course.duration && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" />
+                  <span className="font-bold text-gray-900">{course.duration}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4" />
-                <span className="font-bold text-gray-900">
-                  {course.totalVideos ?? 0} videos
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Star className="w-4 h-4" />
-                <span className="font-bold text-gray-900">
-                  {course.reviews?.length > 0
-                    ? (course.reviews.reduce((s: number, r: any) => s + r.rating, 0) / course.reviews.length).toFixed(1)
-                    : 'N/A'}
-                </span>
+                <span className="font-bold text-gray-900">{course.totalVideos ?? 0} videos</span>
               </div>
             </div>
           </div>
 
-          {/* What you'll learn */}
-          {course.whatYouWillLearn?.length > 0 && (
-            <Card>
-              <h3 className="font-bold text-gray-900 mb-4 text-lg">What you'll learn</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {course.whatYouWillLearn.map((item: string, i: number) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <CheckCircle className="w-5 h-5 text-gray-700 shrink-0" />
-                    <span className="text-sm text-gray-600">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+          {/* What you'll learn — real data if available, fallback to defaults */}
+          <Card>
+            <h3 className="font-bold text-gray-900 mb-4 text-lg">What you'll learn</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(course.whatYouWillLearn?.length > 0
+                ? course.whatYouWillLearn
+                : [
+                  'Master the core concepts',
+                  'Build real-world projects',
+                  'Understand best practices',
+                  'Get certified upon completion',
+                ]
+              ).map((item: string, i: number) => (
+                <div key={i} className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-gray-700 shrink-0" />
+                  <span className="text-sm text-gray-600">{item}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
 
           {/* Course Content */}
           <div className="space-y-4">
             <h3 className="font-bold text-gray-900 text-lg">Course Content</h3>
             <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
-              <span>{course.totalVideos ?? 0} videos • {course.totalQuizzes ?? 0} quizzes</span>
+              <span>
+                {course.modules?.length ?? 0} sections • {totalLessons} lectures
+                {course.totalQuizzes ? ` • ${course.totalQuizzes} quizzes` : ''}
+              </span>
+              {course.duration && <span>{course.duration} total</span>}
             </div>
 
             {course.modules?.length > 0 ? (

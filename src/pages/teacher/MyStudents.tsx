@@ -12,6 +12,7 @@ const MyStudents: React.FC = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewStudent, setViewStudent] = useState<any | null>(null);
   const { showToast } = useToast();
@@ -20,9 +21,9 @@ const MyStudents: React.FC = () => {
     loadStudents();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadStudents = async () => {
     try {
-      // ✅ Sab courses fetch karo
       const coursesRes = await getTeacherCoursesApi({ limit: 100 });
       const courses = coursesRes.data?.courses || [];
 
@@ -36,13 +37,11 @@ const MyStudents: React.FC = () => {
             courseStudents.forEach((s: any) => {
               const id = s._id || s.id;
               if (studentMap.has(id)) {
-                // ✅ Already exists — courses list mein add karo
                 const existing = studentMap.get(id);
                 existing.courses = existing.courses || [existing.courseName];
                 existing.courses.push(course.title);
                 existing.courseName = existing.courses.join(', ');
               } else {
-                // ✅ New student — add karo
                 studentMap.set(id, {
                   ...s,
                   courseName: course.title,
@@ -68,23 +67,27 @@ const MyStudents: React.FC = () => {
     setIsRefreshing(false);
     showToast('Students refreshed', 'success');
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const filtered = students.filter(s => {
     const name = s.name || s.studentName || '';
     const email = s.email || s.studentEmail || '';
-    return (
+    const matchesSearch =
       name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+      email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const handleExport = () => {
     const csv = [
-      ['Student', 'Email', 'Course'].join(','),
+      ['Student', 'Email', 'Course', 'Progress', 'Status'].join(','),
       ...filtered.map(s => [
         s.name || s.studentName || '',
         s.email || s.studentEmail || 'N/A',
         s.courseName || '',
+        s.progress !== undefined ? `${s.progress}%` : 'N/A',
+        s.status || 'N/A',
       ].join(','))
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -102,6 +105,11 @@ const MyStudents: React.FC = () => {
 
   const stats = {
     total: students.length,
+    active: students.filter(s => s.status === 'active').length,
+    completed: students.filter(s => s.status === 'completed').length,
+    avgProgress: students.length > 0
+      ? Math.round(students.reduce((sum, s) => sum + (s.progress || 0), 0) / students.length)
+      : 0,
   };
 
   if (isLoading) return <Loader text="Loading students..." />;
@@ -123,13 +131,27 @@ const MyStudents: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="text-center p-4">
           <p className="text-2xl font-black text-gray-900">{stats.total}</p>
           <p className="text-xs text-gray-500">Total Students</p>
         </Card>
+        <Card className="text-center p-4 bg-blue-50">
+          <p className="text-2xl font-black text-blue-600">{stats.active}</p>
+          <p className="text-xs text-blue-600">Active</p>
+        </Card>
+        <Card className="text-center p-4 bg-emerald-50">
+          <p className="text-2xl font-black text-emerald-600">{stats.completed}</p>
+          <p className="text-xs text-emerald-600">Completed</p>
+        </Card>
+        <Card className="text-center p-4 bg-purple-50">
+          <p className="text-2xl font-black text-purple-600">{stats.avgProgress}%</p>
+          <p className="text-xs text-purple-600">Avg Progress</p>
+        </Card>
       </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -139,6 +161,19 @@ const MyStudents: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               icon={<Search className="w-4 h-4" />}
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="dropped">Dropped</option>
+            </select>
           </div>
         </div>
       </Card>
@@ -156,6 +191,8 @@ const MyStudents: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold">Student</th>
                   <th className="px-4 py-4 text-left font-semibold">Course</th>
+                  <th className="px-4 py-4 text-center font-semibold">Progress</th>
+                  <th className="px-4 py-4 text-center font-semibold">Status</th>
                   <th className="px-6 py-4 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -174,6 +211,24 @@ const MyStudents: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">{student.courseName || ''}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full ${(student.progress || 0) >= 80 ? 'bg-emerald-500' : 'bg-blue-500'
+                              }`}
+                            style={{ width: `${student.progress || 0}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-gray-600">{student.progress || 0}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${student.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                        {student.status || 'active'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1">
                         <button
@@ -210,6 +265,17 @@ const MyStudents: React.FC = () => {
               <div>
                 <h3 className="text-xl font-bold text-gray-900">{viewStudent.name || viewStudent.studentName}</h3>
                 <p className="text-gray-500">{viewStudent.email || viewStudent.studentEmail}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <TrendingUp className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-gray-900">{viewStudent.progress || 0}%</p>
+                <p className="text-sm text-gray-500">Progress</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="font-bold text-gray-900 capitalize mt-2">{viewStudent.status || 'active'}</p>
+                <p className="text-sm text-gray-500">Status</p>
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">

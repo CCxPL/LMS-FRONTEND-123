@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
+    isDangerous?: boolean; // ✅ ADD THIS
+  isLoading?: boolean; 
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -72,7 +74,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
       </div>
     </div>
-  );
+  );  
 };
 
 export default ConfirmDialog;

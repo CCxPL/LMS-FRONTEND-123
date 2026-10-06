@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Users, ShieldCheck, BookOpen, TrendingUp, Server,
   Globe, ArrowUpRight, Megaphone, Eye,
-  GraduationCap,
-  UserCheck, UserX, RefreshCw
+  GraduationCap, UserCheck, UserX, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,7 +14,6 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import { getSuperAdminDashboardApi } from '../../api/dashboardApi';
-import { getPlatformStatsApi } from '../../api/superadminApi';
 import { createNotificationApi } from '../../api/notificationApi';
 import { getAllUsersApi } from '../../api/userApi';
 import { toggleUserStatusApi } from '../../api/superadminApi';
@@ -30,7 +28,6 @@ const SuperAdminDashboard: React.FC = () => {
   const [announcementBody, setAnnouncementBody] = useState('');
   const [targetRoles, setTargetRoles] = useState<string[]>(['student', 'teacher', 'admin']);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
-  // ✅ FIX 1 — setter add kiya, fake data hata diya
   const [serverLogs, setServerLogs] = useState<any[]>([]);
 
   const navigate = useNavigate();
@@ -38,6 +35,7 @@ const SuperAdminDashboard: React.FC = () => {
   const { addAnnouncement } = useData();
   const { showToast } = useToast();
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const fetchDashboard = async () => {
     try {
       const [dashRes, usersRes] = await Promise.all([
@@ -45,14 +43,8 @@ const SuperAdminDashboard: React.FC = () => {
         getAllUsersApi(),
       ]);
 
-      console.log('dashRes.data:', dashRes.data);
-      console.log('dashRes.data.data:', dashRes.data?.data);
-
       setDashData(dashRes.data);
-      console.log('monthlyGrowth:', dashRes.data?.monthlyGrowth);
-      console.log('full dashRes.data:', dashRes.data);
 
-      // ✅ FIX 2A — real server logs from recentActivity
       const logs = (dashRes.data?.recentActivity ?? []).slice(0, 8).map((u: any) => ({
         time: new Date(u.createdAt).toLocaleTimeString(),
         level: 'INFO',
@@ -60,7 +52,6 @@ const SuperAdminDashboard: React.FC = () => {
       }));
       setServerLogs(logs);
 
-      // ✅ FIX 2B — correct path for users
       const users = (usersRes?.data?.users || []).slice(0, 4).map((u: any) => ({
         id: u._id,
         name: u.name,
@@ -69,7 +60,6 @@ const SuperAdminDashboard: React.FC = () => {
         date: new Date(u.createdAt).toLocaleDateString(),
         status: u.isActive ? 'Active' : 'Suspended',
       }));
-
       setRecentUsers(users);
     } catch (error) {
       console.error('Failed to fetch dashboard:', error);
@@ -88,7 +78,6 @@ const SuperAdminDashboard: React.FC = () => {
       showToast('Please fill all fields', 'error');
       return;
     }
-
     try {
       await createNotificationApi({
         title: announcementTitle,
@@ -96,7 +85,6 @@ const SuperAdminDashboard: React.FC = () => {
         role: targetRoles.join(','),
         type: 'info',
       });
-
       addAnnouncement({
         title: announcementTitle,
         message: announcementBody,
@@ -106,7 +94,6 @@ const SuperAdminDashboard: React.FC = () => {
         read: false,
         createdAt: new Date().toISOString(),
       });
-
       showToast('Announcement broadcasted successfully!', 'success');
       setIsBroadcastOpen(false);
       setAnnouncementTitle('');
@@ -119,15 +106,13 @@ const SuperAdminDashboard: React.FC = () => {
   const handleToggleUserStatus = async (userId: string) => {
     const u = recentUsers.find(u => u.id === userId);
     if (!u) return;
-
-    const newStatus = u.status === 'Active' ? 'suspended' : 'active';
     try {
       await toggleUserStatusApi(userId);
       setRecentUsers(prev => prev.map(u => {
         if (u.id === userId) {
-          const displayStatus = newStatus === 'active' ? 'Active' : 'Suspended';
-          showToast(`User ${u.name} ${displayStatus}`, 'success');
-          return { ...u, status: displayStatus };
+          const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
+          showToast(`User ${u.name} ${newStatus === 'Active' ? 'activated' : 'suspended'}`, 'success');
+          return { ...u, status: newStatus };
         }
         return u;
       }));
@@ -160,23 +145,17 @@ const SuperAdminDashboard: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoading) return <Loader />;
 
-  console.log('dashData:', dashData);
-  console.log('dashData.monthlyGrowth:', dashData?.monthlyGrowth);
-  console.log('growthData will be:', dashData?.monthlyGrowth);
-
-
-  // ✅ FIX 3 — dashData?.data?.systemStats (correct path)
   const stats = [
     { title: 'Total Students', value: dashData?.systemStats?.users?.students ?? '0', change: 'View all', icon: <GraduationCap className="w-5 h-5" />, path: '/super-admin/manage-users' },
     { title: 'Active Admins', value: dashData?.systemStats?.users?.admins ?? '0', change: 'Manage', icon: <ShieldCheck className="w-5 h-5" />, path: '/super-admin/manage-admins' },
     { title: 'Total Courses', value: dashData?.systemStats?.courses?.total ?? '0', change: 'View stats', icon: <BookOpen className="w-5 h-5" />, path: '/super-admin/platform-stats' },
     { title: 'Total Teachers', value: dashData?.systemStats?.users?.teachers ?? '0', change: 'View all', icon: <Users className="w-5 h-5" />, path: '/super-admin/all-teachers' },
   ];
-  console.log('admins count:', dashData?.systemStats?.users?.admins);
-  // ✅ FIX 4 — correct path + safe maxVal
+
   const rawGrowth: number[] = dashData?.monthlyGrowth ?? new Array(12).fill(0);
   const maxVal = Math.max(...rawGrowth, 1);
   const growthData = rawGrowth.map((v: number) =>
@@ -192,11 +171,7 @@ const SuperAdminDashboard: React.FC = () => {
           <p className="page-subtitle">Real-time insights and system control.</p>
         </div>
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handleRefreshStats}
-            disabled={isRefreshing}
-          >
+          <Button variant="outline" onClick={handleRefreshStats} disabled={isRefreshing}>
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
           <Button onClick={() => setIsBroadcastOpen(true)}>
@@ -208,12 +183,7 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (
-          <Card
-            key={i}
-            hover
-            onClick={() => navigate(s.path)}
-            className="cursor-pointer group"
-          >
+          <Card key={i} hover onClick={() => navigate(s.path)} className="cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-700 group-hover:bg-black group-hover:text-white transition-colors">
                 {s.icon}
@@ -229,7 +199,7 @@ const SuperAdminDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Growth Analytics */}
+        {/* Growth Analytics — friend ka hover tooltip UI + tera real data */}
         <div className="lg:col-span-2">
           <Card>
             <div className="flex items-center justify-between mb-6">
@@ -238,22 +208,18 @@ const SuperAdminDashboard: React.FC = () => {
                 <p className="text-xs text-gray-400">Monthly trend</p>
               </div>
             </div>
-            <div style={{ height: '192px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '4px', padding: '0 8px', borderBottom: '1px solid #e5e7eb' }}>
-              {(dashData?.monthlyGrowth ?? new Array(12).fill(0)).map((v: number, i: number) => {
-                const max = Math.max(...(dashData?.monthlyGrowth ?? [1]), 1);
-                const heightPx = v === 0 ? 6 : Math.max(Math.round((v / max) * 180), 20);
-                return (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', position: 'relative', cursor: 'pointer' }}>
-                    <div style={{
-                      width: '100%',
-                      height: `${heightPx}px`,
-                      backgroundColor: '#1f2937',
-                      borderRadius: '2px 2px 0 0',
-                      minHeight: '6px'
-                    }} />
+            <div className="h-48 flex items-end justify-between gap-2 px-2">
+              {growthData.map((h, i) => (
+                <div key={i} className="w-full flex flex-col justify-end gap-1 group relative cursor-pointer">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                    {rawGrowth[i]} Users
                   </div>
-                );
-              })}
+                  <div
+                    className="w-full bg-black rounded-t-sm opacity-80 group-hover:opacity-100 transition-all hover:bg-emerald-600"
+                    style={{ height: `${h}%` }}
+                  />
+                </div>
+              ))}
             </div>
             <div className="flex justify-between mt-2 text-xs text-gray-400 font-medium px-2">
               {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(m => (
@@ -263,7 +229,7 @@ const SuperAdminDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* System Health */}
+        {/* System Health — friend ka UI + tera real data */}
         <div className="flex flex-col h-full">
           <Card className="flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-6">
@@ -278,7 +244,6 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6 flex-1">
-              {/* ✅ FIX 6 — real backend data for system status bars */}
               {[
                 {
                   label: 'Active Users',
@@ -321,11 +286,7 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
 
             <div className="mt-6 pt-4 border-t border-gray-100">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setIsServerLogsOpen(true)}
-              >
+              <Button variant="outline" className="w-full" onClick={() => setIsServerLogsOpen(true)}>
                 View Server Logs <ArrowUpRight className="w-3 h-3" />
               </Button>
             </div>
@@ -437,7 +398,7 @@ const SuperAdminDashboard: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Message Body</label>
             <textarea
-              className="input-field min-h-[120px]"
+              className="input-field min-h-30"
               placeholder="Type your announcement here..."
               value={announcementBody}
               onChange={(e) => setAnnouncementBody(e.target.value)}

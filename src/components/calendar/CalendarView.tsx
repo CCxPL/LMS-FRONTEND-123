@@ -1,52 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  isSameMonth, 
-  isSameDay, 
-  addMonths, 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
   subMonths,
   startOfWeek,
   endOfWeek
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import type { CalendarEvent, EventFormData } from '../../types/calendar.types';
+import type { CalendarEvent, EventFormData, RecurringEditType } from '../../types/calendar.types';
 import DraggableEvent from './DraggableEvent';
 import DroppableDay from './DroppableDay';
 import EventModal from './EventModal';
 import { filterEventsByDate } from '../../utils/eventHelpers';
 import { useToast } from '../../context/ToastContext';
-import { useAuth, usePermissions } from '../../hooks/useAuth';
+import { usePermissions } from '../../hooks/useAuth';
 
 interface CalendarViewProps {
   events: CalendarEvent[];
   onCreateEvent?: (formData: EventFormData) => Promise<boolean> | void;
   onEditEvent?: (event: CalendarEvent) => void;
-  onDeleteEvent?: (eventId: string) => void;
   onRescheduleEvent?: (eventId: string, newDate: string) => void;
+  leaveDays?: string[];
+
+  // ✅ FIXED: Add eventId parameter
+  onRecurringEdit?: (formData: EventFormData, editType: RecurringEditType, eventId: string) => Promise<boolean> | void;
+  onRecurringDelete?: (
+    editType: RecurringEditType,
+    eventId: string,
+    date: string
+  ) => Promise<boolean> | void;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
   events,
   onCreateEvent,
   onEditEvent,
-  onDeleteEvent,
   onRescheduleEvent,
+  leaveDays = [],
+  onRecurringEdit,
+  onRecurringDelete,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  
+
   const { showToast } = useToast();
-  const {  } = useAuth();
   const { canCreateEvent, canEditEvent } = usePermissions();
 
-  // Calculate calendar days
+  useEffect(() => {
+
+  }, [leaveDays]);
+
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart);
@@ -61,16 +73,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const handleDateClick = (date: Date) => {
     if (!canCreateEvent()) return;
-    
+
     setSelectedDate(date);
     setEditingEvent(null);
     setShowEventModal(true);
   };
 
-  const handleEventClick = (event: CalendarEvent) => {
+  const handleEventClick = (event: CalendarEvent, day: Date) => {
     if (canEditEvent(event.teacherId)) {
       setEditingEvent(event);
-      setSelectedDate(new Date(event.date));
+      setSelectedDate(day);
       setShowEventModal(true);
     }
   };
@@ -80,7 +92,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       showToast('You do not have permission to reschedule this event', 'error');
       return;
     }
-    
+
     if (onRescheduleEvent) {
       onRescheduleEvent(event.id, newDate);
       showToast(`Event rescheduled to ${format(new Date(newDate), 'PPP')}`, 'success');
@@ -92,21 +104,88 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return filterEventsByDate(events, dateStr);
   };
 
-  const handleSaveEvent = async (formData: EventFormData) => {
-    if (editingEvent && onEditEvent) {
-      onEditEvent({ ...editingEvent, ...formData });
-      showToast('Event updated successfully', 'success');
-    } else if (onCreateEvent) {
-      await onCreateEvent(formData);
-      showToast('Event created successfully', 'success');
+  const isLeaveDay = (date: Date): boolean => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const result = leaveDays.includes(dateStr);
+    if (result) {
+
     }
-    setShowEventModal(false);
-    setEditingEvent(null);
+    return result;
   };
 
+  // ============================================
+  // ✅ FIXED: handleSaveEvent (NON-RECURRING)
+  // ============================================
+  const handleSaveEvent = async (formData: EventFormData) => {
+
+
+    // DON'T USE THIS FOR RECURRING EVENTS
+    if (editingEvent && onEditEvent && !editingEvent.isRecurring) {
+
+      onEditEvent({ ...editingEvent, ...formData });
+      showToast('Event updated successfully', 'success');
+      setShowEventModal(false);
+      setEditingEvent(null);
+    } else if (onCreateEvent) {
+
+      await onCreateEvent(formData);
+      setShowEventModal(false);
+      setEditingEvent(null);
+    }
+  };
+
+  // ============================================
+  // ✅ FIXED: Pass eventId to parent
+  // ============================================
+  const handleRecurringEdit = async (formData: EventFormData, editType: RecurringEditType) => {
+
+
+    if (editingEvent && onRecurringEdit) {
+      // ✅ Pass the editing event's ID
+      await onRecurringEdit(formData, editType, editingEvent.id);
+      setShowEventModal(false);
+      setEditingEvent(null);
+    }
+  };
+
+  // ============================================
+  // ✅ FIXED: Pass eventId to parent
+  // ============================================
+  // ============================================
+  // ✅ FIXED: Pass eventId to parent
+  // ============================================
+  const handleRecurringDeleteEvent = async (editType: RecurringEditType) => {
+    if (editingEvent && onRecurringDelete) {
+      let occurrenceDate = editingEvent.date;
+
+      if (selectedDate) {
+        const y = selectedDate.getFullYear();
+        const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const d = String(selectedDate.getDate()).padStart(2, '0');
+        occurrenceDate = `${y}-${m}-${d}`;
+      }
+
+      // ✅ YE ADD KAR — console mein dekh kya aa raha hai
+      console.log('DELETE DEBUG:', {
+        editType,
+        eventId: editingEvent.id,
+        occurrenceDate,
+        selectedDate: selectedDate?.toString(),
+        eventDate: editingEvent.date,
+      });
+
+      await onRecurringDelete(editType, editingEvent.id, occurrenceDate);
+      setShowEventModal(false);
+      setEditingEvent(null);
+    }
+  };
+
+  // ============================================
+  // Regular Delete (Non-Recurring)
+  // ============================================
   const handleDeleteEvent = () => {
-    if (editingEvent && onDeleteEvent) {
-      onDeleteEvent(editingEvent.id);
+    if (editingEvent && onEditEvent) {
+      // Non-recurring delete will be handled by parent
       showToast('Event deleted successfully', 'success');
       setShowEventModal(false);
       setEditingEvent(null);
@@ -116,10 +195,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            {/* Month Navigation */}
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrevMonth}
@@ -127,18 +204,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
-              <h2 className="text-xl font-bold text-gray-900 min-w-45 text-center">
+
+              <h2 className="text-xl font-bold text-gray-900 min-w-50 text-center">
                 {format(currentDate, 'MMMM yyyy')}
               </h2>
-              
+
               <button
                 onClick={handleNextMonth}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
-              
+
               <button
                 onClick={handleToday}
                 className="ml-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition"
@@ -147,7 +224,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               </button>
             </div>
 
-            {/* Add Event Button */}
             {canCreateEvent() && onCreateEvent && (
               <button
                 onClick={() => {
@@ -164,9 +240,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Calendar Grid */}
         <div className="p-4">
-          {/* Week Days Header */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekDays.map(day => (
               <div
@@ -178,12 +252,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             ))}
           </div>
 
-          {/* Days Grid */}
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map(day => {
               const dayEvents = getEventsForDate(day);
               const isToday = isSameDay(day, new Date());
               const isCurrentMonth = isSameMonth(day, currentDate);
+              const hasLeave = isLeaveDay(day);
 
               return (
                 <DroppableDay
@@ -195,29 +269,31 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 >
                   <div
                     onClick={() => handleDateClick(day)}
-                    className={`min-h-22.5 cursor-pointer ${
-                      canCreateEvent() ? 'hover:bg-gray-50' : ''
-                    }`}
+                    className={`min-h-22.5 cursor-pointer relative p-2 ${canCreateEvent() ? 'hover:bg-gray-50' : ''
+                      } ${hasLeave ? 'bg-red-100 border-2 border-red-400 rounded-lg shadow-sm' : ''
+                      }`}
+                    style={hasLeave ? { backgroundColor: '#fee2e2', borderColor: '#f87171' } : {}}
                   >
-                    {/* Date Number */}
-                    <div className={`text-sm font-semibold mb-1 ${
-                      isToday 
-                        ? 'w-7 h-7 flex items-center justify-center bg-black text-white rounded-full' 
-                        : isCurrentMonth 
-                          ? 'text-gray-900' 
-                          : 'text-gray-400'
-                    }`}>
+                    {hasLeave && (
+                      <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></div>
+                    )}
+
+                    <div className={`text-sm font-semibold mb-1 ${isToday
+                      ? 'w-7 h-7 flex items-center justify-center bg-black text-white rounded-full'
+                      : isCurrentMonth
+                        ? hasLeave ? 'text-red-700 font-bold' : 'text-gray-900'
+                        : 'text-gray-400'
+                      }`}>
                       {format(day, 'd')}
                     </div>
-                    
-                    {/* Events */}
+
                     <div className="space-y-1">
                       {dayEvents.slice(0, 3).map(event => (
-                        <div 
-                          key={event.id} 
+                        <div
+                          key={event.id}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEventClick(event);
+                            handleEventClick(event, day);
                           }}
                         >
                           <DraggableEvent
@@ -239,7 +315,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Event Modal */}
         {showEventModal && (
           <EventModal
             event={editingEvent || undefined}
@@ -249,7 +324,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
               setEditingEvent(null);
             }}
             onSave={handleSaveEvent}
-            onDelete={editingEvent ? handleDeleteEvent : undefined}
+            onDelete={editingEvent && !editingEvent.isRecurring ? handleDeleteEvent : undefined}
+            onRecurringEdit={editingEvent?.isRecurring ? handleRecurringEdit : undefined}
+            onRecurringDelete={editingEvent?.isRecurring ? handleRecurringDeleteEvent : undefined}
           />
         )}
       </div>

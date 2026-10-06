@@ -33,6 +33,7 @@ const CreateQuiz: React.FC = () => {
     loadCourses();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadCourses = async () => {
     try {
       const res = await getTeacherCoursesApi();
@@ -41,6 +42,73 @@ const CreateQuiz: React.FC = () => {
       showToast('Failed to load courses', 'error');
     }
   };
+
+  const handleSave = async () => {
+    if (!title.trim() || !courseId || questions.length === 0) {
+      showToast('Please fill all required fields', 'error');
+      return;
+    }
+    if (questions.some(q => !q.question.trim() || q.options.some(o => !o.trim()))) {
+      showToast('Please fill all questions and options', 'error');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const payload = {
+        title,
+        courseId,
+        timeLimit: parseInt(duration) || 30,
+        passingScore: parseInt(passingPercentage) || 60,
+        maxAttempts: parseInt(maxAttempts) || 3,
+        isPublished: true,
+        questions: questions.map(q => ({
+          questionText: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          points: q.marks,
+        })),
+      };
+      await createQuizApi(payload as any);
+      showToast('Quiz created successfully!', 'success');
+      navigate('/teacher/quizzes');
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to create quiz', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!title.trim()) {
+      showToast('Please enter quiz title', 'error');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const payload = {
+        title,
+        courseId,
+        timeLimit: parseInt(duration) || 30,
+        passingScore: parseInt(passingPercentage) || 60,
+        maxAttempts: parseInt(maxAttempts) || 3,
+        isPublished: false,
+        questions: questions.map(q => ({
+          questionText: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          points: q.marks,
+        })),
+      };
+      await createQuizApi(payload as any);
+      showToast('Quiz saved as draft', 'success');
+      navigate('/teacher/quizzes');
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to save draft', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const addQuestion = () => {
     setQuestions([...questions, {
@@ -96,77 +164,11 @@ const CreateQuiz: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    if (!title.trim() || !courseId || questions.length === 0) {
-      showToast('Please fill all required fields', 'error');
-      return;
-    }
-    if (questions.some(q => !q.question.trim() || q.options.some(o => !o.trim()))) {
-      showToast('Please fill all questions and options', 'error');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const payload = {
-        title,
-        courseId,
-        timeLimit: parseInt(duration) || 30,
-        passingScore: parseInt(passingPercentage) || 60,
-        isPublished: true,
-        questions: questions.map(q => ({
-          questionText: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          points: q.marks,
-        })),
-      };
-
-      await createQuizApi(payload as any);
-      showToast('Quiz created successfully!', 'success');
-      navigate('/teacher/quizzes');
-    } catch (error: any) {
-      showToast(error?.response?.data?.message || 'Failed to create quiz', 'error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    if (!title.trim()) {
-      showToast('Please enter quiz title', 'error');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const payload = {
-        title,
-        courseId,
-        timeLimit: parseInt(duration) || 30,
-        passingScore: parseInt(passingPercentage) || 60,
-        isPublished: false,
-        questions: questions.map(q => ({
-          questionText: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          points: q.marks,
-        })),
-      };
-
-      await createQuizApi(payload as any);
-      showToast('Quiz saved as draft', 'success');
-      navigate('/teacher/quizzes');
-    } catch (error: any) {
-      showToast(error?.response?.data?.message || 'Failed to save draft', 'error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const totalMarks = questions.reduce((s, q) => s + q.marks, 0);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/quizzes')}>
@@ -186,6 +188,7 @@ const CreateQuiz: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Quiz Information</h3>
@@ -213,14 +216,18 @@ const CreateQuiz: React.FC = () => {
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Questions ({questions.length})</h3>
-              <Button variant="secondary" size="sm" onClick={addQuestion}><Plus className="w-4 h-4" /> Add Question</Button>
+              <Button variant="secondary" size="sm" onClick={addQuestion}>
+                <Plus className="w-4 h-4" /> Add Question
+              </Button>
             </div>
 
             {questions.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
                 <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No questions yet</p>
-                <Button variant="outline" onClick={addQuestion} className="mt-4"><Plus className="w-4 h-4" /> Add First Question</Button>
+                <Button variant="outline" onClick={addQuestion} className="mt-4">
+                  <Plus className="w-4 h-4" /> Add First Question
+                </Button>
               </div>
             ) : (
               <div className="space-y-6">
@@ -235,24 +242,56 @@ const CreateQuiz: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                           <label className="text-xs text-gray-500">Marks:</label>
-                          <input type="number" className="input-field w-16 py-1 px-2 text-center text-sm" value={q.marks} onChange={(e) => updateQuestion(q.id, 'marks', parseInt(e.target.value) || 0)} min={1} />
+                          <input
+                            type="number"
+                            className="input-field w-16 py-1 px-2 text-center text-sm"
+                            value={q.marks}
+                            onChange={(e) => updateQuestion(q.id, 'marks', parseInt(e.target.value) || 0)}
+                            min={1}
+                          />
                         </div>
-                        <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"><Plus className="w-4 h-4" /></button>
-                        <button onClick={() => removeQuestion(q.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => duplicateQuestion(q.id)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => removeQuestion(q.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    <textarea className="input-field mb-4 min-h-[80px]" placeholder="Type your question here..." value={q.question} onChange={(e) => updateQuestion(q.id, 'question', e.target.value)} />
+                    <textarea
+                      className="input-field mb-4 min-h-[80px]"
+                      placeholder="Type your question here..."
+                      value={q.question}
+                      onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
+                    />
                     <div className="space-y-2">
                       {q.options.map((opt, optIdx) => (
                         <div key={optIdx} className="flex items-center gap-3">
-                          <button onClick={() => updateQuestion(q.id, 'correctAnswer', optIdx)} className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${q.correctAnswer === optIdx ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'}`}>
+                          <button
+                            onClick={() => updateQuestion(q.id, 'correctAnswer', optIdx)}
+                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${q.correctAnswer === optIdx ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
+                              }`}
+                          >
                             {q.correctAnswer === optIdx && <CheckCircle className="w-4 h-4 text-white" />}
                           </button>
-                          <input className="input-field flex-1" placeholder={`Option ${String.fromCharCode(65 + optIdx)}`} value={opt} onChange={(e) => updateOption(q.id, optIdx, e.target.value)} />
-                          {q.options.length > 2 && <button onClick={() => removeOption(q.id, optIdx)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>}
+                          <input
+                            className="input-field flex-1"
+                            placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                            value={opt}
+                            onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
+                          />
+                          {q.options.length > 2 && (
+                            <button onClick={() => removeOption(q.id, optIdx)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       ))}
-                      {q.options.length < 6 && <button onClick={() => addOption(q.id)} className="text-xs text-blue-600 hover:underline">+ Add Option</button>}
+                      {q.options.length < 6 && (
+                        <button onClick={() => addOption(q.id)} className="text-xs text-blue-600 hover:underline">
+                          + Add Option
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -261,6 +300,7 @@ const CreateQuiz: React.FC = () => {
           </Card>
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card className="sticky top-20">
             <h3 className="font-bold text-gray-900 mb-4">Quiz Summary</h3>
@@ -271,8 +311,12 @@ const CreateQuiz: React.FC = () => {
               <div className="flex justify-between text-sm"><span className="text-gray-500">Passing</span><span className="font-bold">{passingPercentage}%</span></div>
             </div>
             <div className="mt-6 space-y-2">
-              <Button fullWidth onClick={handleSave} disabled={isSaving}><Save className="w-4 h-4" /> Publish Quiz</Button>
-              <Button variant="outline" fullWidth onClick={handleSaveDraft} disabled={isSaving}>Save as Draft</Button>
+              <Button fullWidth onClick={handleSave} disabled={isSaving}>
+                <Save className="w-4 h-4" /> Publish Quiz
+              </Button>
+              <Button variant="outline" fullWidth onClick={handleSaveDraft} disabled={isSaving}>
+                Save as Draft
+              </Button>
             </div>
           </Card>
         </div>

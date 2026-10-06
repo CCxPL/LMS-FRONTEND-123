@@ -9,7 +9,6 @@ import { useToast } from '../../context/ToastContext';
 import { COURSE_CATEGORIES, COURSE_LEVELS } from '../../utils/constants';
 import { createTeacherCourseApi } from '../../api/teacherApi';
 import { uploadImageApi } from '../../api/uploadApi';
-import { addLectureApi } from '../../api/teacherApi';
 
 interface ModuleData {
   id: string;
@@ -38,6 +37,7 @@ const CreateCourse: React.FC = () => {
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [modules, setModules] = useState<ModuleData[]>([]);
+
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [currentModuleId, setCurrentModuleId] = useState('');
   const [lessonTitle, setLessonTitle] = useState('');
@@ -117,7 +117,7 @@ const CreateCourse: React.FC = () => {
         id: Date.now().toString(),
         title: lessonTitle,
         type: lessonType,
-        duration: lessonDuration
+        duration: lessonDuration,
       };
       setModules(modules.map(m =>
         m.id === currentModuleId
@@ -157,6 +157,7 @@ const CreateCourse: React.FC = () => {
     }
   };
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const handlePublish = async () => {
     if (!title.trim() || !description.trim() || !category) {
       showToast('Please fill all basic fields', 'error');
@@ -173,18 +174,16 @@ const CreateCourse: React.FC = () => {
           showToast('Thumbnail upload failed, continuing without it', 'error');
         }
       }
-
       await createTeacherCourseApi({
         title,
         description,
         category,
         thumbnail: thumbnailUrl,
         isPublished: false,
-        level,      // ✅ ADD
-        price: parseFloat(price) || 0,   // ✅ ADD
+        level,
+        price: parseFloat(price) || 0,
         duration,
       });
-
       showToast('Course submitted for approval!', 'success');
       navigate('/teacher/my-courses');
     } catch (error: any) {
@@ -208,7 +207,6 @@ const CreateCourse: React.FC = () => {
           thumbnailUrl = uploadRes.data?.url || '';
         } catch { }
       }
-
       await createTeacherCourseApi({
         title,
         description,
@@ -216,7 +214,6 @@ const CreateCourse: React.FC = () => {
         thumbnail: thumbnailUrl,
         isPublished: false,
       });
-
       showToast('Course saved as draft', 'success');
       navigate('/teacher/my-courses');
     } catch (error: any) {
@@ -225,12 +222,14 @@ const CreateCourse: React.FC = () => {
       setIsSaving(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
   const totalVideos = modules.reduce((sum, m) => sum + m.lessons.filter(l => l.type === 'video').length, 0);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -255,6 +254,7 @@ const CreateCourse: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Basic Information</h3>
@@ -280,12 +280,13 @@ const CreateCourse: React.FC = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Price ($)" type="number" placeholder="49.99" value={price} onChange={(e) => setPrice(e.target.value)} />
+                <Input label="Price (₹)" type="number" placeholder="49.99" value={price} onChange={(e) => setPrice(e.target.value)} />
                 <Input label="Duration" placeholder="e.g., 24 hours" value={duration} onChange={(e) => setDuration(e.target.value)} />
               </div>
             </div>
           </Card>
 
+          {/* Curriculum */}
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Curriculum</h3>
@@ -340,13 +341,19 @@ const CreateCourse: React.FC = () => {
           </Card>
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Course Thumbnail</h3>
             {thumbnail ? (
               <div className="relative">
                 <img src={thumbnail} alt="Thumbnail" className="w-full h-40 object-cover rounded-lg" />
-                <button onClick={() => { setThumbnail(null); setThumbnailFile(null); }} className="absolute top-2 right-2 p-1.5 bg-white rounded-lg shadow hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                <button
+                  onClick={() => { setThumbnail(null); setThumbnailFile(null); }}
+                  className="absolute top-2 right-2 p-1.5 bg-white rounded-lg shadow hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </button>
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors">
@@ -363,18 +370,21 @@ const CreateCourse: React.FC = () => {
               <div className="flex justify-between text-sm"><span className="text-gray-500">Modules</span><span className="font-bold">{modules.length}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Total Lessons</span><span className="font-bold">{totalLessons}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Video Lessons</span><span className="font-bold">{totalVideos}</span></div>
-              {price && <div className="flex justify-between text-sm pt-2 border-t"><span className="text-gray-500">Price</span><span className="font-bold text-emerald-600">${price}</span></div>}
+              {price && <div className="flex justify-between text-sm pt-2 border-t"><span className="text-gray-500">Price</span><span className="font-bold text-emerald-600">₹{price}</span></div>}
             </div>
             <div className="mt-6 space-y-2">
               <Button fullWidth onClick={handlePublish} disabled={isSaving}>
                 <Save className="w-4 h-4" /> Submit for Approval
               </Button>
-              <Button variant="outline" fullWidth onClick={handleSaveDraft} disabled={isSaving}>Save as Draft</Button>
+              <Button variant="outline" fullWidth onClick={handleSaveDraft} disabled={isSaving}>
+                Save as Draft
+              </Button>
             </div>
           </Card>
         </div>
       </div>
 
+      {/* Lesson Modal */}
       <Modal isOpen={showLessonModal} onClose={() => { setShowLessonModal(false); setEditingLesson(null); }} title={editingLesson ? 'Edit Lesson' : 'Add Lesson'} size="md">
         <div className="space-y-4">
           <Input label="Lesson Title *" placeholder="e.g., Intro to React" value={lessonTitle} onChange={(e) => setLessonTitle(e.target.value)} />
@@ -401,6 +411,7 @@ const CreateCourse: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Preview Modal */}
       <Modal isOpen={showPreview} onClose={() => setShowPreview(false)} title="Course Preview" size="lg">
         <div className="space-y-6">
           {thumbnail && <img src={thumbnail} alt="Course" className="w-full h-48 object-cover rounded-xl" />}
@@ -409,10 +420,13 @@ const CreateCourse: React.FC = () => {
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">{category || 'No Category'}</span>
               <span className="text-xs px-2 py-1 bg-gray-100 rounded-full capitalize">{level}</span>
-              {price && <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">${price}</span>}
+              {price && <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">₹{price}</span>}
             </div>
           </div>
-          <div><h3 className="font-bold text-gray-900 mb-2">Description</h3><p className="text-gray-600">{description || 'No description provided'}</p></div>
+          <div>
+            <h3 className="font-bold text-gray-900 mb-2">Description</h3>
+            <p className="text-gray-600">{description || 'No description provided'}</p>
+          </div>
           <Button variant="secondary" fullWidth onClick={() => setShowPreview(false)}>Close Preview</Button>
         </div>
       </Modal>

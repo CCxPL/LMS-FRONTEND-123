@@ -22,7 +22,5 @@ export const getLeaderboardApi = async (params?: {
     return res.data;
 };
 
-export const getCourseProgressApi = async (courseId: string) => {
-    const res = await axiosInstance.get(`/performance/progress/${courseId}`);
-    return res.data;
-};
+// ✅ NOTE: Progress.tsx getCourseProgressApi -> studentApi.ts se import karo
+// performanceApi mein getCourseProgressApi NAHI hai — student route use karo

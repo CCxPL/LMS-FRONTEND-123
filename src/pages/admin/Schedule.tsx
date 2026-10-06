@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import CalendarView from '../../components/calendar/CalendarView';
 import EventModal from '../../components/calendar/EventModal';
-import RecurringEventDialog from '../../components/calendar/RecurringEventDialog';
 import TeacherLateAlert from '../../components/calendar/TeacherLateAlert';
 import ClassSummaryModal from '../../components/calendar/ClassSummaryModal';
 import CourseFilter from '../../components/calendar/CourseFilter';
@@ -23,6 +22,7 @@ import { useToast } from '../../context/ToastContext';
 import type { CalendarEvent, EventFormData, RecurringEditType } from '../../types/calendar.types';
 import type { Notification } from '../../types/notification.types';
 import type { ClassSummary } from '../../types/attendance.types';
+import { filterEventsByDate } from '../../utils/eventHelpers';
 
 const AdminSchedule: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState('');
@@ -30,14 +30,11 @@ const AdminSchedule: React.FC = () => {
   const [selectedSummary, setSelectedSummary] = useState<ClassSummary | null>(null);
 
   // ============================================
-  // ✅ Event Modal & Recurring Dialog States
+  // ✅ Event Modal States
   // ============================================
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-
-  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
-  const [recurringAction, setRecurringAction] = useState<'EDIT' | 'DELETE'>('EDIT');
 
   const {
     events,
@@ -47,7 +44,6 @@ const AdminSchedule: React.FC = () => {
     deleteEvent,
     updateRecurringEvent,
     deleteRecurringEvent,
-
   } = useCalendar();
 
   const { addNotification } = useNotifications();
@@ -68,10 +64,12 @@ const AdminSchedule: React.FC = () => {
   });
 
   // ============================================
-  // ✅ EVENT HANDLERS - With Recurring Support
+  // ✅ EVENT HANDLERS - SAME AS TEACHER
   // ============================================
 
   const handleCreateEvent = async (formData: EventFormData): Promise<boolean> => {
+
+
     try {
       const success = await createEvent(formData);
       if (success) {
@@ -81,6 +79,8 @@ const AdminSchedule: React.FC = () => {
             : 'Event created successfully',
           'success'
         );
+        setIsEventModalOpen(false);
+        setSelectedDate('');
       }
       return success;
     } catch (error) {
@@ -89,48 +89,45 @@ const AdminSchedule: React.FC = () => {
     }
   };
 
-  // const handleDateClick = (date: Date) => {
-  //   const dateStr = date.toISOString().split('T')[0];
-  //   setSelectedDate(dateStr);
-  //   setEditingEvent(null);
-  //   setIsEventModalOpen(true);
-  // };
+  const handleRecurringEdit = async (
+    formData: EventFormData,
+    editType: RecurringEditType,
+    eventId: string
+  ): Promise<boolean> => {
 
-  const handleEditEvent = (event: CalendarEvent) => {
-    setEditingEvent(event);
-
-    if (event.isRecurring) {
-      setRecurringAction('EDIT');
-      setRecurringDialogOpen(true);
-    } else {
-      setIsEventModalOpen(true);
-    }
-  };
-
-  const handleDeleteEvent = (eventId: string) => {
-    const event = events.find(e => e.id === eventId);
-    if (!event) return;
-
-    setEditingEvent(event);
-
-    if (event.isRecurring) {
-      setRecurringAction('DELETE');
-      setRecurringDialogOpen(true);
-    } else {
-      deleteEvent(eventId);
-      showToast('Event deleted successfully', 'success');
-      setIsEventModalOpen(false);
-      setEditingEvent(null);
-      setSelectedDate('');
-    }
-  };
-
-  const handleRecurringDialogConfirm = async (editType: RecurringEditType) => {
-    if (!editingEvent) return;
 
     try {
-      if (recurringAction === 'DELETE') {
-        await deleteRecurringEvent(editingEvent.id, editType);
+      const success = await updateRecurringEvent(eventId, formData, editType);
+
+      if (success) {
+        showToast(
+          editType === 'THIS_EVENT'
+            ? 'Event updated successfully'
+            : 'Events updated successfully',
+          'success'
+        );
+        setIsEventModalOpen(false);
+        setEditingEvent(null);
+        setSelectedDate('');
+      }
+
+      return success;
+    } catch (error) {
+
+      showToast('Failed to update event', 'error');
+      return false;
+    }
+  };
+
+  const handleRecurringDeleteEvent = async (
+    editType: RecurringEditType,
+    eventId: string,
+    date?: string          // ✅ date parameter add karo
+  ): Promise<boolean> => {
+    try {
+      const success = await deleteRecurringEvent(eventId, editType, date); // ✅ date pass karo
+
+      if (success) {
         showToast(
           editType === 'THIS_EVENT'
             ? 'Event deleted successfully'
@@ -138,37 +135,63 @@ const AdminSchedule: React.FC = () => {
           'success'
         );
         setIsEventModalOpen(false);
-      } else {
-        setIsEventModalOpen(true);
+        setEditingEvent(null);
+        setSelectedDate('');
       }
-    } catch (error) {
-      showToast('Operation failed', 'error');
-    }
 
-    setRecurringDialogOpen(false);
+      return success;
+    } catch (error) {
+      showToast('Failed to delete event', 'error');
+      return false;
+    }
+  };
+  const handleEditEvent = (event: CalendarEvent) => {
+
+
+    setEditingEvent(event);
+    setIsEventModalOpen(true);
+  };
+
+  const handleDeleteEvent = async () => {
+
+
+    if (!editingEvent) return;
+
+    try {
+      await deleteEvent(editingEvent.id);
+      showToast('Event deleted successfully', 'success');
+      setIsEventModalOpen(false);
+      setEditingEvent(null);
+      setSelectedDate('');
+    } catch (error) {
+      showToast('Failed to delete event', 'error');
+    }
   };
 
   const handleSaveEvent = async (formData: EventFormData): Promise<boolean> => {
+
+
     if (!editingEvent) {
       return handleCreateEvent(formData);
     }
 
-    try {
-      if (editingEvent.isRecurring && recurringAction === 'EDIT') {
-        await updateRecurringEvent(editingEvent.id, formData, 'THIS_EVENT');
-      } else {
-        await updateEvent(editingEvent.id, formData);
+    if (!editingEvent.isRecurring) {
+      try {
+        const success = await updateEvent(editingEvent.id, formData);
+        if (success) {
+          showToast('Event updated successfully', 'success');
+          setIsEventModalOpen(false);
+          setEditingEvent(null);
+          setSelectedDate('');
+        }
+        return success;
+      } catch (error) {
+        showToast('Failed to update event', 'error');
+        return false;
       }
-
-      showToast('Event updated successfully', 'success');
-      setIsEventModalOpen(false);
-      setEditingEvent(null);
-      setSelectedDate('');
-      return true;
-    } catch (error) {
-      showToast('Failed to update event', 'error');
-      return false;
     }
+
+    return false;
   };
 
   const handleRescheduleEvent = async (eventId: string, newDate: string) => {
@@ -177,8 +200,7 @@ const AdminSchedule: React.FC = () => {
 
     if (event.isRecurring) {
       setEditingEvent(event);
-      setRecurringAction('EDIT');
-      setRecurringDialogOpen(true);
+      setIsEventModalOpen(true);
     } else {
       await updateEvent(eventId, { date: newDate });
       showToast('Event rescheduled successfully', 'success');
@@ -193,9 +215,8 @@ const AdminSchedule: React.FC = () => {
     ? events.filter(e => e.courseId === selectedCourseId)
     : events;
 
-  const todayEvents = filteredEvents.filter(
-    e => e.date === new Date().toISOString().split('T')[0]
-  );
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayEvents = filterEventsByDate(filteredEvents, todayStr);
 
   if (loading) {
     return (
@@ -292,11 +313,11 @@ const AdminSchedule: React.FC = () => {
         <span className="text-sm font-medium text-gray-700">Legend:</span>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-red-500" />
-          <span className="text-sm text-gray-600">Class</span>
+          <span className="text-sm text-gray-600">Test</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-blue-400" />
-          <span className="text-sm text-gray-600">Test</span>
+          <span className="text-sm text-gray-600">Class</span>
         </div>
         <div className="flex items-center gap-2">
           <Repeat className="w-4 h-4 text-gray-400" />
@@ -327,13 +348,11 @@ const AdminSchedule: React.FC = () => {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <CalendarView
           events={filteredEvents}
-          onCreateEvent={async (formData) => {
-            const success = await handleCreateEvent(formData);
-            return success;
-          }}
+          onCreateEvent={handleCreateEvent}
           onEditEvent={handleEditEvent}
-          onDeleteEvent={handleDeleteEvent}
           onRescheduleEvent={handleRescheduleEvent}
+          onRecurringEdit={handleRecurringEdit}
+          onRecurringDelete={handleRecurringDeleteEvent}
         />
       </div>
 
@@ -375,10 +394,10 @@ const AdminSchedule: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className={`px-3 py-1 rounded-full text-sm font-medium ${attendanceRate >= 80
-                        ? 'bg-gray-100 text-gray-700'
-                        : attendanceRate >= 60
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-red-100 text-red-700'
+                      ? 'bg-gray-100 text-gray-700'
+                      : attendanceRate >= 60
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'
                       }`}>
                       {attendanceRate}%
                     </div>
@@ -393,7 +412,7 @@ const AdminSchedule: React.FC = () => {
         </div>
       )}
 
-      {/* Event Modal - ✅ FIXED */}
+      {/* Event Modal */}
       {isEventModalOpen && (
         <EventModal
           event={editingEvent || undefined}
@@ -404,24 +423,13 @@ const AdminSchedule: React.FC = () => {
             setSelectedDate('');
           }}
           onSave={handleSaveEvent}
-          onDelete={editingEvent ? () => handleDeleteEvent(editingEvent.id) : undefined}
+          onDelete={editingEvent && !editingEvent.isRecurring ? handleDeleteEvent : undefined}
+          onRecurringEdit={editingEvent?.isRecurring ? handleRecurringEdit : undefined}
+          onRecurringDelete={editingEvent?.isRecurring ? handleRecurringDeleteEvent : undefined}
         />
       )}
 
-      {/* ✅ Recurring Event Dialog */}
-      {editingEvent && (
-        <RecurringEventDialog
-          isOpen={recurringDialogOpen}
-          event={editingEvent}
-          actionType={recurringAction}
-          onConfirm={handleRecurringDialogConfirm}
-          onCancel={() => {
-            setRecurringDialogOpen(false);
-            setEditingEvent(null);
-          }}
-        />
-      )}
-
+      {/* Summary Modal */}
       {selectedSummary && (
         <ClassSummaryModal
           summary={selectedSummary}

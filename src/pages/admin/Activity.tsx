@@ -36,6 +36,7 @@ const Activity: React.FC = () => {
     loadActivities();
   }, [typeFilter, dateFilter]);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadActivities = async () => {
     try {
       setIsLoading(true);
@@ -59,24 +60,6 @@ const Activity: React.FC = () => {
     showToast('Activity logs refreshed', 'success');
   };
 
-  const handleExport = () => {
-    const csv = [
-      ['Action', 'Detail', 'Type', 'User', 'Time'].join(','),
-      ...filteredActivities.map(a => [
-        a.action, a.detail, a.type,
-        a.userName || 'System',
-        new Date(a.createdAt).toLocaleDateString()
-      ].join(','))
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'activity-logs.csv';
-    link.click();
-    showToast('Activity logs exported', 'success');
-  };
-
   const handleClearAll = async () => {
     try {
       await clearAllActivitiesApi();
@@ -97,13 +80,35 @@ const Activity: React.FC = () => {
       showToast('Failed to delete activity', 'error');
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
+  // ─── DOST KA: matchesType filter included ────────────────────────────────
   const filteredActivities = activities.filter(activity => {
     const matchesSearch =
       activity.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       activity.detail.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    const matchesType = typeFilter === 'all' || activity.type === typeFilter;
+    return matchesSearch && matchesType;
   });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleExport = () => {
+    const csv = [
+      ['Action', 'Detail', 'Type', 'User', 'Time'].join(','),
+      ...filteredActivities.map(a => [
+        a.action, a.detail, a.type,
+        a.userName || 'System',
+        new Date(a.createdAt).toLocaleDateString(),
+      ].join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'activity-logs.csv';
+    link.click();
+    showToast('Activity logs exported', 'success');
+  };
 
   const stats = {
     total: activities.length,
@@ -116,6 +121,7 @@ const Activity: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
@@ -134,6 +140,7 @@ const Activity: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total', value: stats.total },
@@ -148,6 +155,7 @@ const Activity: React.FC = () => {
         ))}
       </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -186,6 +194,7 @@ const Activity: React.FC = () => {
         </div>
       </Card>
 
+      {/* Activity List */}
       <Card padding="none">
         {filteredActivities.length === 0 ? (
           <div className="text-center py-12">
@@ -196,7 +205,10 @@ const Activity: React.FC = () => {
         ) : (
           <div className="divide-y divide-gray-100">
             {filteredActivities.map((activity) => (
-              <div key={activity._id} className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors group">
+              <div
+                key={activity._id}
+                className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors group"
+              >
                 <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
                   {getIcon(activity.type)}
                 </div>
@@ -212,10 +224,16 @@ const Activity: React.FC = () => {
                     {new Date(activity.createdAt).toLocaleDateString()}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setSelectedActivity(activity)} className="p-1.5 hover:bg-gray-200 rounded-lg">
+                    <button
+                      onClick={() => setSelectedActivity(activity)}
+                      className="p-1.5 hover:bg-gray-200 rounded-lg"
+                    >
                       <Eye className="w-4 h-4 text-gray-500" />
                     </button>
-                    <button onClick={() => handleDeleteActivity(activity._id)} className="p-1.5 hover:bg-gray-200 rounded-lg">
+                    <button
+                      onClick={() => handleDeleteActivity(activity._id)}
+                      className="p-1.5 hover:bg-gray-200 rounded-lg"
+                    >
                       <Trash2 className="w-4 h-4 text-gray-500" />
                     </button>
                   </div>
@@ -226,7 +244,13 @@ const Activity: React.FC = () => {
         )}
       </Card>
 
-      <Modal isOpen={!!selectedActivity} onClose={() => setSelectedActivity(null)} title="Activity Details" size="sm">
+      {/* Activity Detail Modal */}
+      <Modal
+        isOpen={!!selectedActivity}
+        onClose={() => setSelectedActivity(null)}
+        title="Activity Details"
+        size="sm"
+      >
         {selectedActivity && (
           <div className="space-y-4">
             <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center mx-auto text-gray-600">
@@ -247,14 +271,19 @@ const Activity: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Time</span>
-                <span className="font-medium text-gray-900">{new Date(selectedActivity.createdAt).toLocaleString()}</span>
+                <span className="font-medium text-gray-900">
+                  {new Date(selectedActivity.createdAt).toLocaleString()}
+                </span>
               </div>
             </div>
-            <Button variant="outline" fullWidth onClick={() => setSelectedActivity(null)}>Close</Button>
+            <Button variant="outline" fullWidth onClick={() => setSelectedActivity(null)}>
+              Close
+            </Button>
           </div>
         )}
       </Modal>
 
+      {/* Clear Confirm */}
       <ConfirmDialog
         isOpen={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}

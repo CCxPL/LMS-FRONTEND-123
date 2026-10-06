@@ -55,96 +55,96 @@ export const TASK_STATUS = [
 
 // Demo Users for Login (Credentials)
 export const DEMO_USERS = [
-  { 
-    id: '1', 
-    name: 'Vikram Singh', 
-    email: 'super@lms.com', 
-    password: 'password', 
-    role: 'super-admin' as UserRole 
+  {
+    id: '1',
+    name: 'Vikram Singh',
+    email: 'super@lms.com',
+    password: 'password',
+    role: 'super-admin' as UserRole
   },
-  { 
-    id: '2', 
-    name: 'Ravi Kumar', 
-    email: 'admin@lms.com', 
-    password: 'password', 
-    role: 'admin' as UserRole 
+  {
+    id: '2',
+    name: 'Ravi Kumar',
+    email: 'admin@lms.com',
+    password: 'password',
+    role: 'admin' as UserRole
   },
-  { 
-    id: '3', 
-    name: 'Dr. Anjali Mehta', 
-    email: 'teacher@lms.com', 
-    password: 'password', 
-    role: 'teacher' as UserRole 
+  {
+    id: '3',
+    name: 'Dr. Anjali Mehta',
+    email: 'teacher@lms.com',
+    password: 'password',
+    role: 'teacher' as UserRole
   },
-  { 
-    id: '4', 
-    name: 'Arjun Sharma', 
-    email: 'student@lms.com', 
-    password: 'password', 
-    role: 'student' as UserRole 
+  {
+    id: '4',
+    name: 'Arjun Sharma',
+    email: 'student@lms.com',
+    password: 'password',
+    role: 'student' as UserRole
   },
 ];
 
 // Mock Users Data (Dashboard Display)
 export const MOCK_USERS_DATA = [
-  { 
-    id: '1', 
-    name: 'Vikram Singh', 
-    email: 'super@lms.com', 
-    role: 'super-admin' as UserRole, 
-    status: 'active' as const, 
-    createdAt: '2023-01-01' 
+  {
+    id: '1',
+    name: 'Vikram Singh',
+    email: 'super@lms.com',
+    role: 'super-admin' as UserRole,
+    status: 'active' as const,
+    createdAt: '2023-01-01'
   },
-  { 
-    id: '2', 
-    name: 'Ravi Kumar', 
-    email: 'admin@lms.com', 
-    role: 'admin' as UserRole, 
-    status: 'active' as const, 
-    createdAt: '2023-02-01' 
+  {
+    id: '2',
+    name: 'Ravi Kumar',
+    email: 'admin@lms.com',
+    role: 'admin' as UserRole,
+    status: 'active' as const,
+    createdAt: '2023-02-01'
   },
-  { 
-    id: '3', 
-    name: 'Dr. Anjali Mehta', 
-    email: 'teacher@lms.com', 
-    role: 'teacher' as UserRole, 
-    status: 'active' as const, 
+  {
+    id: '3',
+    name: 'Dr. Anjali Mehta',
+    email: 'teacher@lms.com',
+    role: 'teacher' as UserRole,
+    status: 'active' as const,
     createdAt: '2023-03-01',
     specialization: 'Web Development',
     coursesCount: 5,
     studentsCount: 120,
     rating: 4.8
   },
-  { 
-    id: '4', 
-    name: 'Arjun Sharma', 
-    email: 'student@lms.com', 
-    role: 'student' as UserRole, 
-    status: 'active' as const, 
+  {
+    id: '4',
+    name: 'Arjun Sharma',
+    email: 'student@lms.com',
+    role: 'student' as UserRole,
+    status: 'active' as const,
     createdAt: '2023-04-01',
     enrolledCourses: 3,
     completedCourses: 1,
     averageScore: 85,
     grade: 'A'
   },
-  { 
-    id: '5', 
-    name: 'Suresh Patel', 
-    email: 'suresh@lms.com', 
-    role: 'teacher' as UserRole, 
-    status: 'active' as const, 
+  {
+    id: '5',
+    name: 'Suresh Patel',
+    email: 'suresh@lms.com',
+    role: 'teacher' as UserRole,
+    status: 'active' as const,
     createdAt: '2023-05-01',
     specialization: 'Data Science',
     coursesCount: 3,
     studentsCount: 85,
     rating: 4.5
   },
-  { 
-    id: '6', 
-    name: 'Priya Verma', 
-    email: 'priya@lms.com', 
-    role: 'student' as UserRole, 
-    status: 'active' as const, 
+  {
+    id: '6',
+    name: 'Priya Verma',
+    email: 'priya@lms.com',
+    role: 'student' as UserRole,
+    status: 'active' as const,
     createdAt: '2023-06-01',
     enrolledCourses: 2,
     completedCourses: 0,

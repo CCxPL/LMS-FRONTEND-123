@@ -18,12 +18,17 @@ const UserPlus: React.FC<{ className?: string }> = ({ className }) => (
 const PlatformStats: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dateRange, setDateRange] = useState('month');
   const [statsData, setStatsData] = useState<any>(null);
   const [revenueData, setRevenueData] = useState<any>(null);
   const { showToast } = useToast();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   const formatNumber = (num: number) => {
@@ -35,7 +40,7 @@ const PlatformStats: React.FC = () => {
     try {
       const [statsRes, revenueRes] = await Promise.all([
         getPlatformStatsApi(),
-        getRevenueApi()
+        getRevenueApi(),
       ]);
       setStatsData(statsRes.data);
       setRevenueData(revenueRes.data);
@@ -66,6 +71,7 @@ const PlatformStats: React.FC = () => {
 
   if (isLoading) return <Loader text="Loading platform stats..." />;
 
+  // ─── REAL API DATA ────────────────────────────────────────────────────────
   const stats = [
     { title: 'Total Enrollments', value: formatNumber(statsData?.courses?.totalEnrollments ?? 0), change: '+Live', up: true, icon: Users },
     { title: 'Total Students', value: formatNumber(statsData?.users?.students ?? 0), change: '+Live', up: true, icon: UserPlus },
@@ -73,7 +79,7 @@ const PlatformStats: React.FC = () => {
     { title: 'Total Revenue', value: formatCurrency(revenueData?.totalRevenue ?? 0), change: '+Live', up: true, icon: IndianRupee },
   ];
 
-  const topCourses = (revenueData?.courseRevenue || []).slice(0, 4).map((c: any, idx: number) => ({
+  const topCourses = (revenueData?.courseRevenue || []).slice(0, 4).map((c: any) => ({
     name: c.courseTitle,
     students: c.enrollments,
     rating: 'N/A',
@@ -81,18 +87,43 @@ const PlatformStats: React.FC = () => {
     revenue: c.revenue,
   }));
 
+  // Monthly growth — use real data if available, fallback to empty array
+  const monthlyStats: { month: string; active: number; growth: number }[] =
+    statsData?.monthlyGrowth?.length
+      ? statsData.monthlyGrowth
+      : [];
+  const maxActive = monthlyStats.length > 0 ? Math.max(...monthlyStats.map((s) => s.active)) : 1;
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="page-title">Platform Statistics</h1>
           <p className="page-subtitle">Detailed analytics and growth metrics</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {/* Date Range Filter — UI only (filter wired to state, API doesn't support it yet) */}
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="border-none bg-transparent text-sm font-medium text-gray-700 focus:outline-none cursor-pointer"
+            >
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">This Quarter</option>
+              <option value="year">This Year</option>
+            </select>
+          </div>
+
           <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => handleExport('pdf')}>
               <Download className="w-4 h-4" /> PDF
@@ -124,41 +155,77 @@ const PlatformStats: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Platform Overview */}
-        <Card>
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Platform Overview</h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Total Users', value: statsData?.users?.total ?? 0, color: 'bg-blue-500' },
-              { label: 'Active Users', value: statsData?.users?.active ?? 0, color: 'bg-green-500' },
-              { label: 'Total Teachers', value: statsData?.users?.teachers ?? 0, color: 'bg-purple-500' },
-              { label: 'Total Admins', value: statsData?.users?.admins ?? 0, color: 'bg-orange-500' },
-              { label: 'Total Videos', value: statsData?.content?.videos ?? 0, color: 'bg-pink-500' },
-              { label: 'Total Quizzes', value: statsData?.content?.quizzes ?? 0, color: 'bg-yellow-500' },
-              { label: 'Quiz Attempts', value: statsData?.content?.quizAttempts ?? 0, color: 'bg-indigo-500' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                  <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                </div>
-                <span className="text-sm font-bold text-gray-900">{formatNumber(item.value)}</span>
-              </div>
-            ))}
+        {/* Monthly Growth Chart — real API data */}
+        <Card className="flex flex-col h-full">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">User Activity Growth</h3>
+              <p className="text-sm text-gray-500">Monthly active users trend</p>
+            </div>
+            <div className="flex gap-4">
+              <span className="flex items-center gap-1 text-xs font-medium text-gray-500">
+                <div className="w-2 h-2 bg-black rounded-full" /> Active
+              </span>
+              <span className="flex items-center gap-1 text-xs font-medium text-gray-500">
+                <div className="w-2 h-2 bg-gray-200 rounded-full" /> Inactive
+              </span>
+            </div>
           </div>
+
+          {monthlyStats.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+              No monthly data available
+            </div>
+          ) : (
+            <div className="flex-1 flex items-end justify-between gap-3 h-64 px-2 pt-4">
+              {monthlyStats.map((stat) => (
+                <div key={stat.month} className="w-full flex flex-col justify-end gap-2 group cursor-pointer relative">
+                  {/* Tooltip */}
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                    {stat.active} Users ({stat.growth}% growth)
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-black rotate-45" />
+                  </div>
+                  {/* Bar */}
+                  <div
+                    className="w-full bg-black rounded-t-sm opacity-80 group-hover:opacity-100 transition-all group-hover:bg-emerald-600"
+                    style={{ height: `${(stat.active / maxActive) * 100}%` }}
+                  />
+                  {/* Label */}
+                  <span className="text-xs font-medium text-gray-400 text-center group-hover:text-black transition-colors">
+                    {stat.month}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
-        {/* Top Courses */}
-        <Card>
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Top Performing Courses</h3>
+        {/* Top Courses — real API data */}
+        <Card className="flex flex-col h-full">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Top Performing Courses</h3>
+              <p className="text-sm text-gray-500">Based on engagement and revenue</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => showToast('Redirecting to all courses...', 'info')}>
+              View All
+            </Button>
+          </div>
+
           {topCourses.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">No course data available</div>
+            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+              No course data available
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto max-h-75 pr-2">
               {topCourses.map((course: any, idx: number) => (
                 <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-300 transition-all cursor-pointer group">
                   <div className="flex items-center gap-4">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : idx === 1 ? 'bg-gray-200 text-gray-700' : idx === 2 ? 'bg-orange-100 text-orange-700' : 'bg-white text-gray-500 border border-gray-200'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                        idx === 1 ? 'bg-gray-200 text-gray-700' :
+                          idx === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-white text-gray-500 border border-gray-200'
+                      }`}>
                       {idx + 1}
                     </div>
                     <div>

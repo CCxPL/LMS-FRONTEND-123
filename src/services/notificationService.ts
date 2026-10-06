@@ -1,77 +1,37 @@
-import type { NotificationPayload } from '../types/notification.types';
-import type { CalendarEvent } from '../types/calendar.types';
-import { createNotificationMessage, getNotificationTitle } from '../utils/notificationHelpers';
-import {
-  createNotificationApi,
-  markNotificationReadApi,
-} from '../api/notificationApi';
+import axiosInstance from '../api/axiosInstance';
+import type { Notification } from '../types/notification.types';
 
 class NotificationService {
-  private listeners: ((notification: any) => void)[] = [];
-
-  subscribe(callback: (notification: any) => void) {
-    this.listeners.push(callback);
-    return () => {
-      this.listeners = this.listeners.filter(cb => cb !== callback);
-    };
+  async getNotificationsForUser(_userId: string): Promise<Notification[]> {
+    const res = await axiosInstance.get('/notifications');
+    return res.data?.data?.notifications || [];
   }
 
-  private notifyListeners(notification: any) {
-    this.listeners.forEach(callback => callback(notification));
+  async markAsRead(notificationId: string): Promise<void> {
+    await axiosInstance.patch(`/notifications/${notificationId}/read`);
   }
 
-  async sendNotification(payload: NotificationPayload, event?: CalendarEvent, customData?: any) {
-    const title = getNotificationTitle(payload.type);
-    const message = payload.customMessage || createNotificationMessage(payload.type, event, customData);
-
-    try {
-      const res = await createNotificationApi({
-        title,
-        message,
-        type: payload.type,
-        userId: payload.recipientIds?.[0],
-        role: 'all',
-      });
-      const notification = res.data.notification;
-      this.notifyListeners(notification);
-      return [notification];
-    } catch (error) {
-      console.error('Failed to send notification:', error);
-      return [];
-    }
+  async markAllAsRead(): Promise<void> {
+    await axiosInstance.patch('/notifications/mark-all-read');
   }
 
-  async notifyClassScheduled(event: CalendarEvent) {
-    return this.sendNotification({ type: 'class_scheduled', recipientIds: [], eventId: event.id }, event);
+  async deleteNotification(notificationId: string): Promise<void> {
+    await axiosInstance.delete(`/notifications/${notificationId}`);
   }
 
-  async notifyClassUpdated(event: CalendarEvent) {
-    return this.sendNotification({ type: 'class_updated', recipientIds: [], eventId: event.id }, event);
+  // Legacy method — socket se real-time aata hai, ye nahi chahiye
+  // Rakha hai taaki koi component import break na ho
+  sendNotification(_payload: any, _event?: any): any[] {
+    return [];
   }
 
-  async notifyClassCancelled(event: CalendarEvent) {
-    return this.sendNotification({ type: 'class_cancelled', recipientIds: [], eventId: event.id }, event);
-  }
-
-  async notifyTeacherLate(event: CalendarEvent) {
-    return this.sendNotification({ type: 'teacher_late', recipientIds: [], eventId: event.id }, event);
-  }
-
-  async notifyRoleChange(userId: string, oldRole: string, newRole: string) {
-    return this.sendNotification({ type: 'role_changed', recipientIds: [userId] }, undefined, { oldRole, newRole });
-  }
-
-  async notifyStudentEnrolled(studentId: string, courseName: string) {
-    return this.sendNotification({ type: 'student_enrolled', recipientIds: [studentId] }, undefined, { courseName });
-  }
-
-  async markAsRead(notificationId: string) {
-    try {
-      await markNotificationReadApi(notificationId);
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-    }
-  }
+  notifyClassScheduled(_event: any): any[] { return []; }
+  notifyClassUpdated(_event: any): any[] { return []; }
+  notifyClassCancelled(_event: any): any[] { return []; }
+  notifyTeacherLate(_event: any): any[] { return []; }
+  notifyRoleChange(_userId: string, _oldRole: string, _newRole: string): any[] { return []; }
+  notifyStudentEnrolled(_studentId: string, _courseName: string): any[] { return []; }
+  subscribe(_cb: any): () => void { return () => {}; }
 }
 
 export const notificationService = new NotificationService();

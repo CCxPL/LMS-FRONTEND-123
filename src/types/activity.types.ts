@@ -1,4 +1,4 @@
-export type ActivityType = 
+export type ActivityType =
   | 'student_joined'
   | 'student_left'
   | 'teacher_joined'

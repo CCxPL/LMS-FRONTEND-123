@@ -1,13 +1,5 @@
-// ============================================
-// useCalendar Hook - With Recurring Events
-// ============================================
-
-import { useState, useEffect, useCallback, } from 'react';
-import type {
-  CalendarEvent,
-  EventFormData,
-  RecurringEditType
-} from '../types/calendar.types';
+import { useState, useEffect, useCallback } from 'react';
+import type { CalendarEvent, EventFormData, RecurringEditType } from '../types/calendar.types';
 import { calendarService } from '../services/calendarService';
 import { useAuth } from './useAuth';
 import { useToast } from '../context/ToastContext';
@@ -17,14 +9,10 @@ interface UseCalendarReturn {
   loading: boolean;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
-
-  // Original methods
   createEvent: (formData: EventFormData) => Promise<boolean>;
   updateEvent: (eventId: string, formData: Partial<EventFormData>) => Promise<boolean>;
   deleteEvent: (eventId: string) => Promise<boolean>;
   refreshEvents: () => Promise<void>;
-
-  // ✅ NEW: Recurring methods
   updateRecurringEvent: (
     eventId: string,
     updates: Partial<EventFormData>,
@@ -32,7 +20,8 @@ interface UseCalendarReturn {
   ) => Promise<boolean>;
   deleteRecurringEvent: (
     eventId: string,
-    editType: RecurringEditType
+    editType: RecurringEditType,
+    date?: string
   ) => Promise<boolean>;
   isRecurringEvent: (eventId: string) => boolean;
 }
@@ -44,19 +33,26 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  // const hasFetchedRef = useRef(false);
-
   const fetchEvents = useCallback(async (): Promise<void> => {
     if (!user) {
       setEvents([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
     try {
-      // ✅ Ab backend se fetch hoga
-      const fetchedEvents = await calendarService.fetchEvents(courseId);
+      let fetchedEvents: CalendarEvent[];
+
+      if (user.role === 'student' && user.courseIds?.length) {
+        fetchedEvents = await calendarService.getEventsByStudentCourses(user.courseIds);
+      } else if (user.role === 'teacher') {
+        fetchedEvents = await calendarService.getEventsByTeacher(user.id);
+      } else if (courseId) {
+        fetchedEvents = await calendarService.getEventsByCourse(courseId);
+      } else {
+        fetchedEvents = await calendarService.getAllEvents();
+      }
+
       setEvents(fetchedEvents || []);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -64,28 +60,23 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user, courseId]);
+  }, [user?.id, user?.role, courseId]);
 
   useEffect(() => {
     fetchEvents();
-  }, [user?.id, user?.role, courseId]);
-
-  // ============================================
-  // EXISTING METHODS (Unchanged)
-  // ============================================
+  }, [fetchEvents]);
 
   const createEvent = useCallback(async (formData: EventFormData): Promise<boolean> => {
     if (!user) {
       showToast('User not authenticated', 'error');
       return false;
     }
-
     try {
-      const newEvents = await calendarService.createEvent(formData, user);
-      setEvents(prev => [...prev, ...newEvents]);
+      await calendarService.createEvent(formData);
+      await fetchEvents();
       showToast(
         formData.isRecurring
-          ? `${newEvents.length} recurring events created successfully`
+          ? 'Recurring events created successfully'
           : 'Event created successfully',
         'success'
       );
@@ -95,7 +86,7 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
       showToast('Failed to create event', 'error');
       return false;
     }
-  }, [user, showToast]);
+  }, [user, showToast, fetchEvents]);
 
   const updateEvent = useCallback(
     async (eventId: string, formData: Partial<EventFormData>): Promise<boolean> => {
@@ -126,10 +117,6 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
     }
   }, [showToast]);
 
-  // ============================================
-  // ✅ NEW: RECURRING EVENT METHODS
-  // ============================================
-
   const updateRecurringEvent = useCallback(
     async (
       eventId: string,
@@ -137,13 +124,14 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
       editType: RecurringEditType
     ): Promise<boolean> => {
       try {
-        const updatedEvent = calendarService.updateRecurringEvent(
-          eventId,
-          updates,
-          editType
+        await calendarService.updateRecurringEvent(eventId, updates, editType);
+        await fetchEvents();
+        showToast(
+          editType === 'THIS_EVENT'
+            ? 'Event updated successfully'
+            : 'Events updated successfully',
+          'success'
         );
-        setEvents(prev => prev.map(e => e.id === eventId ? updatedEvent : e));
-        showToast('Event updated successfully', 'success');
         return true;
       } catch (error) {
         console.error('Error updating recurring event:', error);
@@ -151,14 +139,20 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
         return false;
       }
     },
-    [showToast]
+    [showToast, fetchEvents]
   );
 
   const deleteRecurringEvent = useCallback(
-    async (eventId: string, editType: RecurringEditType): Promise<boolean> => {
+    async (
+      eventId: string,
+      editType: RecurringEditType,
+      date?: string
+    ): Promise<boolean> => {
       try {
-        calendarService.deleteRecurringEvent(eventId, editType);
-        setEvents(prev => prev.filter(e => e.id !== eventId));
+        // ✅ date pass karo — agar nahi hai to event ki date use karo
+        const targetDate = date || events.find(e => e.id === eventId)?.date || '';
+        await calendarService.deleteRecurringEvent(eventId, editType, targetDate);
+        await fetchEvents();
         showToast(
           editType === 'THIS_EVENT'
             ? 'Event deleted successfully'
@@ -172,12 +166,13 @@ export const useCalendar = (courseId?: string): UseCalendarReturn => {
         return false;
       }
     },
-    [showToast]
+    [showToast, fetchEvents, events]
   );
 
   const isRecurringEvent = useCallback((eventId: string): boolean => {
-    return calendarService.isRecurringEvent(eventId);
-  }, []);
+    const event = events.find(e => e.id === eventId);
+    return event?.isRecurring || false;
+  }, [events]);
 
   const refreshEvents = useCallback(async (): Promise<void> => {
     await fetchEvents();

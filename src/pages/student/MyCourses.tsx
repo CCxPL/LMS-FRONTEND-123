@@ -21,6 +21,7 @@ const StudentMyCourses: React.FC = () => {
     loadCourses();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadCourses = async () => {
     try {
       const res = await getMyEnrolledCoursesApi();
@@ -31,9 +32,9 @@ const StudentMyCourses: React.FC = () => {
       setIsLoading(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const filtered = courses.filter(c => {
-    // ✅ Fix: teacher field use karo
     const instructor = c.teacher?.name || c.instructor?.name || '';
     const matchesSearch =
       c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -126,7 +127,9 @@ const StudentMyCourses: React.FC = () => {
           <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 font-medium">No courses found</p>
           <p className="text-gray-400 text-sm mb-4">
-            {courses.length === 0 ? "You haven't enrolled in any courses yet" : "Try adjusting your filters"}
+            {courses.length === 0
+              ? "You haven't enrolled in any courses yet"
+              : 'Try adjusting your filters'}
           </p>
           <Button onClick={() => navigate('/student/browse-courses')}>
             Browse Courses
@@ -138,7 +141,6 @@ const StudentMyCourses: React.FC = () => {
             const progress = course.progress || 0;
             const isCompleted = progress === 100;
             const courseId = course._id || course.id;
-            // ✅ Fix: teacher field use karo
             const instructorName = course.teacher?.name || course.instructor?.name || 'Unknown';
 
             return (
@@ -152,7 +154,11 @@ const StudentMyCourses: React.FC = () => {
                 <div className={`h-36 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden ${isCompleted ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-700 to-gray-900'
                   }`}>
                   {course.thumbnail ? (
-                    <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover rounded-lg" />
+                    <img
+                      src={course.thumbnail}
+                      alt={course.title}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
                   ) : (
                     <GraduationCap className="w-12 h-12 text-white/50" />
                   )}
@@ -183,10 +189,7 @@ const StudentMyCourses: React.FC = () => {
                   <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-gray-700 transition-colors">
                     {course.title}
                   </h3>
-                  {/* ✅ Fix: instructorName use karo */}
-                  <p className="text-sm text-gray-500 mb-3">
-                    by {instructorName}
-                  </p>
+                  <p className="text-sm text-gray-500 mb-3">by {instructorName}</p>
 
                   {/* Stats */}
                   <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">

@@ -48,6 +48,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ item: PendingItem; action: 'approve' | 'reject' } | null>(null);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const fetchDashboard = async () => {
     try {
       const [dashRes, pendingRes, activityRes] = await Promise.all([
@@ -56,6 +57,8 @@ const AdminDashboard: React.FC = () => {
         getActivitiesApi({ limit: 5 }),
       ]);
 
+      // ✅ FIX: getAdminDashboardApi returns res.data = { success, data: {...} }
+      // So dashRes.data has the actual dashboard data
       setDashData(dashRes.data);
 
       const pending: PendingItem[] = (pendingRes.data.courses || []).map((c: any) => ({
@@ -67,7 +70,6 @@ const AdminDashboard: React.FC = () => {
         avatar: (c.teacher?.name || 'UN').substring(0, 2).toUpperCase(),
         description: c.description,
       }));
-
       setPendingItems(pending);
 
       const feed = (activityRes.data?.activities || []).map((a: any) => ({
@@ -94,7 +96,10 @@ const AdminDashboard: React.FC = () => {
       await approveCourseApi(item.id);
       setPendingItems(prev => prev.filter(p => p.id !== item.id));
       showToast(`${item.type} "${item.title}" approved!`, 'success');
-      setLiveFeed(prev => [{ id: Date.now(), text: `${item.type} "${item.title}" approved`, time: 'Just now' }, ...prev.slice(0, 3)]);
+      setLiveFeed(prev => [
+        { id: Date.now(), text: `${item.type} "${item.title}" approved`, time: 'Just now' },
+        ...prev.slice(0, 3)
+      ]);
     } catch (error) {
       showToast('Failed to approve', 'error');
     } finally {
@@ -108,7 +113,10 @@ const AdminDashboard: React.FC = () => {
       await rejectCourseApi(item.id);
       setPendingItems(prev => prev.filter(p => p.id !== item.id));
       showToast(`${item.type} "${item.title}" rejected.`, 'error');
-      setLiveFeed(prev => [{ id: Date.now(), text: `${item.type} "${item.title}" rejected`, time: 'Just now' }, ...prev.slice(0, 3)]);
+      setLiveFeed(prev => [
+        { id: Date.now(), text: `${item.type} "${item.title}" rejected`, time: 'Just now' },
+        ...prev.slice(0, 3)
+      ]);
     } catch (error) {
       showToast('Failed to reject', 'error');
     } finally {
@@ -126,6 +134,7 @@ const AdminDashboard: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoading) return <Loader />;
 

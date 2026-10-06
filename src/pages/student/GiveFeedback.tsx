@@ -23,6 +23,7 @@ const GiveFeedback: React.FC = () => {
     loadMyFeedbacks();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadCourses = async () => {
     try {
       const res = await getMyEnrolledCoursesApi();
@@ -32,7 +33,6 @@ const GiveFeedback: React.FC = () => {
     }
   };
 
-  // ✅ SAHI
   const loadMyFeedbacks = async () => {
     try {
       const res = await getMyReviewsApi();
@@ -61,6 +61,7 @@ const GiveFeedback: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
@@ -113,8 +114,8 @@ const GiveFeedback: React.FC = () => {
                   >
                     <Star
                       className={`w-10 h-10 transition-colors ${star <= (hoverRating || rating)
-                        ? 'fill-gray-900 text-gray-900'
-                        : 'text-gray-300'
+                          ? 'fill-gray-900 text-gray-900'
+                          : 'text-gray-300'
                         }`}
                     />
                   </button>

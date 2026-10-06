@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { StudentActivity, LiveClassState } from '../types/attendance.types';
+import type { LiveClassState } from '../types/attendance.types';
 import { useData } from '../context/DataContext';
 
 export const useLiveActivity = (eventId: string) => {

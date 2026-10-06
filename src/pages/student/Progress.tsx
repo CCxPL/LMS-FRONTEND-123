@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { GraduationCap, TrendingUp, BarChart3, CheckCircle } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import { getStudentDashboardApi } from '../../api/dashboardApi';
+// ✅ getCourseProgressApi -> studentApi se (student/progress/:courseId)
 import { getMyEnrolledCoursesApi, getCourseProgressApi } from '../../api/studentApi';
 import { getStudentAssignmentsApi } from '../../api/assignmentApi';
+// ✅ getPerformanceApi -> performanceApi se (performance route)
 import { getPerformanceApi } from '../../api/performanceApi';
 
 const Progress: React.FC = () => {
@@ -34,6 +36,8 @@ const Progress: React.FC = () => {
         getPerformanceApi(),
       ]);
 
+      // ✅ FIX: dashboardApi now returns res.data = { success, data: {...} }
+      // so dashRes.data is the actual dashboard payload
       const dash = dashRes.data;
       const assignments: any[] = assignmentsRes.data?.assignments ?? [];
       const completedAssignments = assignments.filter(
@@ -42,18 +46,20 @@ const Progress: React.FC = () => {
 
       const courses: any[] = coursesRes.data?.courses ?? [];
 
-      setOverallStats(prev => ({
-        ...prev,
-        totalCourses: dash.enrolledCourses ?? 0,
+      setOverallStats({
+        totalCourses: dash?.enrolledCourses ?? 0,
         completedCourses: courses.filter((c: any) => (c.progress || 0) === 100).length,
-        inProgressCourses: courses.filter((c: any) => (c.progress || 0) > 0 && (c.progress || 0) < 100).length, // ✅ ADD
+        inProgressCourses: courses.filter(
+          (c: any) => (c.progress || 0) > 0 && (c.progress || 0) < 100
+        ).length,
         totalAssignments: assignments.length,
         completedAssignments,
-        averageScore: Math.round(dash.averageScore ?? 0),
-      }));
+        averageScore: Math.round(dash?.averageScore ?? 0),
+      });
 
       const performanceAttempts: any[] = performanceRes.data?.attempts ?? [];
 
+      // ✅ getCourseProgressApi from studentApi -> /student/progress/:courseId
       const progressResults = await Promise.allSettled(
         courses.map((c: any) => getCourseProgressApi(c._id))
       );
@@ -61,13 +67,12 @@ const Progress: React.FC = () => {
       const mapped = courses.map((course: any, idx: number) => {
         const progressData =
           progressResults[idx].status === 'fulfilled'
-            ? (progressResults[idx] as PromiseFulfilledResult<any>).value.data?.progress
+            ? (progressResults[idx] as PromiseFulfilledResult<any>).value?.data?.progress
             : null;
 
-        // progressData array hai — pehla item lo
         const totalVideos = progressData?.videos?.total ?? course.totalVideos ?? 0;
         const completedVideos = progressData?.videos?.completed ?? 0;
-        const overallPercent = progressData?.overall ?? 0;
+        const overallPercent = progressData?.overall ?? course.progress ?? 0;
 
         const courseAttempts = performanceAttempts.filter(
           (a: any) => a.quiz?.course?.toString() === course._id?.toString()
@@ -75,8 +80,10 @@ const Progress: React.FC = () => {
         const quizAvg =
           courseAttempts.length > 0
             ? Math.round(
-              courseAttempts.reduce((sum: number, a: any) => sum + (a.percentage ?? 0), 0) /
-              courseAttempts.length
+              courseAttempts.reduce(
+                (sum: number, a: any) => sum + (a.percentage ?? 0),
+                0
+              ) / courseAttempts.length
             )
             : 0;
 
@@ -115,9 +122,21 @@ const Progress: React.FC = () => {
       {/* Overall Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: 'Courses Completed', value: `${overallStats.completedCourses}/${overallStats.totalCourses}`, icon: <CheckCircle className="w-6 h-6" /> },
-          { label: 'Assignments Done', value: `${overallStats.completedAssignments}/${overallStats.totalAssignments}`, icon: <BarChart3 className="w-6 h-6" /> },
-          { label: 'Average Score', value: `${overallStats.averageScore}%`, icon: <TrendingUp className="w-6 h-6" /> },
+          {
+            label: 'Courses Completed',
+            value: `${overallStats.completedCourses}/${overallStats.totalCourses}`,
+            icon: <CheckCircle className="w-6 h-6" />,
+          },
+          {
+            label: 'Assignments Done',
+            value: `${overallStats.completedAssignments}/${overallStats.totalAssignments}`,
+            icon: <BarChart3 className="w-6 h-6" />,
+          },
+          {
+            label: 'Average Score',
+            value: `${overallStats.averageScore}%`,
+            icon: <TrendingUp className="w-6 h-6" />,
+          },
         ].map((stat, idx) => (
           <Card key={idx} hover>
             <div className="flex items-center gap-4">
@@ -147,9 +166,7 @@ const Progress: React.FC = () => {
                 {courseProgress.map((course, idx) => (
                   <div key={idx}>
                     <div className="flex justify-between items-end mb-2">
-                      <div>
-                        <h4 className="font-bold text-gray-900">{course.name}</h4>
-                      </div>
+                      <h4 className="font-bold text-gray-900">{course.name}</h4>
                       <span className="text-xl font-bold text-gray-900">{course.progress}%</span>
                     </div>
 
@@ -163,15 +180,21 @@ const Progress: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-gray-50 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500">Lessons</p>
-                        <p className="font-bold text-gray-900">{course.lessonsCompleted}/{course.totalLessons}</p>
+                        <p className="font-bold text-gray-900">
+                          {course.lessonsCompleted}/{course.totalLessons}
+                        </p>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500">Quiz Avg</p>
-                        <p className="font-bold text-gray-900">{course.quizScore > 0 ? `${course.quizScore}%` : 'N/A'}</p>
+                        <p className="font-bold text-gray-900">
+                          {course.quizScore > 0 ? `${course.quizScore}%` : 'N/A'}
+                        </p>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500">Status</p>
-                        <p className="font-bold text-gray-900">{course.progress === 100 ? 'Done' : 'Active'}</p>
+                        <p className="font-bold text-gray-900">
+                          {course.progress === 100 ? 'Done' : 'Active'}
+                        </p>
                       </div>
                     </div>
                   </div>

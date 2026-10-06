@@ -4,8 +4,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useToast } from '../../context/ToastContext';
-import { getCourseReviewsApi } from '../../api/teacherApi';
-import { replyToReviewApi } from '../../api/teacherApi';
+import { getCourseReviewsApi, replyToReviewApi } from '../../api/teacherApi';
 
 const StudentFeedback: React.FC = () => {
   const { showToast } = useToast();
@@ -21,6 +20,7 @@ const StudentFeedback: React.FC = () => {
     loadFeedbacks();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadFeedbacks = async () => {
     try {
       const res = await getCourseReviewsApi();
@@ -31,20 +31,6 @@ const StudentFeedback: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  const filtered = useMemo(() => {
-    let result = feedbacks;
-    if (searchTerm) {
-      result = result.filter(f =>
-        (f.student?.name || f.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (f.course?.title || f.courseName || '').toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    if (ratingFilter !== 'all') {
-      result = result.filter(f => f.rating === ratingFilter);
-    }
-    return result;
-  }, [feedbacks, searchTerm, ratingFilter]);
 
   const handleReply = async (fbId: string, courseId: string) => {
     if (!replyText.trim()) {
@@ -61,11 +47,29 @@ const StudentFeedback: React.FC = () => {
       showToast('Failed to send reply', 'error');
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const filtered = useMemo(() => {
+    let result = feedbacks;
+    if (searchTerm) {
+      result = result.filter(f =>
+        (f.student?.name || f.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (f.course?.title || f.courseName || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (ratingFilter !== 'all') {
+      result = result.filter(f => f.rating === ratingFilter);
+    }
+    return result;
+  }, [feedbacks, searchTerm, ratingFilter]);
 
   const renderStars = (rating: number) => (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
-        <Star key={s} className={`w-4 h-4 ${s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+        <Star
+          key={s}
+          className={`w-4 h-4 ${s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+        />
       ))}
     </div>
   );
@@ -126,8 +130,12 @@ const StudentFeedback: React.FC = () => {
                     {(fb.student?.name || fb.studentName || 'S').charAt(0)}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{fb.student?.name || fb.studentName || 'Student'}</p>
-                    <p className="text-sm text-gray-500">{fb.course?.title || fb.courseName || ''}</p>
+                    <p className="font-semibold text-gray-900">
+                      {fb.student?.name || fb.studentName || 'Student'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {fb.course?.title || fb.courseName || ''}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">

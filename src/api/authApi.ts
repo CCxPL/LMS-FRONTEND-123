@@ -29,3 +29,14 @@ export const getMeApi = async () => {
     const res = await axiosInstance.get("/auth/me");
     return res.data;
 };
+
+// Existing code ke saath ye add karo:
+export const forgotPasswordApi = async (email: string) => {
+  const res = await axiosInstance.post('/auth/forgot-password', { email });
+  return res.data;
+};
+
+export const resetPasswordApi = async (token: string, newPassword: string) => {
+  const res = await axiosInstance.post(`/auth/reset-password/${token}`, { newPassword });
+  return res.data;
+};

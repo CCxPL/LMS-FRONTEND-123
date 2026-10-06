@@ -35,15 +35,14 @@ const TeacherSchedule: React.FC = () => {
   const [selectedEventForAttendance, setSelectedEventForAttendance] = useState<CalendarEvent | null>(null);
   const [attendanceDetails, setAttendanceDetails] = useState<any[]>([]);
 
-  // ============================================
-  // ✅ Event Modal & Recurring Dialog States
-  // ============================================
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
+  // ─── TERA: RecurringDialog states ────────────────────────────────────────
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [recurringAction, setRecurringAction] = useState<'EDIT' | 'DELETE'>('EDIT');
+  // ─────────────────────────────────────────────────────────────────────────
 
   const {
     events,
@@ -54,12 +53,11 @@ const TeacherSchedule: React.FC = () => {
     updateRecurringEvent,
     deleteRecurringEvent,
   } = useCalendar();
+
   const { classSummaries, studentActivities } = useData();
 
-  // Find currently live event
   const liveEvent = events.find(e => isEventLive(e));
 
-  // Get online students for live event
   const getOnlineStudents = (eventId: string) => {
     const joined = studentActivities.filter(a => a.eventId === eventId && a.action === 'joined');
     const left = studentActivities.filter(a => a.eventId === eventId && a.action === 'left');
@@ -68,49 +66,24 @@ const TeacherSchedule: React.FC = () => {
 
   const onlineStudents = liveEvent ? getOnlineStudents(liveEvent.id) : [];
 
-  // Get attendance details for an event
-  const getAttendanceDetails = (eventId: string) => {
-    const activities = studentActivities.filter(a => a.eventId === eventId);
-    const studentMap = new Map<string, {
-      studentId: string;
-      studentName: string;
-      joinTime: string | null;
-      leaveTime: string | null;
-      status: 'present' | 'absent';
-      duration: number;
-    }>();
-
-    activities.forEach(activity => {
-      const existing = studentMap.get(activity.studentId) || {
-        studentId: activity.studentId,
-        studentName: activity.studentName,
-        joinTime: null,
-        leaveTime: null,
-        status: 'absent' as const,
-        duration: 0
-      };
-
-      if (activity.action === 'joined') {
-        existing.joinTime = activity.timestamp;
-        existing.status = 'present';
-      } else if (activity.action === 'left') {
-        existing.leaveTime = activity.timestamp;
-        if (existing.joinTime) {
-          existing.duration = Math.round(
-            (new Date(activity.timestamp).getTime() - new Date(existing.joinTime).getTime()) / 60000
-          );
-        }
-      }
-
-      studentMap.set(activity.studentId, existing);
-    });
-
-    return Array.from(studentMap.values());
-  };
-
-  // ============================================
-  // ✅ EVENT HANDLERS - With Recurring Support
-  // ============================================
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedEventForAttendance) return;
+    getEventAttendanceApi(selectedEventForAttendance.id)
+      .then(res => {
+        const records = res.data?.attendance || [];
+        setAttendanceDetails(records.map((a: any) => ({
+          studentId: a.student?._id,
+          studentName: a.student?.name || 'Unknown',
+          joinTime: a.joinTime,
+          leaveTime: a.leaveTime,
+          duration: a.duration || 0,
+          status: a.status,
+        })));
+      })
+      .catch(console.error);
+  }, [selectedEventForAttendance]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleCreateEvent = async (formData: EventFormData): Promise<boolean> => {
     try {
@@ -122,6 +95,8 @@ const TeacherSchedule: React.FC = () => {
             : 'Event created successfully',
           'success'
         );
+        setIsEventModalOpen(false);
+        setSelectedDate('');
       }
       return success;
     } catch (error) {
@@ -130,16 +105,69 @@ const TeacherSchedule: React.FC = () => {
     }
   };
 
-  // const handleDateClick = (date: Date) => {
-  //   const dateStr = date.toISOString().split('T')[0];
-  //   setSelectedDate(dateStr);
-  //   setEditingEvent(null);
-  //   setIsEventModalOpen(true);
-  // };
+  // ─── DOST KA UI: eventId param wala clean approach ───────────────────────
+  const handleRecurringEdit = async (
+    formData: EventFormData,
+    editType: RecurringEditType,
+    eventId: string
+  ): Promise<boolean> => {
+    console.log('RECURRING EDIT DEBUG:', {
+      editType,
+      eventId,
+      newMeetingLink: formData.meetingLink,
+      date: formData.date,
+    });
+    try {
+      const success = await updateRecurringEvent(eventId, formData, editType);
+      if (success) {
+        showToast(
+          editType === 'THIS_EVENT'
+            ? 'Event updated successfully'
+            : 'Events updated successfully',
+          'success'
+        );
+        setIsEventModalOpen(false);
+        setEditingEvent(null);
+        setSelectedDate('');
+        setRecurringDialogOpen(false);
+      }
+      return success;
+    } catch (error) {
+      showToast('Failed to update event', 'error');
+      return false;
+    }
+  };
+
+  const handleRecurringDeleteEvent = async (
+    editType: RecurringEditType,
+    eventId: string,
+    date?: string  // ✅ add karo
+  ): Promise<boolean> => {
+    try {
+      const success = await deleteRecurringEvent(eventId, editType, date); // ✅ date pass karo
+      if (success) {
+        showToast(
+          editType === 'THIS_EVENT'
+            ? 'Event deleted successfully'
+            : 'Events deleted successfully',
+          'success'
+        );
+        setIsEventModalOpen(false);
+        setEditingEvent(null);
+        setSelectedDate('');
+        setRecurringDialogOpen(false);
+      }
+      return success;
+    } catch (error) {
+      showToast('Failed to delete event', 'error');
+      return false;
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleEditEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
-
+    setSelectedDate(event.date); // ✅ event ki actual date set karo
     if (event.isRecurring) {
       setRecurringAction('EDIT');
       setRecurringDialogOpen(true);
@@ -148,69 +176,77 @@ const TeacherSchedule: React.FC = () => {
     }
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    const event = events.find(e => e.id === eventId);
+  // ─── DOST KA: async try/catch + TERA: string eventId param ───────────────
+  const handleDeleteEvent = async (eventId?: string) => {
+    const targetId = eventId || editingEvent?.id;
+    if (!targetId) return;
+
+    const event = events.find(e => e.id === targetId);
     if (!event) return;
 
-    setEditingEvent(event);
-
     if (event.isRecurring) {
+      setEditingEvent(event);
       setRecurringAction('DELETE');
       setRecurringDialogOpen(true);
-    } else {
-      deleteEvent(eventId);
+      return;
+    }
+
+    try {
+      await deleteEvent(targetId);
       showToast('Event deleted successfully', 'success');
       setIsEventModalOpen(false);
       setEditingEvent(null);
       setSelectedDate('');
+    } catch (error) {
+      showToast('Failed to delete event', 'error');
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
+  // ─── TERA: RecurringDialog confirm flow ──────────────────────────────────
   const handleRecurringDialogConfirm = async (editType: RecurringEditType) => {
     if (!editingEvent) return;
-
     try {
       if (recurringAction === 'DELETE') {
-        await deleteRecurringEvent(editingEvent.id, editType);
-        showToast(
-          editType === 'THIS_EVENT'
-            ? 'Event deleted successfully'
-            : 'Events deleted successfully',
-          'success'
-        );
-        setIsEventModalOpen(false);
+        // ✅ selectedDate pass karo
+        await handleRecurringDeleteEvent(editType, editingEvent.id, selectedDate || editingEvent.date);
       } else {
+        setRecurringDialogOpen(false);
         setIsEventModalOpen(true);
       }
     } catch (error) {
       showToast('Operation failed', 'error');
     }
-
     setRecurringDialogOpen(false);
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
+  // ─── DOST KA: proper try/catch for non-recurring edit ────────────────────
   const handleSaveEvent = async (formData: EventFormData): Promise<boolean> => {
     if (!editingEvent) {
       return handleCreateEvent(formData);
     }
 
-    try {
-      if (editingEvent.isRecurring && recurringAction === 'EDIT') {
-        await updateRecurringEvent(editingEvent.id, formData, 'THIS_EVENT');
-      } else {
-        await updateEvent(editingEvent.id, formData);
+    if (!editingEvent.isRecurring) {
+      try {
+        const success = await updateEvent(editingEvent.id, formData);
+        if (success) {
+          showToast('Event updated successfully', 'success');
+          setIsEventModalOpen(false);
+          setEditingEvent(null);
+          setSelectedDate('');
+        }
+        return success;
+      } catch (error) {
+        showToast('Failed to update event', 'error');
+        return false;
       }
-
-      showToast('Event updated successfully', 'success');
-      setIsEventModalOpen(false);
-      setEditingEvent(null);
-      setSelectedDate('');
-      return true;
-    } catch (error) {
-      showToast('Failed to update event', 'error');
-      return false;
     }
+
+    // Recurring — EventModal handles via onRecurringEdit
+    return false;
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleRescheduleEvent = async (eventId: string, newDate: string) => {
     const event = events.find(e => e.id === eventId);
@@ -226,31 +262,13 @@ const TeacherSchedule: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (!selectedEventForAttendance) return;
-    getEventAttendanceApi(selectedEventForAttendance.id).then(res => {
-      const records = res.data?.attendance || [];
-      setAttendanceDetails(records.map((a: any) => ({
-        studentId: a.student?._id,
-        studentName: a.student?.name || 'Unknown',
-        joinTime: a.joinTime,
-        leaveTime: a.leaveTime,
-        duration: a.duration || 0,
-        status: a.status,
-      })));
-    }).catch(console.error);
-  }, [selectedEventForAttendance]);
-
-  // Teacher's class summaries
   const teacherSummaries = classSummaries.filter(s =>
     events.some(e => e.id === s.eventId)
   );
 
-  // Filter events by course
   const filteredEvents = selectedCourseId
     ? events.filter(e => e.courseId === selectedCourseId)
     : events;
-
 
   const presentCount = attendanceDetails.filter(s => s.status === 'present').length;
   const absentCount = attendanceDetails.filter(s => s.status === 'absent').length;
@@ -407,27 +425,24 @@ const TeacherSchedule: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <CalendarView
               events={filteredEvents}
-              onCreateEvent={async (formData) => {
-                const success = await handleCreateEvent(formData);
-                return success;
-              }}
+              onCreateEvent={handleCreateEvent}
               onEditEvent={handleEditEvent}
-              onDeleteEvent={handleDeleteEvent}
               onRescheduleEvent={handleRescheduleEvent}
+              onRecurringEdit={(formData, editType, eventId) => handleRecurringEdit(formData, editType, eventId)}
+              onRecurringDelete={(editType, eventId, date) => handleRecurringDeleteEvent(editType, eventId, date)}
             />
           </div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Live Attendance */}
           {liveEvent && onlineStudents.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-gray-700" />
                 Currently Online ({onlineStudents.length})
               </h3>
-              <div className="space-y-2 max-h-50 overflow-y-auto">
+              <div className="space-y-2 max-h-48 overflow-y-auto">
                 {onlineStudents.map(student => (
                   <div key={student.studentId} className="flex items-center gap-2 text-sm p-2 bg-gray-50 rounded-lg">
                     <span className="w-2 h-2 bg-green-500 rounded-full" />
@@ -438,7 +453,6 @@ const TeacherSchedule: React.FC = () => {
             </div>
           )}
 
-          {/* Class Reports */}
           {teacherSummaries.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -477,7 +491,6 @@ const TeacherSchedule: React.FC = () => {
           <div className="fixed inset-0 bg-black/50" onClick={() => setSelectedEventForAttendance(null)} />
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl">
-              {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Attendance Details</h2>
@@ -490,8 +503,6 @@ const TeacherSchedule: React.FC = () => {
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-
-              {/* Stats */}
               <div className="p-6 border-b border-gray-200">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -508,9 +519,7 @@ const TeacherSchedule: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Student List */}
-              <div className="p-6 max-h-100 overflow-y-auto">
+              <div className="p-6 max-h-96 overflow-y-auto">
                 {attendanceDetails.length > 0 ? (
                   <table className="w-full">
                     <thead>
@@ -530,8 +539,8 @@ const TeacherSchedule: React.FC = () => {
                           </td>
                           <td className="py-3">
                             <span className={`px-2 py-1 text-xs rounded-full font-medium ${student.status === 'present'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
                               }`}>
                               {student.status}
                             </span>
@@ -570,7 +579,7 @@ const TeacherSchedule: React.FC = () => {
         </div>
       )}
 
-      {/* Event Modal - ✅ FIXED */}
+      {/* Event Modal */}
       {isEventModalOpen && (
         <EventModal
           event={editingEvent || undefined}
@@ -581,11 +590,22 @@ const TeacherSchedule: React.FC = () => {
             setSelectedDate('');
           }}
           onSave={handleSaveEvent}
-          onDelete={editingEvent ? () => handleDeleteEvent(editingEvent.id) : undefined}
+          onDelete={editingEvent && !editingEvent.isRecurring
+            ? () => handleDeleteEvent(editingEvent.id)
+            : undefined
+          }
+          onRecurringEdit={editingEvent?.isRecurring
+            ? (formData, editType) => handleRecurringEdit(formData, editType, editingEvent.id)
+            : undefined
+          }
+          onRecurringDelete={editingEvent?.isRecurring
+            ? (editType) => handleRecurringDeleteEvent(editType, editingEvent.id)
+            : undefined
+          }
         />
       )}
 
-      {/* ✅ Recurring Event Dialog */}
+      {/* Recurring Event Dialog */}
       {editingEvent && (
         <RecurringEventDialog
           isOpen={recurringDialogOpen}

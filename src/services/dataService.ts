@@ -1,155 +1,93 @@
-import {
-  getMyNotificationsApi,
-  markNotificationReadApi,
-  markAllNotificationsReadApi,
-  deleteNotificationApi,
-  createNotificationApi,
-} from '../api/notificationApi';
-import {
-  getMyTasksApi,
-  createTaskApi,
-  updateTaskStatusApi,
-  addTaskCommentApi,
-  deleteTaskApi,
-} from '../api/taskApi';
-import {
-  getInboxApi,
-  sendMessageApi,
-  replyMessageApi,
-  markMessageReadApi,
-  deleteMessageApi,
-} from '../api/messageApi';
-import {
-  getCourseReviewsApi,
-} from '../api/teacherApi';
-
-import {
-  addCourseReviewApi,
-} from '../api/studentApi';
+import axiosInstance from '../api/axiosInstance';
+import type { Message, Task, Notification, Feedback } from '../types/data.types';
 
 export const dataService = {
-  // Notifications
-  getNotifications: async (userId: string) => {
-    const res = await getMyNotificationsApi();
-    return res.data.notifications.map((n: any) => ({
-      id: n._id,
-      userId: n.userId || userId,
-      userRole: n.recipientRole || 'all',
-      title: n.title,
-      message: n.message,
-      type: n.type || 'info',
-      read: n.readBy?.includes(userId) || false,
-      createdAt: n.createdAt,
-    }));
+  // ─── Notifications ──────────────────────────────────────────────────────────
+  getNotifications: async (_userId: string): Promise<Notification[]> => {
+    const res = await axiosInstance.get('/notifications');
+    return res.data?.data?.notifications || [];
   },
 
-  addNotification: async (notif: any) => {
-    const res = await createNotificationApi(notif);
-    return res.data.notification;
+  addNotification: async (notif: Partial<Notification>): Promise<Notification> => {
+    const res = await axiosInstance.post('/notifications', notif);
+    return res.data?.data?.notification;
   },
 
-  markRead: async (id: string) => {
-    await markNotificationReadApi(id);
+  markRead: async (id: string): Promise<void> => {
+    await axiosInstance.patch(`/notifications/${id}/read`);
   },
 
-  markAllRead: async (_userId: string) => {
-    await markAllNotificationsReadApi();
+  markAllRead: async (_userId: string): Promise<void> => {
+    await axiosInstance.patch('/notifications/read-all');
   },
 
-  clearNotification: async (id: string) => {
-    await deleteNotificationApi(id);
+  clearNotification: async (id: string): Promise<void> => {
+    await axiosInstance.delete(`/notifications/${id}`);
   },
 
-  // Messages
-  getMessages: async (userId: string) => {
-    const res = await getInboxApi();
-    return res.data.messages.map((m: any) => ({
-      id: m._id,
-      fromId: m.sender?._id || m.senderId,
-      fromName: m.sender?.name || m.senderName,
-      fromRole: m.sender?.role?.toLowerCase() || 'student',
-      toId: userId,
-      toName: '',
-      toRole: '',
-      subject: m.subject,
-      body: m.body,
-      read: m.isRead || false,
-      createdAt: m.createdAt,
-      replies: m.replies || [],
-    }));
+  // ─── Messages ───────────────────────────────────────────────────────────────
+  getMessages: async (_userId: string): Promise<Message[]> => {
+    const res = await axiosInstance.get('/messages');
+    return res.data?.data?.messages || [];
   },
 
-  sendMessage: async (msg: any) => {
-    const res = await sendMessageApi(msg);
-    return res.data.message;
+  sendMessage: async (msg: Partial<Message>): Promise<Message> => {
+    const res = await axiosInstance.post('/messages', msg);
+    return res.data?.data?.message;
   },
 
-  replyMessage: async (id: string, reply: any) => {
-    await replyMessageApi(id, reply);
+  replyMessage: async (id: string, reply: Partial<Message>): Promise<void> => {
+    await axiosInstance.post(`/messages/${id}/reply`, reply);
   },
 
-  markMessageRead: async (id: string) => {
-    await markMessageReadApi(id);
+  markMessageRead: async (id: string): Promise<void> => {
+    await axiosInstance.patch(`/messages/${id}/read`);
   },
 
-  deleteMessage: async (id: string) => {
-    await deleteMessageApi(id);
+  deleteMessage: async (id: string): Promise<void> => {
+    await axiosInstance.delete(`/messages/${id}`);
   },
 
-  // Tasks
-  getTasks: async (_userId: string) => {
-    const res = await getMyTasksApi();
-    return res.data.tasks.map((t: any) => ({
-      id: t._id,
-      title: t.title,
-      description: t.description,
-      status: t.status,
-      priority: t.priority,
-      dueDate: t.dueDate,
-      assignedById: t.assignedBy?._id || t.assignedById,
-      assignedByName: t.assignedBy?.name || t.assignedByName,
-      assignedByRole: t.assignedBy?.role?.toLowerCase() || 'admin',
-      assignedToId: t.assignedTo?._id || t.assignedToId,
-      assignedToName: t.assignedTo?.name || t.assignedToName,
-      assignedToRole: t.assignedTo?.role?.toLowerCase() || 'student',
-      comments: t.comments || [],
-      createdAt: t.createdAt,
-    }));
+  // ─── Tasks ──────────────────────────────────────────────────────────────────
+  getTasks: async (_userId: string): Promise<Task[]> => {
+    const res = await axiosInstance.get('/tasks');
+    return res.data?.data?.tasks || [];
   },
 
-  createTask: async (task: any) => {
-    const res = await createTaskApi(task);
-    return res.data.task;
+  createTask: async (task: Partial<Task>): Promise<Task> => {
+    const res = await axiosInstance.post('/tasks', task);
+    return res.data?.data?.task;
   },
 
-  updateTaskStatus: async (id: string, status: string) => {
-    await updateTaskStatusApi(id, status as 'pending' | 'in-progress' | 'completed');
+  updateTaskStatus: async (id: string, status: Task['status']): Promise<void> => {
+    await axiosInstance.patch(`/tasks/${id}/status`, { status });
   },
 
-  addTaskComment: async (id: string, comment: any) => {
-    await addTaskCommentApi(id, comment);
+  addTaskComment: async (id: string, comment: Task['comments'][0]): Promise<void> => {
+    await axiosInstance.post(`/tasks/${id}/comments`, comment);
   },
 
-  deleteTask: async (id: string) => {
-    await deleteTaskApi(id);
+  deleteTask: async (id: string): Promise<void> => {
+    await axiosInstance.delete(`/tasks/${id}`);
   },
 
-  // Feedbacks
-  getFeedbackForTeacher: async (_teacherId: string) => {
-    const res = await getCourseReviewsApi();
-    return res.data.reviews || [];
+  // ─── Feedbacks ──────────────────────────────────────────────────────────────
+  getFeedbackForTeacher: async (teacherId: string): Promise<Feedback[]> => {
+    const res = await axiosInstance.get('/feedback', { params: { recipientId: teacherId } });
+    return res.data?.data?.feedbacks || [];
   },
 
-  getFeedbackByStudent: async (_studentId: string) => {
-    return [];
+  getFeedbackByStudent: async (_studentId: string): Promise<Feedback[]> => {
+    const res = await axiosInstance.get('/feedback/my');
+    return res.data?.data?.feedbacks || [];
   },
 
-  submitFeedback: async (fb: any) => {
-    const res = await addCourseReviewApi(fb);
-    return res.data.review;
+  submitFeedback: async (fb: Partial<Feedback>): Promise<Feedback> => {
+    const res = await axiosInstance.post('/feedback', fb);
+    return res.data?.data?.feedback;
   },
 
-  replyFeedback: async (_id: string, _reply: string) => {
-    // Backend endpoint nahi hai abhi
+  replyFeedback: async (id: string, reply: string): Promise<void> => {
+    await axiosInstance.patch(`/feedback/${id}/reply`, { reply });
   },
 };

@@ -1,3 +1,4 @@
+// src/pages/teacher/Assignments.tsx
 import React, { useEffect, useState } from 'react';
 import { Plus, Eye, Calendar, FileText, Pencil, Trash2, Search, Filter, Download, RefreshCw, Users } from 'lucide-react';
 import Card from '../../components/ui/Card';
@@ -10,6 +11,7 @@ import { useToast } from '../../context/ToastContext';
 import {
   getTeacherAssignmentsApi,
   createAssignmentApi,
+  updateAssignmentApi,
   deleteAssignmentApi,
 } from '../../api/assignmentApi';
 import { getTeacherCoursesApi } from '../../api/teacherApi';
@@ -31,25 +33,29 @@ const TeacherAssignments: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    courseName: '',
     courseId: '',
     dueDate: '',
     totalMarks: 100,
   });
-  
+
   const { showToast } = useToast();
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // ─── REAL API ─────────────────────────────────────────────────────────────
   const loadData = async () => {
     try {
       const [assignRes, courseRes] = await Promise.all([
         getTeacherAssignmentsApi(),
         getTeacherCoursesApi(),
       ]);
-      setAssignments(assignRes.data?.assignments || []);
-      setCourses(courseRes.data?.courses || []);
+
+      // ✅ FIXED: data.data.assignments
+      setAssignments(assignRes.data?.data?.assignments || []);
+      setCourses(courseRes.data?.data?.courses || []);
     } catch (error) {
       showToast('Failed to load data', 'error');
     } finally {
@@ -63,15 +69,6 @@ const TeacherAssignments: React.FC = () => {
     setIsRefreshing(false);
     showToast('Assignments refreshed', 'success');
   };
-
-  const filtered = assignments.filter(a => {
-    const courseName = a.course?.title || a.courseName || '';
-    const matchesSearch =
-      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +96,32 @@ const TeacherAssignments: React.FC = () => {
     }
   };
 
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editAssignment) return;
+    if (!formData.title || !formData.dueDate) {
+      showToast('Please fill all required fields', 'error');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await updateAssignmentApi(editAssignment._id || editAssignment.id, {
+        title: formData.title,
+        description: formData.description,
+        dueDate: formData.dueDate,
+        totalMarks: formData.totalMarks,
+      });
+      showToast('Assignment updated successfully!', 'success');
+      setEditAssignment(null);
+      resetForm();
+      await loadData();
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to update assignment', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     try {
@@ -110,16 +133,30 @@ const TeacherAssignments: React.FC = () => {
       showToast('Failed to delete assignment', 'error');
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const openEditModal = (assignment: any) => {
+    setFormData({
+      title: assignment.title,
+      description: assignment.description || '',
+      courseName: assignment.course?.title || assignment.courseName || '',
+      courseId: assignment.course?._id || assignment.courseId || '',
+      dueDate: assignment.dueDate ? assignment.dueDate.split('T')[0] : '',
+      totalMarks: assignment.totalMarks,
+    });
+    setEditAssignment(assignment);
+  };
 
   const handleExport = () => {
     const csv = [
-      ['Title', 'Course', 'Due Date', 'Marks', 'Status'].join(','),
+      ['Title', 'Course', 'Due Date', 'Marks', 'Status', 'Submissions'].join(','),
       ...filtered.map(a => [
         a.title,
         a.course?.title || a.courseName || '',
         a.dueDate ? new Date(a.dueDate).toLocaleDateString() : 'N/A',
         a.totalMarks,
         a.status || 'pending',
+        a.submissionsCount || 0,
       ].join(','))
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -132,8 +169,17 @@ const TeacherAssignments: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', courseId: '', dueDate: '', totalMarks: 100 });
+    setFormData({ title: '', description: '', courseName: '', courseId: '', dueDate: '', totalMarks: 100 });
   };
+
+  const filtered = assignments.filter(a => {
+    const courseName = a.course?.title || a.courseName || '';
+    const matchesSearch =
+      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      courseName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const stats = {
     total: assignments.length,
@@ -156,6 +202,7 @@ const TeacherAssignments: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
@@ -174,6 +221,7 @@ const TeacherAssignments: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="text-center p-4">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -193,6 +241,7 @@ const TeacherAssignments: React.FC = () => {
         </Card>
       </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -221,6 +270,7 @@ const TeacherAssignments: React.FC = () => {
         </div>
       </Card>
 
+      {/* Assignments Table */}
       {filtered.length === 0 ? (
         <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -288,6 +338,13 @@ const TeacherAssignments: React.FC = () => {
                           <Eye className="w-4 h-4 text-gray-500" />
                         </button>
                         <button
+                          onClick={() => openEditModal(assignment)}
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4 text-gray-500" />
+                        </button>
+                        <button
                           onClick={() => setDeleteConfirm(assignment)}
                           className="p-2 hover:bg-red-100 rounded-lg transition-colors"
                           title="Delete"
@@ -353,7 +410,14 @@ const TeacherAssignments: React.FC = () => {
             <select
               className="input-field"
               value={formData.courseId}
-              onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
+              onChange={(e) => {
+                const selected = e.target.selectedOptions[0];
+                setFormData({
+                  ...formData,
+                  courseId: e.target.value,
+                  courseName: selected?.text || '',
+                });
+              }}
               required
             >
               <option value="">Select Course</option>
@@ -365,6 +429,57 @@ const TeacherAssignments: React.FC = () => {
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1" isLoading={isSubmitting}>Create Assignment</Button>
             <Button type="button" variant="secondary" onClick={() => { setIsCreateModalOpen(false); resetForm(); }}>Cancel</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={!!editAssignment}
+        onClose={() => { setEditAssignment(null); resetForm(); }}
+        title="Edit Assignment"
+        size="lg"
+      >
+        <form onSubmit={handleEdit} className="space-y-4">
+          <Input
+            label="Assignment Title *"
+            placeholder="Enter assignment title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+            <textarea
+              className="input-field min-h-[100px]"
+              placeholder="Describe the assignment..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Due Date *</label>
+              <input
+                type="date"
+                className="input-field"
+                value={formData.dueDate}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Total Marks *"
+              type="number"
+              placeholder="100"
+              value={formData.totalMarks}
+              onChange={(e) => setFormData({ ...formData, totalMarks: parseInt(e.target.value) || 0 })}
+              required
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1" isLoading={isSubmitting}>Save Changes</Button>
+            <Button type="button" variant="secondary" onClick={() => { setEditAssignment(null); resetForm(); }}>Cancel</Button>
           </div>
         </form>
       </Modal>
@@ -410,11 +525,17 @@ const TeacherAssignments: React.FC = () => {
               <p className="font-bold text-blue-600">{viewAssignment.submissionsCount || 0}</p>
               <p className="text-xs text-blue-600">Submissions</p>
             </div>
-            <Button variant="secondary" fullWidth onClick={() => setViewAssignment(null)}>Close</Button>
+            <div className="flex gap-3 pt-4">
+              <Button className="flex-1" onClick={() => { setViewAssignment(null); openEditModal(viewAssignment); }}>
+                <Pencil className="w-4 h-4" /> Edit
+              </Button>
+              <Button variant="secondary" onClick={() => setViewAssignment(null)}>Close</Button>
+            </div>
           </div>
         )}
       </Modal>
 
+      {/* Delete Confirm */}
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}

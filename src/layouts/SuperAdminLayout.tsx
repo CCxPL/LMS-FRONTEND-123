@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/common/Sidebar';
 import Navbar from '../components/common/Navbar';
-import { Calendar, FileText } from 'lucide-react';
+import { Calendar, FileText, Star } from 'lucide-react';
 import { 
   LayoutDashboard, 
   ShieldCheck, 
@@ -12,7 +12,8 @@ import {
   Settings, 
   MessageSquare, 
   ClipboardList, 
-  Bell 
+  Bell,
+  // ✅ ADD THIS for Feedback
 } from 'lucide-react';
 
 const sidebarItems = [
@@ -22,12 +23,15 @@ const sidebarItems = [
   { label: 'Schedule', path: '/super-admin/schedule', icon: <Calendar className="w-5 h-5" /> },
   { label: 'Teachers', path: '/super-admin/all-teachers', icon: <UserCheck className="w-5 h-5" /> },
   { label: 'Attendance Report', path: `/super-admin/attendance-report`, icon: <FileText className="w-5 h-5" /> },
+  
+  // ✅ ADD THIS - Feedback Management
+  { label: 'Feedback', path: '/super-admin/feedback-management', icon: <Star className="w-5 h-5" /> },
+  
   { label: 'Messages', path: '/super-admin/messages', icon: <MessageSquare className="w-5 h-5" /> },
   { label: 'Tasks', path: '/super-admin/tasks', icon: <ClipboardList className="w-5 h-5" /> },
   { label: 'Notifications', path: '/super-admin/notifications', icon: <Bell className="w-5 h-5" /> },
   { label: 'Stats', path: '/super-admin/platform-stats', icon: <BarChart3 className="w-5 h-5" /> },
   { label: 'Settings', path: '/super-admin/settings', icon: <Settings className="w-5 h-5" /> },
-  
 ];
 
 const SuperAdminLayout: React.FC = () => {

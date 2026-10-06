@@ -1,5 +1,6 @@
+// src/pages/teacher/Quizzes.tsx
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Eye, Search, RefreshCw, Download, Clock, HelpCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search, RefreshCw, Download, Copy, Clock, HelpCircle } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -8,7 +9,7 @@ import Loader from '../../components/common/Loader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useToast } from '../../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
-import { getQuizzesByCourseApi, deleteQuizApi } from '../../api/quizApi';
+import { getQuizzesByCourseApi, deleteQuizApi, createQuizApi } from '../../api/quizApi';
 import { getTeacherCoursesApi } from '../../api/teacherApi';
 
 const TeacherQuizzes: React.FC = () => {
@@ -18,6 +19,7 @@ const TeacherQuizzes: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewQuiz, setViewQuiz] = useState<any | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ const TeacherQuizzes: React.FC = () => {
     loadQuizzes();
   }, []);
 
+  // ─── REAL API ─────────────────────────────────────────────────────────────
   const loadQuizzes = async () => {
     try {
       const coursesRes = await getTeacherCoursesApi();
@@ -39,6 +42,7 @@ const TeacherQuizzes: React.FC = () => {
             const courseQuizzes = (res.data?.quizzes || []).map((q: any) => ({
               ...q,
               courseName: course.title,
+              courseId: course._id || course.id,
             }));
             allQuizzes.push(...courseQuizzes);
           } catch { }
@@ -60,11 +64,6 @@ const TeacherQuizzes: React.FC = () => {
     showToast('Quizzes refreshed', 'success');
   };
 
-  const filtered = quizzes.filter(q =>
-    q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (q.courseName || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     try {
@@ -72,10 +71,37 @@ const TeacherQuizzes: React.FC = () => {
       showToast('Quiz deleted successfully', 'info');
       setDeleteConfirm(null);
       await loadQuizzes();
-    } catch (error) {
+    } catch {
       showToast('Failed to delete quiz', 'error');
     }
   };
+
+  // ✅ FIX: Duplicate quiz — real API call
+  const handleDuplicate = async (quiz: any) => {
+    setIsDuplicating(true);
+    try {
+      await createQuizApi({
+        title: `${quiz.title} (Copy)`,
+        courseId: quiz.courseId || quiz.course?._id,
+        questions: quiz.questions || [],
+        timeLimit: quiz.timeLimit || 30,
+        passingScore: quiz.passingScore || 60,
+        isPublished: false,
+      });
+      showToast('Quiz duplicated as draft!', 'success');
+      await loadQuizzes();
+    } catch {
+      showToast('Failed to duplicate quiz', 'error');
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const filtered = quizzes.filter(q =>
+    q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (q.courseName || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleExport = () => {
     const csv = [
@@ -111,6 +137,7 @@ const TeacherQuizzes: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="page-title">Quizzes</h1>
@@ -129,6 +156,7 @@ const TeacherQuizzes: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="text-center p-4">
           <p className="text-2xl font-black text-gray-900">{stats.total}</p>
@@ -144,6 +172,7 @@ const TeacherQuizzes: React.FC = () => {
         </Card>
       </div>
 
+      {/* Search */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -158,6 +187,7 @@ const TeacherQuizzes: React.FC = () => {
         </div>
       </Card>
 
+      {/* Quizzes Grid */}
       {filtered.length === 0 ? (
         <Card className="text-center py-12">
           <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -172,9 +202,15 @@ const TeacherQuizzes: React.FC = () => {
           {filtered.map((quiz) => (
             <Card key={quiz._id || quiz.id} hover>
               <div className="mb-4">
-                <h3 className="font-semibold text-gray-900 text-lg">{quiz.title}</h3>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-gray-900 text-lg">{quiz.title}</h3>
+                  <span className={`text-xs px-2 py-1 rounded-full shrink-0 ${quiz.isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {quiz.isPublished ? 'Live' : 'Draft'}
+                  </span>
+                </div>
                 <p className="text-sm text-gray-500">{quiz.courseName || ''}</p>
               </div>
+
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                   <p className="font-bold text-gray-900">{quiz.questions?.length || 0}</p>
@@ -193,11 +229,28 @@ const TeacherQuizzes: React.FC = () => {
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Passing</p>
                 </div>
               </div>
+
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => setViewQuiz(quiz)}>
                   <Eye className="w-4 h-4" /> View
                 </Button>
-                <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => setDeleteConfirm(quiz)}>
+                {/* ✅ FIX: Quiz ID pass karo edit mein */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/teacher/edit-quiz/${quiz._id || quiz.id}`)}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDuplicate(quiz)} disabled={isDuplicating}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setDeleteConfirm(quiz)}
+                >
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -206,6 +259,7 @@ const TeacherQuizzes: React.FC = () => {
         </div>
       )}
 
+      {/* View Quiz Modal */}
       <Modal isOpen={!!viewQuiz} onClose={() => setViewQuiz(null)} title="Quiz Details" size="md">
         {viewQuiz && (
           <div className="space-y-4">
@@ -234,12 +288,28 @@ const TeacherQuizzes: React.FC = () => {
                 <span className="text-sm text-gray-500">Passing Percentage</span>
                 <span className="font-bold text-gray-900">{viewQuiz.passingScore || 60}%</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Max Attempts</span>
+                <span className="font-bold text-gray-900">{viewQuiz.maxAttempts || 3}</span>
+              </div>
             </div>
-            <Button variant="secondary" fullWidth onClick={() => setViewQuiz(null)}>Close</Button>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  setViewQuiz(null);
+                  navigate(`/teacher/edit-quiz/${viewQuiz._id || viewQuiz.id}`);
+                }}
+              >
+                <Edit className="w-4 h-4" /> Edit Quiz
+              </Button>
+              <Button variant="secondary" onClick={() => setViewQuiz(null)}>Close</Button>
+            </div>
           </div>
         )}
       </Modal>
 
+      {/* Delete Confirm */}
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}

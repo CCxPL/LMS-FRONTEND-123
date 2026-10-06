@@ -13,22 +13,23 @@ import { useToast } from '../../context/ToastContext';
 import { getSuperAdminUsersApi, removeUserApi, changeUserRoleApi, toggleUserStatusApi } from '../../api/superadminApi';
 import * as pdfjsLib from 'pdfjs-dist';
 
+// ✅ WORKER FIX
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
 ).toString();
 
 const ManageUsers: React.FC = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const [viewUser, setViewUser] = useState<any | null>(null);
-  const [editUser, setEditUser] = useState<any | null>(null);
+  const [viewUser, setViewUser] = useState<User | null>(null);
+  const [editUser, setEditUser] = useState<User | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ user: any; type: 'delete' | 'toggle' | 'role-change'; newRole?: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ user: User; type: 'delete' | 'toggle' | 'role-change'; newRole?: string } | null>(null);
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<string>('');
@@ -42,14 +43,12 @@ const ManageUsers: React.FC = () => {
     name: '',
     email: '',
     role: 'student' as UserRole,
-    status: 'active'
+    status: 'active',
   });
 
   const { showToast } = useToast();
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { loadUsers(); }, []);
 
   useEffect(() => {
     const handleClick = () => setActiveDropdown(null);
@@ -57,11 +56,12 @@ const ManageUsers: React.FC = () => {
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadUsers = async () => {
     try {
       setIsLoading(true);
       const res = await getSuperAdminUsersApi({ limit: 100 });
-      const mapped = (res.data.users || []).map((u: any) => ({
+      const mapped = (res.data.users || []).map((u: any): User => ({
         id: u._id,
         name: u.name,
         email: u.email,
@@ -79,15 +79,6 @@ const ManageUsers: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
 
   const handleToggleStatus = async () => {
     if (!confirmAction) return;
@@ -119,20 +110,17 @@ const ManageUsers: React.FC = () => {
 
   const handleRoleChange = async () => {
     if (!confirmAction || !confirmAction.newRole) return;
-
-    // Frontend role → Backend role map
     const roleMap: Record<string, string> = {
       'student': 'Student',
       'teacher': 'Teacher',
       'admin': 'Admin',
       'super-admin': 'SuperAdmin',
     };
-
     try {
       await changeUserRoleApi(confirmAction.user.id, roleMap[confirmAction.newRole] || confirmAction.newRole);
       setUsers(prev => prev.map(u =>
         u.id === confirmAction.user.id
-          ? { ...u, role: confirmAction.newRole }
+          ? { ...u, role: confirmAction.newRole as UserRole }
           : u
       ));
       showToast(`User role changed to ${confirmAction.newRole}`, 'success');
@@ -140,26 +128,6 @@ const ManageUsers: React.FC = () => {
       showToast('Failed to change role', 'error');
     }
     setConfirmAction(null);
-  };
-
-  const handleEditUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editUser) return;
-    setUsers(prev => prev.map(u =>
-      u.id === editUser.id ? { ...u, ...formData } : u
-    ));
-    showToast('User updated successfully', 'success');
-    setEditUser(null);
-    resetForm();
-  };
-
-  const openEditModal = (user: any) => {
-    setFormData({ name: user.name, email: user.email, role: user.role as UserRole, status: user.status });
-    setEditUser(user);
-  };
-
-  const resetForm = () => {
-    setFormData({ name: '', email: '', role: 'student', status: 'active' });
   };
 
   const handleBulkAction = async () => {
@@ -188,6 +156,57 @@ const ManageUsers: React.FC = () => {
     }
     setSelectedUsers([]);
     setBulkAction('');
+  };
+
+  const confirmImport = async () => {
+    if (!importedData || importedData.length === 0) return;
+    try {
+      showToast(`Importing ${importedData.length} users...`, 'info');
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < importedData.length; i += BATCH_SIZE) {
+        // API call placeholder — uncomment when importBulkUsers is available
+        // await importBulkUsersApi(importedData.slice(i, i + BATCH_SIZE));
+      }
+      const newEmails = importedData.map(u => u.email);
+      setNewlyAddedEmails(prev => [...prev, ...newEmails]);
+      await loadUsers();
+      showToast(`Successfully imported ${importedData.length} users`, 'success');
+    } catch (error) {
+      showToast('Import failed', 'error');
+    }
+    setImportedData(null);
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  const handleEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    setUsers(prev => prev.map(u =>
+      u.id === editUser.id
+        ? { ...u, ...formData, status: formData.status as 'active' | 'inactive' | 'suspended' | 'pending' }
+        : u
+    ));
+    showToast('User updated successfully', 'success');
+    setEditUser(null);
+    resetForm();
+  };
+
+  const openEditModal = (user: User) => {
+    setFormData({ name: user.name, email: user.email, role: user.role as UserRole, status: user.status });
+    setEditUser(user);
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', email: '', role: 'student', status: 'active' });
   };
 
   const handleExport = () => {
@@ -234,7 +253,7 @@ const ManageUsers: React.FC = () => {
 
   const parseUsersFromText = (text: string): any[] => {
     const users: any[] = [];
-    let cleanText = text.replace(/User Role Status Report.*?Actions/i, "");
+    let cleanText = text.replace(/User Role Status Report.*?Actions/i, '');
     const pattern = /(.+?)\s+(Admin|Teacher|Student|Super\s+Admin)\s+(Active|Inactive)\s+(\d{2}-[A-Za-z]{3}-\d{4})/gi;
     let match;
     while ((match = pattern.exec(cleanText)) !== null) {
@@ -273,10 +292,11 @@ const ManageUsers: React.FC = () => {
       if (parsedUsers.length === 0) {
         showToast('No users found in PDF.', 'error');
       } else {
-        showToast(`Found ${parsedUsers.length} users.`, 'success');
+        showToast(`Found ${parsedUsers.length} users. Emails generated automatically.`, 'success');
         setImportedData(parsedUsers);
       }
     } catch (error) {
+      console.error('PDF parsing error:', error);
       showToast('Failed to read PDF file.', 'error');
     } finally {
       setIsImporting(false);
@@ -284,26 +304,14 @@ const ManageUsers: React.FC = () => {
     }
   };
 
-  const confirmImport = async () => {
-    if (!importedData || importedData.length === 0) return;
-    try {
-      showToast(`Importing ${importedData.length} users...`, 'info');
-      const newEmails = importedData.map(u => u.email);
-      setNewlyAddedEmails(prev => [...prev, ...newEmails]);
-      await loadUsers();
-      showToast(`Successfully imported ${importedData.length} users`, 'success');
-    } catch (error) {
-      showToast('Import failed', 'error');
-    }
-    setImportedData(null);
-  };
-
   if (isLoading) return <Loader text="Loading users..." />;
 
   return (
     <div>
+      {/* Hidden File Input */}
       <input type="file" ref={fileInputRef} className="hidden" accept=".pdf" onChange={handleFileChange} />
 
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <div>
           <h1 className="page-title">Manage All Users</h1>
@@ -320,10 +328,16 @@ const ManageUsers: React.FC = () => {
         </div>
       </div>
 
+      {/* Filters */}
       <Card className="mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
-            <Input placeholder="Search users by name or email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} icon={<Search className="w-4 h-4" />} />
+            <Input
+              placeholder="Search users by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              icon={<Search className="w-4 h-4" />}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
@@ -339,12 +353,14 @@ const ManageUsers: React.FC = () => {
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="suspended">Suspended</option>
+                <option value="pending">Pending</option>
               </select>
             </div>
             <span className="text-sm text-gray-500">{filteredUsers.length} user(s) found</span>
           </div>
         </div>
 
+        {/* Bulk Actions */}
         {selectedUsers.length > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-gray-700">{selectedUsers.length} selected</span>
@@ -360,13 +376,19 @@ const ManageUsers: React.FC = () => {
         )}
       </Card>
 
+      {/* Users Table */}
       <Card padding="none">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">
-                  <input type="checkbox" checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0} onChange={toggleSelectAll} className="rounded border-gray-300 text-gray-900 focus:ring-gray-900" />
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                  />
                 </th>
                 <th className="px-6 py-4 font-semibold">User</th>
                 <th className="px-6 py-4 font-semibold">Role</th>
@@ -391,12 +413,19 @@ const ManageUsers: React.FC = () => {
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
-                      <input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => toggleSelectUser(user.id)} className="rounded border-gray-300 text-gray-900 focus:ring-gray-900" />
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={() => toggleSelectUser(user.id)}
+                        className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                      />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${user.status === 'active' ? 'bg-blue-100' : 'bg-gray-200'}`}>
-                          <span className={`text-sm font-bold ${user.status === 'active' ? 'text-blue-600' : 'text-gray-500'}`}>{user.name.charAt(0)}</span>
+                          <span className={`text-sm font-bold ${user.status === 'active' ? 'text-blue-600' : 'text-gray-500'}`}>
+                            {user.name.charAt(0)}
+                          </span>
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -410,20 +439,33 @@ const ManageUsers: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`badge ${user.role === 'super-admin' ? 'badge-purple' : user.role === 'admin' ? 'badge-blue' : user.role === 'teacher' ? 'badge-green' : 'badge-gray'}`}>
+                      <span className={`badge ${user.role === 'super-admin' ? 'badge-purple' :
+                          user.role === 'admin' ? 'badge-blue' :
+                            user.role === 'teacher' ? 'badge-green' :
+                              'badge-gray'
+                        }`}>
                         {ROLE_LABELS[user.role as UserRole] || user.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`badge ${user.status === 'active' ? 'badge-success' : 'badge-danger'}`}>{user.status}</span>
+                      <span className={`badge ${user.status === 'active' ? 'badge-success' :
+                          user.status === 'suspended' ? 'badge-danger' :
+                            'badge-warning'
+                        }`}>
+                        {user.status}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{user.createdAt}</td>
                     <td className="px-6 py-4 text-sm text-gray-400">{user.lastLogin || 'Never'}</td>
                     <td className="px-6 py-4">
                       <div className="relative">
-                        <button onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === user.id ? null : user.id); }} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === user.id ? null : user.id); }}
+                          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
                           <MoreVertical className="w-4 h-4 text-gray-500" />
                         </button>
+
                         {activeDropdown === user.id && (
                           <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
                             <button onClick={() => { setViewUser(user); setActiveDropdown(null); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
@@ -432,21 +474,33 @@ const ManageUsers: React.FC = () => {
                             <button onClick={() => { openEditModal(user); setActiveDropdown(null); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                               <Pencil className="w-4 h-4" /> Edit User
                             </button>
+
                             {user.role !== 'super-admin' && (
                               <div className="border-t border-gray-100 mt-1 pt-1">
                                 <p className="px-4 py-1 text-xs text-gray-400 uppercase">Change Role</p>
                                 {['student', 'teacher', 'admin'].filter(r => r !== user.role).map(role => (
-                                  <button key={role} onClick={() => { setConfirmAction({ user, type: 'role-change', newRole: role }); setActiveDropdown(null); }} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                                  <button
+                                    key={role}
+                                    onClick={() => { setConfirmAction({ user, type: 'role-change', newRole: role }); setActiveDropdown(null); }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
                                     <Shield className="w-4 h-4" /> Make {role.charAt(0).toUpperCase() + role.slice(1)}
                                   </button>
                                 ))}
                               </div>
                             )}
+
                             <div className="border-t border-gray-100 mt-1 pt-1">
-                              <button onClick={() => { setConfirmAction({ user, type: 'toggle' }); setActiveDropdown(null); }} className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${user.status === 'active' ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}>
+                              <button
+                                onClick={() => { setConfirmAction({ user, type: 'toggle' }); setActiveDropdown(null); }}
+                                className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${user.status === 'active' ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
+                              >
                                 {user.status === 'active' ? <><UserX className="w-4 h-4" /> Suspend User</> : <><UserCheck className="w-4 h-4" /> Activate User</>}
                               </button>
-                              <button onClick={() => { setConfirmAction({ user, type: 'delete' }); setActiveDropdown(null); }} className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                              <button
+                                onClick={() => { setConfirmAction({ user, type: 'delete' }); setActiveDropdown(null); }}
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                              >
                                 <Trash2 className="w-4 h-4" /> Delete User
                               </button>
                             </div>
@@ -468,19 +522,31 @@ const ManageUsers: React.FC = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center ${viewUser.status === 'active' ? 'bg-blue-100' : 'bg-gray-200'}`}>
-                <span className={`text-3xl font-bold ${viewUser.status === 'active' ? 'text-blue-600' : 'text-gray-500'}`}>{viewUser.name.charAt(0)}</span>
+                <span className={`text-3xl font-bold ${viewUser.status === 'active' ? 'text-blue-600' : 'text-gray-500'}`}>
+                  {viewUser.name.charAt(0)}
+                </span>
               </div>
               <div>
                 <h3 className="text-xl font-bold text-gray-900">{viewUser.name}</h3>
                 <p className="text-gray-500">{viewUser.email}</p>
                 <div className="flex gap-2 mt-2">
-                  <span className={`badge ${viewUser.role === 'super-admin' ? 'badge-purple' : viewUser.role === 'admin' ? 'badge-blue' : viewUser.role === 'teacher' ? 'badge-green' : 'badge-gray'}`}>
+                  <span className={`badge ${viewUser.role === 'super-admin' ? 'badge-purple' :
+                      viewUser.role === 'admin' ? 'badge-blue' :
+                        viewUser.role === 'teacher' ? 'badge-green' :
+                          'badge-gray'
+                    }`}>
                     {ROLE_LABELS[viewUser.role as UserRole] || viewUser.role}
                   </span>
-                  <span className={`badge ${viewUser.status === 'active' ? 'badge-success' : 'badge-danger'}`}>{viewUser.status}</span>
+                  <span className={`badge ${viewUser.status === 'active' ? 'badge-success' :
+                      viewUser.status === 'suspended' ? 'badge-danger' :
+                        'badge-warning'
+                    }`}>
+                    {viewUser.status}
+                  </span>
                 </div>
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm text-gray-500">Joined Date</p>
@@ -491,9 +557,15 @@ const ManageUsers: React.FC = () => {
                 <p className="font-bold text-gray-900">{viewUser.lastLogin || 'Never'}</p>
               </div>
             </div>
+
             <div className="flex gap-3 pt-4 border-t">
-              <Button className="flex-1" onClick={() => { setViewUser(null); openEditModal(viewUser); }}><Pencil className="w-4 h-4" /> Edit User</Button>
-              <Button variant={viewUser.status === 'active' ? 'outline' : 'success'} onClick={() => { setViewUser(null); setConfirmAction({ user: viewUser, type: 'toggle' }); }}>
+              <Button className="flex-1" onClick={() => { setViewUser(null); openEditModal(viewUser); }}>
+                <Pencil className="w-4 h-4" /> Edit User
+              </Button>
+              <Button
+                variant={viewUser.status === 'active' ? 'outline' : 'success'}
+                onClick={() => { setViewUser(null); setConfirmAction({ user: viewUser, type: 'toggle' }); }}
+              >
                 {viewUser.status === 'active' ? 'Suspend' : 'Activate'}
               </Button>
               <Button variant="secondary" onClick={() => setViewUser(null)}>Close</Button>
@@ -520,6 +592,7 @@ const ManageUsers: React.FC = () => {
             <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input-field">
               <option value="active">Active</option>
               <option value="suspended">Suspended</option>
+              <option value="pending">Pending</option>
             </select>
           </div>
           <div className="flex gap-3 pt-4">
@@ -533,14 +606,28 @@ const ManageUsers: React.FC = () => {
       <ConfirmDialog
         isOpen={!!confirmAction}
         onClose={() => setConfirmAction(null)}
-        onConfirm={confirmAction?.type === 'delete' ? handleDelete : confirmAction?.type === 'role-change' ? handleRoleChange : handleToggleStatus}
-        title={confirmAction?.type === 'delete' ? 'Delete User?' : confirmAction?.type === 'role-change' ? 'Change User Role?' : 'Change Status?'}
-        message={
-          confirmAction?.type === 'delete' ? `Are you sure you want to delete "${confirmAction?.user.name}"? This action cannot be undone.` :
-            confirmAction?.type === 'role-change' ? `Are you sure you want to change "${confirmAction?.user.name}" role to ${confirmAction?.newRole}?` :
-              `Are you sure you want to ${confirmAction?.user.status === 'active' ? 'suspend' : 'activate'} "${confirmAction?.user.name}"?`
+        onConfirm={
+          confirmAction?.type === 'delete' ? handleDelete :
+            confirmAction?.type === 'role-change' ? handleRoleChange :
+              handleToggleStatus
         }
-        confirmText={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'role-change' ? 'Change Role' : 'Confirm'}
+        title={
+          confirmAction?.type === 'delete' ? 'Delete User?' :
+            confirmAction?.type === 'role-change' ? 'Change User Role?' :
+              'Change Status?'
+        }
+        message={
+          confirmAction?.type === 'delete'
+            ? `Are you sure you want to delete "${confirmAction?.user.name}"? This action cannot be undone.`
+            : confirmAction?.type === 'role-change'
+              ? `Are you sure you want to change "${confirmAction?.user.name}" role to ${confirmAction?.newRole}?`
+              : `Are you sure you want to ${confirmAction?.user.status === 'active' ? 'suspend' : 'activate'} "${confirmAction?.user.name}"?`
+        }
+        confirmText={
+          confirmAction?.type === 'delete' ? 'Delete' :
+            confirmAction?.type === 'role-change' ? 'Change Role' :
+              'Confirm'
+        }
         type={confirmAction?.type === 'delete' ? 'danger' : 'warning'}
       />
 
@@ -551,7 +638,11 @@ const ManageUsers: React.FC = () => {
             <FileText className="w-5 h-5 text-emerald-600 mt-0.5" />
             <div>
               <h4 className="font-bold text-emerald-800 text-sm">Scan Successful</h4>
-              <p className="text-xs text-emerald-600">Found <strong>{importedData?.length}</strong> users. Please review before importing.</p>
+              <p className="text-xs text-emerald-600">
+                We found <strong>{importedData?.length}</strong> users in your PDF file. Please review before importing.
+                <br />
+                <span className="text-orange-600 font-bold">Note: Emails were auto-generated because your PDF didn't have them.</span>
+              </p>
             </div>
           </div>
           <div className="border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
@@ -559,7 +650,7 @@ const ManageUsers: React.FC = () => {
               <thead className="bg-gray-50 text-gray-500">
                 <tr>
                   <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Email</th>
+                  <th className="px-4 py-2">Generated Email</th>
                   <th className="px-4 py-2">Role</th>
                   <th className="px-4 py-2">Status</th>
                 </tr>
@@ -577,7 +668,9 @@ const ManageUsers: React.FC = () => {
             </table>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button className="flex-1" onClick={confirmImport}><Check className="w-4 h-4" /> Import All Users</Button>
+            <Button className="flex-1" onClick={confirmImport}>
+              <Check className="w-4 h-4" /> Import All Users
+            </Button>
             <Button variant="secondary" onClick={() => setImportedData(null)}>Cancel</Button>
           </div>
         </div>

@@ -39,6 +39,7 @@ const AttemptQuiz: React.FC = () => {
     return () => clearInterval(timer);
   }, [timeLeft, submitted]);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadQuizData = async () => {
     if (!id) return;
     try {
@@ -61,25 +62,6 @@ const AttemptQuiz: React.FC = () => {
     }
   };
 
-  const handleOptionSelect = (optionIndex: number) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questions[currentQuestion].id]: optionIndex,
-    }));
-  };
-
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
-    }
-  };
-
   const handleSubmit = async () => {
     if (isSubmitting || submitted) return;
     setIsSubmitting(true);
@@ -94,7 +76,6 @@ const AttemptQuiz: React.FC = () => {
 
       const res = await attemptQuizApi(id!, { answers: answersPayload });
 
-      // ✅ Fix: backend res.data.attempt mein data bhejta hai
       const attempt = res.data?.attempt ?? res.data ?? {};
       const score = attempt.score ?? 0;
       const totalPoints = attempt.totalPoints ?? questions.reduce((sum: number, q: any) => sum + q.marks, 0);
@@ -112,6 +93,26 @@ const AttemptQuiz: React.FC = () => {
       showToast('Failed to submit quiz. Please try again.', 'error');
       setIsSubmitting(false);
       setSubmitted(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleOptionSelect = (optionIndex: number) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questions[currentQuestion].id]: optionIndex,
+    }));
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(prev => prev - 1);
     }
   };
 

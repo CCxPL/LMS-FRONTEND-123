@@ -23,6 +23,45 @@ axiosInstance.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
+        // ✅ Device conflict: dusri jagah already logged in hai
+        if (
+            error.response?.status === 409 &&
+            error.response?.data?.code === "DEVICE_CONFLICT"
+        ) {
+            // Global event fire karo — AuthContext/Login sun lega
+            window.dispatchEvent(
+                new CustomEvent("device-conflict", {
+                    detail: { message: error.response.data.message },
+                })
+            );
+            return Promise.reject(error);
+        }
+
+        // ✅ Session replaced: kisi aur ne force login kiya
+        if (
+            error.response?.status === 401 &&
+            error.response?.data?.code === "SESSION_REPLACED"
+        ) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("lms_auth_user");
+            window.dispatchEvent(new CustomEvent("session-replaced"));
+            return Promise.reject(error);
+        }
+
+        // ✅ Weekly session expired
+        if (
+            error.response?.status === 401 &&
+            error.response?.data?.code === "WEEKLY_EXPIRED"
+        ) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("lms_auth_user");
+            window.location.href = "/login";
+            return Promise.reject(error);
+        }
+
+        // ✅ Normal token expired: refresh karo
         if (
             error.response?.status === 401 &&
             error.response?.data?.code === "TOKEN_EXPIRED" &&
@@ -44,6 +83,7 @@ axiosInstance.interceptors.response.use(
             } catch {
                 localStorage.removeItem("accessToken");
                 localStorage.removeItem("refreshToken");
+                localStorage.removeItem("lms_auth_user");
                 window.location.href = "/login";
             }
         }

@@ -23,6 +23,7 @@ export const getMyEnrolledCoursesApi = async (params?: {
     return res.data;
 };
 
+// ✅ FIX: student route se progress — studentController.getCourseProgress
 export const getCourseProgressApi = async (courseId: string) => {
     const res = await axiosInstance.get(`/student/progress/${courseId}`);
     return res.data;
@@ -44,6 +45,7 @@ export const submitQuizAttemptApi = async (data: {
     return res.data;
 };
 
+// ✅ correct URL — courseController.addReview
 export const addCourseReviewApi = async (data: {
     courseId: string;
     rating: number;
@@ -55,12 +57,6 @@ export const addCourseReviewApi = async (data: {
 
 export const getStudentProfileApi = async () => {
     const res = await axiosInstance.get("/student/profile");
-    return res.data;
-};
-
-// ✅ Fix: correct URL
-export const getMyCertificatesApi = async () => {
-    const res = await axiosInstance.get("/certificates/my");
     return res.data;
 };
 

@@ -1,129 +1,127 @@
-import {
-  getAllCoursesApi,
-  getCourseByIdApi,
-  createCourseApi,
-  updateCourseApi,
-  deleteCourseApi,
-  enrollCourseApi,
-  getMyCoursesApi,
-  getMyTeachingCoursesApi,
-} from '../api/courseApi';
-import {
-  getStudentAssignmentsApi,
-  submitAssignmentApi,
-  createAssignmentApi,
-  getTeacherAssignmentsApi,
-  gradeSubmissionApi,
-  deleteAssignmentApi,
-} from '../api/assignmentApi';
-import {
-  getQuizzesByCourseApi,
-  getQuizByIdApi,
-  createQuizApi,
-  attemptQuizApi,
-} from '../api/quizApi';
+import axiosInstance from '../api/axiosInstance';
+import type { Course, Assignment, Quiz, Enrollment } from '../types/course.types';
 
 export const courseService = {
-  // Courses
-  getAllCourses: async () => {
-    const res = await getAllCoursesApi();
-    return res.data.courses;
+  getAllCourses: async (): Promise<Course[]> => {
+    const res = await axiosInstance.get('/courses');
+    return res.data?.data?.courses || [];
   },
 
-  getCourseById: async (id: string) => {
-    const res = await getCourseByIdApi(id);
-    return res.data.course;
+  getCourseById: async (id: string): Promise<Course | undefined> => {
+    const res = await axiosInstance.get(`/courses/${id}`);
+    return res.data?.data?.course;
   },
 
-  getMyTeachingCourses: async () => {
-    const res = await getMyTeachingCoursesApi();
-    return res.data.courses;
+  getCoursesByInstructor: async (instructorId: string): Promise<Course[]> => {
+    const res = await axiosInstance.get('/courses', { params: { teacher: instructorId } });
+    return res.data?.data?.courses || [];
   },
 
-  getPublishedCourses: async () => {
-    const res = await getAllCoursesApi();
-    return res.data.courses.filter((c: any) => c.status === 'published');
+  getPublishedCourses: async (): Promise<Course[]> => {
+    const res = await axiosInstance.get('/courses', { params: { status: 'published' } });
+    return res.data?.data?.courses || [];
   },
 
-  getMyCourses: async () => {
-    const res = await getMyCoursesApi();
-    return res.data.courses;
+  createCourse: async (courseData: Partial<Course>): Promise<Course> => {
+    const res = await axiosInstance.post('/courses', courseData);
+    return res.data?.data?.course;
   },
 
-  createCourse: async (courseData: any) => {
-    const res = await createCourseApi(courseData);
-    return res.data.course;
+  updateCourse: async (id: string, updates: Partial<Course>): Promise<Course | null> => {
+    const res = await axiosInstance.put(`/courses/${id}`, updates);
+    return res.data?.data?.course;
   },
 
-  updateCourse: async (id: string, updates: any) => {
-    const res = await updateCourseApi(id, updates);
-    return res.data.course;
-  },
-
-  deleteCourse: async (id: string) => {
-    await deleteCourseApi(id);
+  deleteCourse: async (id: string): Promise<boolean> => {
+    await axiosInstance.delete(`/courses/${id}`);
     return true;
-  },
-
-  enrollStudent: async (courseId: string) => {
-    const res = await enrollCourseApi(courseId);
-    return res.data;
   },
 
   // Assignments
-  getAssignments: async () => {
-    const res = await getStudentAssignmentsApi();
-    return res.data.assignments;
+  getAssignments: async (): Promise<Assignment[]> => {
+    const res = await axiosInstance.get('/assignments');
+    return res.data?.data?.assignments || [];
   },
 
-  getAssignmentsByCourse: async (courseId: string) => {
-    const res = await getStudentAssignmentsApi();
-    return res.data.assignments.filter((a: any) => a.courseId === courseId);
+  getAssignmentsByCourse: async (courseId: string): Promise<Assignment[]> => {
+    const res = await axiosInstance.get('/assignments', { params: { courseId } });
+    return res.data?.data?.assignments || [];
   },
 
-  getTeacherAssignments: async () => {
-    const res = await getTeacherAssignmentsApi();
-    return res.data.assignments;
+  getAssignmentsByStudent: async (studentId: string): Promise<Assignment[]> => {
+    const res = await axiosInstance.get('/assignments', { params: { studentId } });
+    return res.data?.data?.assignments || [];
   },
 
-  createAssignment: async (data: any) => {
-    const res = await createAssignmentApi(data);
-    return res.data.assignment;
+  createAssignment: async (data: Partial<Assignment>): Promise<Assignment> => {
+    const res = await axiosInstance.post('/assignments', data);
+    return res.data?.data?.assignment;
   },
 
-  submitAssignment: async (id: string, _studentId: string, submittedText: string) => {
-    const res = await submitAssignmentApi(id, { submittedText });
-    return res.data.assignment;
+  submitAssignment: async (id: string, studentId: string, submittedText: string): Promise<Assignment | null> => {
+    const res = await axiosInstance.post(`/assignments/${id}/submit`, { studentId, submittedText });
+    return res.data?.data?.assignment;
   },
 
-  gradeAssignment: async (id: string, grade: number, feedback: string) => {
-    const res = await gradeSubmissionApi(id, { obtainedMarks: grade, feedback });
-    return res.data.assignment;
-  },
-
-  deleteAssignment: async (id: string) => {
-    await deleteAssignmentApi(id);
-    return true;
+  gradeAssignment: async (id: string, grade: number, feedback: string): Promise<Assignment | null> => {
+    const res = await axiosInstance.patch(`/assignments/${id}/grade`, { grade, feedback });
+    return res.data?.data?.assignment;
   },
 
   // Quizzes
-  getQuizzesByCourse: async (courseId: string) => {
-    const res = await getQuizzesByCourseApi(courseId);
-    return res.data.quizzes;
+  getQuizzes: async (): Promise<Quiz[]> => {
+    const res = await axiosInstance.get('/quizzes');
+    return res.data?.data?.quizzes || [];
   },
 
-  getQuizById: async (id: string) => {
-    const res = await getQuizByIdApi(id);
-    return res.data.quiz;
+  getQuizzesByCourse: async (courseId: string): Promise<Quiz[]> => {
+    const res = await axiosInstance.get('/quizzes', { params: { courseId } });
+    return res.data?.data?.quizzes || [];
   },
 
-  createQuiz: async (data: any) => {
-    const res = await createQuizApi(data);
-    return res.data.quiz;
+  getQuizById: async (id: string): Promise<Quiz | undefined> => {
+    const res = await axiosInstance.get(`/quizzes/${id}`);
+    return res.data?.data?.quiz;
   },
 
-  submitQuiz: async (quizId: string, answers: any) => {
-    const res = await attemptQuizApi(quizId, answers);
-    return res.data;
+  createQuiz: async (data: Partial<Quiz>): Promise<Quiz> => {
+    const res = await axiosInstance.post('/quizzes', data);
+    return res.data?.data?.quiz;
+  },
+
+  submitQuiz: async (quizId: string, score: number): Promise<Quiz | null> => {
+    const res = await axiosInstance.post(`/quizzes/${quizId}/submit`, { score });
+    return res.data?.data?.quiz;
+  },
+
+  // Enrollments
+  getEnrollments: async (): Promise<Enrollment[]> => {
+    const res = await axiosInstance.get('/student/enrollments');
+    return res.data?.data?.enrollments || [];
+  },
+
+  getEnrollmentsByStudent: async (studentId: string): Promise<Enrollment[]> => {
+    const res = await axiosInstance.get('/student/enrollments', { params: { studentId } });
+    return res.data?.data?.enrollments || [];
+  },
+
+  getEnrollmentsByCourse: async (courseId: string): Promise<Enrollment[]> => {
+    const res = await axiosInstance.get(`/courses/${courseId}/enrollments`);
+    return res.data?.data?.enrollments || [];
+  },
+
+  enrollStudent: async (courseId: string, studentId: string, studentName: string, studentEmail: string): Promise<Enrollment> => {
+    const res = await axiosInstance.post(`/courses/${courseId}/enroll`, { studentId, studentName, studentEmail });
+    return res.data?.data?.enrollment;
+  },
+
+  updateProgress: async (enrollmentId: string, progress: number): Promise<Enrollment | null> => {
+    const res = await axiosInstance.patch(`/student/enrollments/${enrollmentId}/progress`, { progress });
+    return res.data?.data?.enrollment;
+  },
+
+  isEnrolled: async (courseId: string, studentId: string): Promise<boolean> => {
+    const res = await axiosInstance.get(`/courses/${courseId}/is-enrolled`, { params: { studentId } });
+    return res.data?.data?.isEnrolled || false;
   },
 };

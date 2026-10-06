@@ -35,14 +35,8 @@ const availableFonts = [
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<ThemeSettings>(() => {
-    try {
-      const saved = localStorage.getItem('lms-theme');
-      return saved ? JSON.parse(saved) : defaultTheme;
-    } catch {
-      return defaultTheme;
-    }
-  });
+  // localStorage hataya - seedha defaultTheme use hoga
+  const [theme, setTheme] = useState<ThemeSettings>(defaultTheme);
 
   useEffect(() => {
     // Dynamic Style Inject
@@ -79,8 +73,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;600;700&display=swap`;
 
-    // Save
-    localStorage.setItem('lms-theme', JSON.stringify(theme));
+    // localStorage.setItem line REMOVE kar di
   }, [theme]);
 
   const updateTheme = (newTheme: Partial<ThemeSettings>) => {
@@ -89,7 +82,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const resetTheme = () => {
     setTheme(defaultTheme);
-    localStorage.removeItem('lms-theme');
   };
 
   return (

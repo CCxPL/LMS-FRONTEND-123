@@ -74,10 +74,16 @@ export interface Quiz {
 
 export interface QuizQuestion {
   id: string;
-  question: string;
+  question?: string;
+  questionText?: string;
   options: string[];
   correctAnswer: number;
+  correctAnswerText?: string;
+  studentAnswer?: string;
+  isCorrect?: boolean;
   marks: number;
+  explanation?: string;
+  order?: number;
 }
 
 export interface Enrollment {
@@ -99,6 +105,7 @@ export interface Certificate {
   courseName: string;
   studentId: string;
   studentName: string;
+  instructorId?: string;
   instructorName: string;
   issueDate: string;
   grade: string;

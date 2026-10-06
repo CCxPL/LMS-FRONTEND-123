@@ -11,19 +11,14 @@ const StudentSchedule: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const { events, loading } = useCalendar();
 
-  // Get today's events
   const today = new Date().toISOString().split('T')[0];
   const todaysEvents = events.filter(e => e.date === today);
-  
-  // Live and upcoming events
   const liveEvents = events.filter(e => isEventLive(e));
   const upcomingEvents = events.filter(e => isEventUpcoming(e) && !isEventLive(e));
 
-  // Upcoming this week
   const getNextWeekEvents = () => {
     const now = new Date();
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
     return events.filter(e => {
       const eventDate = new Date(e.date);
       return eventDate > now && eventDate <= nextWeek;
@@ -31,9 +26,7 @@ const StudentSchedule: React.FC = () => {
   };
 
   const weekEvents = getNextWeekEvents();
-
-  // Filter events by course
-  const filteredEvents = selectedCourseId 
+  const filteredEvents = selectedCourseId
     ? events.filter(e => e.courseId === selectedCourseId)
     : events;
 
@@ -145,9 +138,8 @@ const StudentSchedule: React.FC = () => {
                       {formatTime12hr(event.startTime)} - {formatTime12hr(event.endTime)}
                     </p>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded font-medium ${
-                    event.type === 'class' ? 'bg-gray-100 text-gray-700' : 'bg-gray-200 text-gray-700'
-                  }`}>
+                  <span className={`px-2 py-1 text-xs rounded font-medium ${event.type === 'class' ? 'bg-gray-100 text-gray-700' : 'bg-gray-200 text-gray-700'
+                    }`}>
                     {event.type.toUpperCase()}
                   </span>
                 </div>
@@ -175,14 +167,12 @@ const StudentSchedule: React.FC = () => {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar - Student can only view */}
         <div className="lg:col-span-2">
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <CalendarView events={filteredEvents} />
           </div>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
           {/* Today's Schedule */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
@@ -195,13 +185,12 @@ const StudentSchedule: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {todaysEvents.map(event => (
-                  <div 
-                    key={event.id} 
-                    className={`p-3 rounded-lg border-l-4 ${
-                      event.type === 'class' 
-                        ? 'border-gray-900 bg-gray-50' 
+                  <div
+                    key={event.id}
+                    className={`p-3 rounded-lg border-l-4 ${event.type === 'class'
+                        ? 'border-gray-900 bg-gray-50'
                         : 'border-gray-400 bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between">
                       <div>
@@ -210,9 +199,8 @@ const StudentSchedule: React.FC = () => {
                           {formatTime12hr(event.startTime)} - {formatTime12hr(event.endTime)}
                         </p>
                       </div>
-                      <span className={`px-2 py-0.5 text-xs rounded font-medium ${
-                        event.type === 'class' ? 'bg-gray-200 text-gray-700' : 'bg-gray-300 text-gray-700'
-                      }`}>
+                      <span className={`px-2 py-0.5 text-xs rounded font-medium ${event.type === 'class' ? 'bg-gray-200 text-gray-700' : 'bg-gray-300 text-gray-700'
+                        }`}>
                         {event.type}
                       </span>
                     </div>
@@ -239,9 +227,8 @@ const StudentSchedule: React.FC = () => {
               <div className="space-y-3">
                 {weekEvents.map(event => (
                   <div key={event.id} className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
-                      event.type === 'class' ? 'bg-gray-900' : 'bg-gray-500'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${event.type === 'class' ? 'bg-gray-900' : 'bg-gray-500'
+                      }`}>
                       {new Date(event.date).getDate()}
                     </div>
                     <div className="flex-1">

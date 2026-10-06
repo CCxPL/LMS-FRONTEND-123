@@ -53,6 +53,7 @@ const ManageCourses: React.FC = () => {
 
   const getStatus = (c: any) => {
     if (c.isArchived) return 'archived';
+    if (c.isRejected) return 'rejected';
     if (c.isPublished && c.isApproved) return 'published';
     if (!c.isApproved) return 'pending';
     return 'draft';
@@ -63,28 +64,6 @@ const ManageCourses: React.FC = () => {
     return (c.reviews.reduce((s: number, r: any) => s + r.rating, 0) / c.reviews.length).toFixed(1);
   };
 
-  const filtered = useMemo(() => {
-    return courses.filter((c) => {
-      const instructor = c.teacher?.name || '';
-      const matchSearch =
-        c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        instructor.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const status = getStatus(c);
-      const matchStatus = statusFilter === 'all' || status === statusFilter;
-      const matchLevel = levelFilter === 'all' || (c.level || '').toLowerCase() === levelFilter;
-
-      return matchSearch && matchStatus && matchLevel;
-    });
-  }, [courses, searchTerm, statusFilter, levelFilter]);
-
-  const stats = useMemo(() => ({
-    total: courses.length,
-    published: courses.filter(c => getStatus(c) === 'published').length,
-    pending: courses.filter(c => getStatus(c) === 'pending').length,
-    draft: courses.filter(c => getStatus(c) === 'draft').length,
-  }), [courses]);
-
   const handleAction = async (id: string, action: string) => {
     const course = courses.find(c => (c._id || c.id) === id);
     if (!course) return;
@@ -92,13 +71,17 @@ const ManageCourses: React.FC = () => {
       if (action === 'approve') {
         await approveCourseApi(id);
         setCourses(prev => prev.map(c =>
-          (c._id || c.id) === id ? { ...c, isPublished: true, isApproved: true } : c
+          (c._id || c.id) === id
+            ? { ...c, isPublished: true, isApproved: true, isRejected: false, rejectionReason: '' }
+            : c
         ));
         showToast(`"${course.title}" approved!`, 'success');
       } else if (action === 'reject') {
         await rejectCourseApi(id);
         setCourses(prev => prev.map(c =>
-          (c._id || c.id) === id ? { ...c, isPublished: false, isApproved: false } : c
+          (c._id || c.id) === id
+            ? { ...c, isPublished: false, isApproved: false, isRejected: true }
+            : c
         ));
         showToast(`"${course.title}" rejected.`, 'info');
       } else if (action === 'archive') {
@@ -117,6 +100,27 @@ const ManageCourses: React.FC = () => {
     }
     setConfirmAction(null);
   };
+
+  const filtered = useMemo(() => {
+    return courses.filter((c) => {
+      const instructor = c.teacher?.name || '';
+      const matchSearch =
+        c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        instructor.toLowerCase().includes(searchTerm.toLowerCase());
+      const status = getStatus(c);
+      const matchStatus = statusFilter === 'all' || status === statusFilter;
+      const matchLevel = levelFilter === 'all' || (c.level || '').toLowerCase() === levelFilter;
+      return matchSearch && matchStatus && matchLevel;
+    });
+  }, [courses, searchTerm, statusFilter, levelFilter]);
+
+  const stats = useMemo(() => ({
+    total: courses.length,
+    published: courses.filter(c => getStatus(c) === 'published').length,
+    pending: courses.filter(c => getStatus(c) === 'pending').length,
+    rejected: courses.filter(c => getStatus(c) === 'rejected').length,
+    draft: courses.filter(c => getStatus(c) === 'draft').length,
+  }), [courses]);
 
   const handleExport = () => {
     const csv = [
@@ -167,17 +171,20 @@ const ManageCourses: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: 'Total', value: stats.total, key: 'all' },
           { label: 'Published', value: stats.published, key: 'published' },
           { label: 'Pending', value: stats.pending, key: 'pending' },
+          { label: 'Rejected', value: stats.rejected, key: 'rejected' },
           { label: 'Drafts', value: stats.draft, key: 'draft' },
         ].map((s) => (
           <button
             key={s.label}
             onClick={() => setStatusFilter(s.key)}
-            className={`rounded-xl p-3 text-center transition-all border-2 ${statusFilter === s.key ? 'border-black bg-gray-50' : 'border-transparent bg-gray-50 hover:border-gray-200'
+            className={`rounded-xl p-3 text-center transition-all border-2 ${statusFilter === s.key
+              ? 'border-black bg-gray-50'
+              : 'border-transparent bg-gray-50 hover:border-gray-200'
               }`}
           >
             <p className="text-xl font-bold text-gray-900">{s.value}</p>
@@ -207,6 +214,7 @@ const ManageCourses: React.FC = () => {
               <option value="all">All Status</option>
               <option value="published">Published</option>
               <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
               <option value="draft">Draft</option>
               <option value="archived">Archived</option>
             </select>
@@ -263,7 +271,7 @@ const ManageCourses: React.FC = () => {
                           </div>
                           <div>
                             <p className="font-medium text-gray-900 text-sm">{course.title}</p>
-                            <p className="text-xs text-gray-500">{course.category}</p>
+                            <p className="text-xs text-gray-500">{course.category} • {course.duration}</p>
                           </div>
                         </div>
                       </td>
@@ -276,7 +284,9 @@ const ManageCourses: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <span className="text-sm font-bold text-gray-900">{course.enrolledStudents?.length || 0}</span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {course.enrolledStudents?.length || 0}
+                        </span>
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
@@ -285,9 +295,10 @@ const ManageCourses: React.FC = () => {
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${status === 'published' ? 'bg-black text-white' :
-                          status === 'pending' ? 'bg-gray-200 text-gray-700' :
-                            status === 'archived' ? 'bg-red-100 text-red-600' :
-                              'bg-gray-100 text-gray-500'
+                          status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            status === 'rejected' ? 'bg-red-100 text-red-600' :
+                              status === 'archived' ? 'bg-gray-200 text-gray-600' :
+                                'bg-gray-100 text-gray-500'
                           }`}>
                           {status}
                         </span>
@@ -371,8 +382,8 @@ const ManageCourses: React.FC = () => {
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-center">
                 <BookOpen className="w-5 h-5 text-gray-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{selectedCourse.totalVideos || 0}</p>
-                <p className="text-xs text-gray-500">Videos</p>
+                <p className="text-lg font-bold">{selectedCourse.modules?.length || 0}</p>
+                <p className="text-xs text-gray-500">Modules</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-center">
                 <Clock className="w-5 h-5 text-gray-500 mx-auto mb-1" />
@@ -390,6 +401,14 @@ const ManageCourses: React.FC = () => {
               <h4 className="font-bold text-gray-900 mb-2">Description</h4>
               <p className="text-sm text-gray-600">{selectedCourse.description}</p>
             </div>
+
+            {/* Rejection Reason - sirf rejected courses pe dikhega */}
+            {getStatus(selectedCourse) === 'rejected' && selectedCourse.rejectionReason && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-red-700 mb-1">Rejection Reason:</p>
+                <p className="text-sm text-red-600">{selectedCourse.rejectionReason}</p>
+              </div>
+            )}
 
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="flex items-center gap-3">

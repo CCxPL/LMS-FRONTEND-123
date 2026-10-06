@@ -16,6 +16,7 @@ const TeacherDashboard: React.FC = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const fetchDashboard = async () => {
     try {
       const res = await getTeacherDashboardApi();
@@ -40,6 +41,7 @@ const TeacherDashboard: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoading) return <Loader />;
 
@@ -54,9 +56,12 @@ const TeacherDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome, {user?.name?.split(' ')[0] || 'Teacher'}!</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome, {user?.name?.split(' ')[0] || 'Teacher'}!
+          </h1>
           <p className="text-sm text-gray-500 mt-1">Here is your teaching activity summary.</p>
         </div>
         <div className="flex gap-3">
@@ -72,9 +77,14 @@ const TeacherDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (
-          <Card key={i} className="p-6 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group" onClick={() => navigate(s.path)}>
+          <Card
+            key={i}
+            className="p-6 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group"
+            onClick={() => navigate(s.path)}
+          >
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${s.color} group-hover:scale-110 transition-transform`}>
               {s.icon}
             </div>
@@ -88,10 +98,13 @@ const TeacherDashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {/* Recent Submissions */}
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Recent Submissions</h3>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/grade-assignments')}>View All</Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/grade-assignments')}>
+                View All
+              </Button>
             </div>
             <div className="space-y-3">
               {recentSubmissions.length === 0 && (
@@ -101,7 +114,6 @@ const TeacherDashboard: React.FC = () => {
                 <div key={sub._id || sub.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
-                      {/* ✅ Fix: student populated object hai, .name se charAt karo */}
                       {sub.student?.name?.charAt(0) || sub.studentName?.charAt(0) || 'S'}
                     </div>
                     <div>
@@ -131,6 +143,7 @@ const TeacherDashboard: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Quick Actions */}
           <Card>
             <h3 className="font-bold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">

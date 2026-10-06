@@ -25,6 +25,7 @@ const GradeAssignment: React.FC = () => {
     loadData();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadData = async () => {
     try {
       const assignRes = await getTeacherAssignmentsApi();
@@ -51,38 +52,6 @@ const GradeAssignment: React.FC = () => {
       showToast('Failed to load submissions', 'error');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const filtered = useMemo(() => {
-    let result = submissions;
-    if (searchTerm) {
-      result = result.filter(s =>
-        (s.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.assignmentTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    if (statusFilter !== 'all') {
-      result = result.filter(s => s.status === statusFilter);
-    }
-    return result;
-  }, [submissions, searchTerm, statusFilter]);
-
-  const selected = selectedSub ? submissions.find(s => (s._id || s.id) === selectedSub) : null;
-
-  const stats = {
-    total: submissions.length,
-    pending: submissions.filter(s => s.status === 'submitted').length,
-    graded: submissions.filter(s => s.status === 'graded').length,
-  };
-
-  const openGradeModal = (subId: string) => {
-    const sub = submissions.find(s => (s._id || s.id) === subId);
-    if (sub) {
-      setSelectedSub(subId);
-      setGrade(sub.obtainedMarks?.toString() || '');
-      setFeedback(sub.feedback || '');
-      setShowGradeModal(true);
     }
   };
 
@@ -113,6 +82,39 @@ const GradeAssignment: React.FC = () => {
       showToast('Failed to grade assignment', 'error');
     } finally {
       setIsGrading(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const filtered = useMemo(() => {
+    let result = submissions;
+    if (searchTerm) {
+      result = result.filter(s =>
+        (s.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.assignmentTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (statusFilter !== 'all') {
+      result = result.filter(s => s.status === statusFilter);
+    }
+    return result;
+  }, [submissions, searchTerm, statusFilter]);
+
+  const selected = selectedSub ? submissions.find(s => (s._id || s.id) === selectedSub) : null;
+
+  const stats = {
+    total: submissions.length,
+    pending: submissions.filter(s => s.status === 'submitted').length,
+    graded: submissions.filter(s => s.status === 'graded').length,
+  };
+
+  const openGradeModal = (subId: string) => {
+    const sub = submissions.find(s => (s._id || s.id) === subId);
+    if (sub) {
+      setSelectedSub(subId);
+      setGrade(sub.obtainedMarks?.toString() || '');
+      setFeedback(sub.feedback || '');
+      setShowGradeModal(true);
     }
   };
 
@@ -235,7 +237,10 @@ const GradeAssignment: React.FC = () => {
                       <p className="text-2xl font-black text-gray-900">
                         {sub.obtainedMarks}<span className="text-sm text-gray-400 font-normal">/{sub.totalMarks}</span>
                       </p>
-                      <button onClick={() => openGradeModal(sub._id || sub.id)} className="text-xs text-blue-600 hover:underline">
+                      <button
+                        onClick={() => openGradeModal(sub._id || sub.id)}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
                         Edit Grade
                       </button>
                     </div>

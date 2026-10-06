@@ -17,6 +17,8 @@ const StudentDashboard: React.FC = () => {
     const fetchDashboard = async () => {
       try {
         const res = await getStudentDashboardApi();
+        // ✅ FIX: dashboardApi now returns res.data ({ success, data: {...} })
+        // so res.data is the actual dashboard data
         setDashData(res.data);
       } catch (error) {
         console.error('Failed to fetch dashboard:', error);
@@ -41,6 +43,7 @@ const StudentDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+
       {/* Welcome Banner */}
       <div className="bg-black text-white rounded-2xl p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />

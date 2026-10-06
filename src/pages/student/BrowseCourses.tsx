@@ -19,11 +19,11 @@ const BrowseCourses: React.FC = () => {
     loadCourses();
   }, []);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadCourses = async () => {
     try {
       const res = await getAllCoursesApi({ limit: 100 });
       const all = res.data.courses || [];
-      // ✅ Fix: isPublished === true
       setCourses(all);
     } catch (error) {
       console.error('Failed to load courses', error);
@@ -42,6 +42,7 @@ const BrowseCourses: React.FC = () => {
     const matchLevel = levelFilter === 'all' || c.level === levelFilter;
     return matchSearch && matchCat && matchLevel;
   });
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoading) return <Loader text="Loading courses..." />;
 
@@ -52,6 +53,7 @@ const BrowseCourses: React.FC = () => {
         <p className="text-gray-500 text-sm mt-1">Discover and enroll in new courses</p>
       </div>
 
+      {/* Filters */}
       <Card>
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
@@ -90,6 +92,7 @@ const BrowseCourses: React.FC = () => {
         </div>
       </Card>
 
+      {/* Course Grid */}
       {filtered.length === 0 ? (
         <div className="text-center py-12">
           <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />

@@ -1,3 +1,4 @@
+// src/api/quizApi.ts
 import axiosInstance from "./axiosInstance";
 
 export const createQuizApi = async (data: {
@@ -46,8 +47,11 @@ export const getQuizResultsApi = async (id: string) => {
     return res.data;
 };
 
-// ✅ Fix: async/await + correct URL /quizzes/student
+// ✅ FIX: res.data return karo (not res)
+// Backend: { success, data: { quizzes: [...] } }
+// StudentQuizzes.tsx: res?.data?.quizzes ?? res?.quizzes ?? []
+// Ab res.data.quizzes directly kaam karega
 export const getMyQuizzesApi = async () => {
     const res = await axiosInstance.get("/quizzes/student");
-    return res.data;
+    return res.data; // { success: true, data: { quizzes: [...] } }
 };

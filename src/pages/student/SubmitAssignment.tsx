@@ -26,12 +26,16 @@ const SubmitAssignment: React.FC = () => {
     loadAssignment();
   }, [id]);
 
+  // ─── TERA API LOGIC ───────────────────────────────────────────────────────
   const loadAssignment = async () => {
     if (!id) return;
     try {
       const res = await getAssignmentByIdApi(id);
       setAssignment(res.data.assignment);
-      if (res.data.assignment?.status === 'submitted' || res.data.assignment?.status === 'graded') {
+      if (
+        res.data.assignment?.status === 'submitted' ||
+        res.data.assignment?.status === 'graded'
+      ) {
         setIsSubmitted(true);
       }
     } catch (error) {
@@ -80,7 +84,6 @@ const SubmitAssignment: React.FC = () => {
         submittedText = link;
       } else if (submissionType === 'file' && file) {
         try {
-          // ✅ Fix: File direct pass karo, FormData nahi
           const uploadRes = await uploadImageApi(file);
           fileUrl = uploadRes.data?.url || '';
           submittedText = fileUrl || file.name;
@@ -107,6 +110,7 @@ const SubmitAssignment: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoadingAssignment) return <Loader text="Loading assignment..." />;
 
@@ -179,7 +183,7 @@ const SubmitAssignment: React.FC = () => {
             </div>
           </div>
 
-          {/* Content based on type */}
+          {/* Text */}
           {submissionType === 'text' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Answer</label>
@@ -194,6 +198,7 @@ const SubmitAssignment: React.FC = () => {
             </div>
           )}
 
+          {/* File */}
           {submissionType === 'file' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Upload File</label>
@@ -228,6 +233,7 @@ const SubmitAssignment: React.FC = () => {
             </div>
           )}
 
+          {/* Link */}
           {submissionType === 'link' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Project Link</label>
