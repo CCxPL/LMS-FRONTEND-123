@@ -5,10 +5,10 @@ import { Mail, Lock, ArrowRight, Loader } from "lucide-react";
 import DeviceConflictModal from "../../components/common/DeviceConflictModal"; // ✅ NEW
 
 const DEMO_USERS = [
-  { id: "1", email: "superadmin@lms.com", password: "password123", role: "super-admin" },
-  { id: "2", email: "admin@lms.com", password: "password123", role: "admin" },
-  { id: "3", email: "teacher@lms.com", password: "password123", role: "teacher" },
-  { id: "4", email: "student@lms.com", password: "password123", role: "student" },
+  { id: "1", email: "superadmin@lms.com", password: "Admin@123", role: "super-admin" },
+  { id: "2", email: "admin@lms.com", password: "Password@123", role: "admin" },
+  { id: "3", email: "teacher@lms.com", password: "Password@123", role: "teacher" },
+  { id: "4", email: "student@lms.com", password: "Password@123", role: "student" },
 ];
 
 const Login: React.FC = () => {

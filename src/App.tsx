@@ -112,7 +112,7 @@ const App: React.FC = () => {
                 <GlobalFestivalBanner />
                 <AutoLoader>
                   <AppRoutes />
-                  <AIChatBot />
+                  {/* <AIChatBot /> */}
                 </AutoLoader>
               </DataProvider>
             </AuthProvider>
