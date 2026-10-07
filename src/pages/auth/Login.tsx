@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+
 import {
   Mail,
   Lock,
   ArrowRight,
   Loader,
 } from 'lucide-react';
+
 import DeviceConflictModal from '../../components/common/DeviceConflictModal';
 
 const Login: React.FC = () => {
@@ -23,12 +25,10 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [forceLoading, setForceLoading] =
-    useState(false);
+  const [forceLoading, setForceLoading] = useState(false);
 
   const handleLoginSuccess = () => {
-    const storedUser =
-      localStorage.getItem('lms_auth_user');
+    const storedUser = localStorage.getItem('lms_auth_user');
 
     if (!storedUser) {
       setError('Unable to load logged in user.');
@@ -62,7 +62,7 @@ const Login: React.FC = () => {
   };
 
   const handleSubmit = async (
-    e: React.FormEvent
+    e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
 
@@ -102,6 +102,7 @@ const Login: React.FC = () => {
 
     try {
       await forceLogin();
+
       handleLoginSuccess();
     } catch (error) {
       console.error(
@@ -117,7 +118,7 @@ const Login: React.FC = () => {
     }
   };
 
-  const FormFields = () => (
+  const renderLoginForm = () => (
     <>
       {error && (
         <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-center">
@@ -129,8 +130,9 @@ const Login: React.FC = () => {
         onSubmit={handleSubmit}
         className="space-y-5"
       >
+        {/* EMAIL */}
         <div className="relative">
-          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
 
           <input
             type="email"
@@ -138,9 +140,9 @@ const Login: React.FC = () => {
             autoComplete="email"
             placeholder="Email address"
             value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
+            onChange={(e) => {
+              setEmail(e.target.value);
+            }}
             className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#0081d1] focus:ring-2 focus:ring-[#0081d1]/20 outline-none text-sm transition-all text-gray-900"
             style={{
               backgroundColor: '#f9fafb',
@@ -149,8 +151,9 @@ const Login: React.FC = () => {
           />
         </div>
 
+        {/* PASSWORD */}
         <div className="relative">
-          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
 
           <input
             type="password"
@@ -158,9 +161,9 @@ const Login: React.FC = () => {
             autoComplete="current-password"
             placeholder="Password"
             value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
+            onChange={(e) => {
+              setPassword(e.target.value);
+            }}
             className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#0081d1] focus:ring-2 focus:ring-[#0081d1]/20 outline-none text-sm transition-all text-gray-900"
             style={{
               backgroundColor: '#f9fafb',
@@ -169,6 +172,7 @@ const Login: React.FC = () => {
           />
         </div>
 
+        {/* FORGOT PASSWORD */}
         <div className="flex justify-end">
           <button
             type="button"
@@ -181,6 +185,7 @@ const Login: React.FC = () => {
           </button>
         </div>
 
+        {/* LOGIN BUTTON */}
         <button
           type="submit"
           disabled={isLoading}
@@ -204,6 +209,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="auth-page-container min-h-screen w-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center p-4">
+      {/* DEVICE CONFLICT */}
       {deviceConflict && (
         <DeviceConflictModal
           onForceLogin={handleForceLogin}
@@ -236,11 +242,10 @@ const Login: React.FC = () => {
           </h1>
 
           <p className="text-gray-500 mb-8 text-sm text-center">
-            Sign in to continue your learning
-            journey
+            Sign in to continue your learning journey
           </p>
 
-          <FormFields />
+          {renderLoginForm()}
         </div>
       </div>
 
@@ -259,11 +264,10 @@ const Login: React.FC = () => {
         </h1>
 
         <p className="text-gray-500 mb-8 text-sm text-center">
-          Sign in to continue your learning
-          journey
+          Sign in to continue your learning journey
         </p>
 
-        <FormFields />
+        {renderLoginForm()}
       </div>
     </div>
   );
