@@ -164,3 +164,44 @@
 .dark .auth-card .text-green-600 {
   color: #16a34a !important;
 }
+
+
+
+
+/* =========================================
+   DARK MODE - GLOBAL HOVER FIX
+   ========================================= */
+
+.dark .hover\:bg-white:hover,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-gray-200:hover {
+  background-color: #171717 !important;
+  color: #ffffff !important;
+}
+
+/* Table rows */
+.dark tbody tr:hover {
+  background-color: #171717 !important;
+}
+
+/* Cards */
+.dark .card:hover {
+  background-color: #111111 !important;
+  border-color: #404040 !important;
+}
+
+/* Hover borders */
+.dark .hover\:border-gray-200:hover,
+.dark .hover\:border-gray-300:hover,
+.dark .hover\:border-gray-400:hover {
+  border-color: #525252 !important;
+}
+
+/* Hover text */
+.dark .hover\:text-gray-700:hover,
+.dark .hover\:text-gray-800:hover,
+.dark .hover\:text-gray-900:hover,
+.dark .hover\:text-black:hover {
+  color: #ffffff !important;
+}
