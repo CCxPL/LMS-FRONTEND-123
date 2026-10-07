@@ -11,6 +11,7 @@ import { ROLE_LABELS } from '../../utils/constants';
 import type { UserRole } from '../../types/auth.types';
 import { useToast } from '../../context/ToastContext';
 import { getSuperAdminUsersApi, removeUserApi, changeUserRoleApi, toggleUserStatusApi } from '../../api/superadminApi';
+import { userService } from '../../services/userService';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // ✅ WORKER FIX
@@ -162,16 +163,13 @@ const ManageUsers: React.FC = () => {
     if (!importedData || importedData.length === 0) return;
     try {
       showToast(`Importing ${importedData.length} users...`, 'info');
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < importedData.length; i += BATCH_SIZE) {
-        // API call placeholder — uncomment when importBulkUsers is available
-        // await importBulkUsersApi(importedData.slice(i, i + BATCH_SIZE));
-      }
+      await userService.importBulkUsers(importedData);
       const newEmails = importedData.map(u => u.email);
       setNewlyAddedEmails(prev => [...prev, ...newEmails]);
       await loadUsers();
       showToast(`Successfully imported ${importedData.length} users`, 'success');
     } catch (error) {
+      console.error('Import failed:', error);
       showToast('Import failed', 'error');
     }
     setImportedData(null);
@@ -238,45 +236,199 @@ const ManageUsers: React.FC = () => {
 
   const handleImportClick = () => fileInputRef.current?.click();
 
-  const extractTextFromPDF = async (file: File): Promise<string> => {
+  const extractPDFData = async (file: File): Promise<{ lines: string[]; fullText: string }> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const lines: string[] = [];
     let fullText = '';
+
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(' ');
-      fullText += pageText + ' ';
-    }
-    return fullText;
-  };
 
-  const parseUsersFromText = (text: string): any[] => {
-    const users: any[] = [];
-    let cleanText = text.replace(/User Role Status Report.*?Actions/i, '');
-    const pattern = /(.+?)\s+(Admin|Teacher|Student|Super\s+Admin)\s+(Active|Inactive)\s+(\d{2}-[A-Za-z]{3}-\d{4})/gi;
-    let match;
-    while ((match = pattern.exec(cleanText)) !== null) {
-      let rawName = match[1].trim();
-      let role = match[2];
-      let status = match[3];
-      const garbageCleaner = /^(Edit\/Delete|View\/Edit|View|All Access|\d{2}-[A-Za-z]{3}-\d{4})\s*/i;
-      let cleanName = rawName.replace(garbageCleaner, '').replace(garbageCleaner, '').trim();
-      cleanName = cleanName.replace(/[^a-zA-Z\s.]/g, '').trim();
-      if (cleanName.length < 2) continue;
-      const email = cleanName.toLowerCase().replace(/\s+/g, '.') + '@university.com';
-      const normalizedRole = role.toLowerCase().replace('super admin', 'super-admin');
-      users.push({ name: cleanName, email, role: normalizedRole, status: status.toLowerCase() });
-    }
-    if (users.length === 0) {
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-      const emails = text.match(emailRegex);
-      if (emails) {
-        [...new Set(emails)].forEach(email => {
-          users.push({ name: email.split('@')[0], email, role: 'student', status: 'active' });
-        });
+      // Group items by vertical position (Y)
+      const lineMap: { [y: number]: { x: number; text: string }[] } = {};
+
+      for (const item of textContent.items as any[]) {
+        const str = item.str;
+        if (!str || !str.trim()) continue;
+
+        const x = item.transform ? item.transform[4] : 0;
+        const y = item.transform ? Math.round(item.transform[5]) : 0;
+
+        // Group within 4 points of Y coordinate
+        const existingY = Object.keys(lineMap)
+          .map(Number)
+          .find((ly) => Math.abs(ly - y) <= 4);
+        const targetY = existingY !== undefined ? existingY : y;
+
+        if (!lineMap[targetY]) {
+          lineMap[targetY] = [];
+        }
+        lineMap[targetY].push({ x, text: str.trim() });
+      }
+
+      // Sort lines top-to-bottom (Y descending)
+      const sortedY = Object.keys(lineMap)
+        .map(Number)
+        .sort((a, b) => b - a);
+
+      for (const y of sortedY) {
+        // Sort items left-to-right (X ascending)
+        const rowText = lineMap[y]
+          .sort((a, b) => a.x - b.x)
+          .map((i) => i.text)
+          .join(' ')
+          .trim();
+        if (rowText) {
+          lines.push(rowText);
+          fullText += rowText + ' ';
+        }
       }
     }
+
+    return { lines, fullText: fullText.trim() };
+  };
+
+  const parseUsersFromPDF = (lines: string[], rawFullText: string): any[] => {
+    const users: any[] = [];
+    const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+
+    // 1. Process line by line
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      // Skip document titles and headers
+      if (/^(User Data|User Report|User Role Status Report|Users List)/i.test(line)) continue;
+      if (/\bName\b/i.test(line) && (/\bEmail\b/i.test(line) || /\bRole\b/i.test(line) || /\bStatus\b/i.test(line))) continue;
+
+      const emailMatch = line.match(emailRegex);
+
+      if (emailMatch) {
+        const email = emailMatch[1];
+        const emailIdx = line.indexOf(email);
+        const beforeEmail = line.slice(0, emailIdx).trim();
+        const afterEmail = line.slice(emailIdx + email.length).trim();
+
+        // Extract name
+        let cleanName = beforeEmail
+          .replace(/^\d+[\s.)-]+/, '')
+          .replace(/^(Edit\/Delete|View\/Edit|View|All Access)/i, '')
+          .trim();
+
+        if (!cleanName || cleanName.length < 1) {
+          cleanName = email.split('@')[0];
+        }
+
+        // Extract role
+        let role: UserRole = 'student';
+        const roleMatch = afterEmail.match(/\b(super[\s-]?admin|superadmin|admin|teacher|student)\b/i);
+        if (roleMatch) {
+          const r = roleMatch[1].toLowerCase().replace(/\s+/g, '-').replace('superadmin', 'super-admin');
+          role = r as UserRole;
+        }
+
+        // Extract status
+        let status: 'active' | 'inactive' | 'suspended' = 'active';
+        const statusMatch = afterEmail.match(/\b(active|inactive|suspended|pending)\b/i);
+        if (statusMatch) {
+          const s = statusMatch[1].toLowerCase();
+          status = s === 'suspended' ? 'suspended' : s === 'inactive' ? 'inactive' : 'active';
+        }
+
+        users.push({
+          name: cleanName,
+          email,
+          role,
+          status,
+          isAutoGenerated: false,
+        });
+      } else {
+        // Line without email (legacy format: Name Role Status Date)
+        const roleMatch = line.match(/\b(super[\s-]?admin|superadmin|admin|teacher|student)\b/i);
+        const statusMatch = line.match(/\b(active|inactive|suspended|pending)\b/i);
+
+        if (roleMatch) {
+          const roleIdx = line.search(/\b(super[\s-]?admin|superadmin|admin|teacher|student)\b/i);
+          let rawName = line.slice(0, roleIdx).trim();
+          let cleanName = rawName
+            .replace(/^\d+[\s.)-]+/, '')
+            .replace(/^(Edit\/Delete|View\/Edit|View|All Access)/i, '')
+            .replace(/[^a-zA-Z\s.]/g, '')
+            .trim();
+
+          if (cleanName.length >= 2) {
+            const r = roleMatch[1].toLowerCase().replace(/\s+/g, '-').replace('superadmin', 'super-admin');
+            const role = r as UserRole;
+            const status = statusMatch ? statusMatch[1].toLowerCase() : 'active';
+            const email = `${cleanName.toLowerCase().replace(/\s+/g, '.')}@university.com`;
+
+            users.push({
+              name: cleanName,
+              email,
+              role,
+              status,
+              isAutoGenerated: true,
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Fallback if lines parsing found nothing but rawFullText has emails
+    if (users.length === 0 && rawFullText) {
+      const recordRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+      const allEmails: { email: string; index: number }[] = [];
+      let m;
+      while ((m = recordRegex.exec(rawFullText)) !== null) {
+        allEmails.push({ email: m[1], index: m.index });
+      }
+
+      if (allEmails.length > 0) {
+        for (let i = 0; i < allEmails.length; i++) {
+          const cur = allEmails[i];
+          const prevEnd = i > 0 ? allEmails[i - 1].index + allEmails[i - 1].email.length : 0;
+          const nextStart = i < allEmails.length - 1 ? allEmails[i + 1].index : rawFullText.length;
+
+          const before = rawFullText.slice(prevEnd, cur.index);
+          const after = rawFullText.slice(cur.index + cur.email.length, nextStart);
+
+          let name = before
+            .replace(/.*(?:\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{2}-[A-Za-z]{3}-\d{4}|Never|\bactive\b|\binactive\b|\bsuspended\b|\bpending\b)\s*/gi, '')
+            .replace(/^(?:User\s+Data|Name|Email|Role|Status|Joined|Last\s+Login|\s+)+/gi, '')
+            .replace(/^\d+[\s.)-]+/, '')
+            .trim();
+
+          if (!name || name.length < 1) {
+            name = cur.email.split('@')[0];
+          }
+
+          let role: UserRole = 'student';
+          const rMatch = after.match(/\b(super[\s-]?admin|superadmin|admin|teacher|student)\b/i);
+          if (rMatch) {
+            const r = rMatch[1].toLowerCase().replace(/\s+/g, '-').replace('superadmin', 'super-admin');
+            role = r as UserRole;
+          }
+
+          let status: 'active' | 'inactive' | 'suspended' = 'active';
+          const sMatch = after.match(/\b(active|inactive|suspended|pending)\b/i);
+          if (sMatch) {
+            const s = sMatch[1].toLowerCase();
+            status = s === 'suspended' ? 'suspended' : s === 'inactive' ? 'inactive' : 'active';
+          }
+
+          users.push({
+            name,
+            email: cur.email,
+            role,
+            status,
+            isAutoGenerated: false,
+          });
+        }
+      }
+    }
+
     return users;
   };
 
@@ -287,12 +439,16 @@ const ManageUsers: React.FC = () => {
     setIsImporting(true);
     showToast('Scanning PDF...', 'info');
     try {
-      const extractedText = await extractTextFromPDF(file);
-      const parsedUsers = parseUsersFromText(extractedText);
+      const { lines, fullText } = await extractPDFData(file);
+      const parsedUsers = parseUsersFromPDF(lines, fullText);
       if (parsedUsers.length === 0) {
         showToast('No users found in PDF.', 'error');
       } else {
-        showToast(`Found ${parsedUsers.length} users. Emails generated automatically.`, 'success');
+        const hasAuto = parsedUsers.some((u) => u.isAutoGenerated);
+        showToast(
+          `Found ${parsedUsers.length} user${parsedUsers.length > 1 ? 's' : ''} in PDF${hasAuto ? ' (some emails auto-generated)' : ''}.`,
+          'success'
+        );
         setImportedData(parsedUsers);
       }
     } catch (error) {
@@ -640,8 +796,14 @@ const ManageUsers: React.FC = () => {
               <h4 className="font-bold text-emerald-800 text-sm">Scan Successful</h4>
               <p className="text-xs text-emerald-600">
                 We found <strong>{importedData?.length}</strong> users in your PDF file. Please review before importing.
-                <br />
-                <span className="text-orange-600 font-bold">Note: Emails were auto-generated because your PDF didn't have them.</span>
+                {importedData?.some((d: any) => d.isAutoGenerated) && (
+                  <>
+                    <br />
+                    <span className="text-orange-600 font-bold">
+                      Note: Emails were auto-generated for some users because your PDF didn't have them.
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -650,7 +812,7 @@ const ManageUsers: React.FC = () => {
               <thead className="bg-gray-50 text-gray-500">
                 <tr>
                   <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Generated Email</th>
+                  <th className="px-4 py-2">Email</th>
                   <th className="px-4 py-2">Role</th>
                   <th className="px-4 py-2">Status</th>
                 </tr>
@@ -659,7 +821,12 @@ const ManageUsers: React.FC = () => {
                 {importedData?.map((d, i) => (
                   <tr key={i}>
                     <td className="px-4 py-2 font-medium">{d.name}</td>
-                    <td className="px-4 py-2 text-gray-500 text-xs">{d.email}</td>
+                    <td className="px-4 py-2 text-gray-500 text-xs">
+                      {d.email}
+                      {d.isAutoGenerated && (
+                        <span className="ml-1 text-[10px] text-orange-500 font-medium">(auto)</span>
+                      )}
+                    </td>
                     <td className="px-4 py-2 capitalize">{d.role}</td>
                     <td className="px-4 py-2 capitalize text-emerald-600">{d.status}</td>
                   </tr>
