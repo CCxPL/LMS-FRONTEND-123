@@ -1,111 +1,82 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Mail, ArrowLeft, Loader, CheckCircle } from "lucide-react";
-import { forgotPasswordApi } from "../../api/authApi";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Mail,
+  ArrowLeft,
+  Loader,
+  CheckCircle,
+} from 'lucide-react';
+
+import { forgotPasswordApi } from '../../api/authApi';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
-    setError("");
 
-    if (!email) {
-      setError("Please enter your email address");
+    setError('');
+
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail) {
+      setError('Please enter your email address');
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address");
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(cleanEmail)) {
+      setError('Please enter a valid email address');
       return;
     }
 
     try {
       setIsLoading(true);
-      await forgotPasswordApi(email);  // ✅ Real API call
+
+      await forgotPasswordApi(cleanEmail);
+
       setIsSuccess(true);
-    } catch {
-      setError("Failed to send reset link. Please try again.");
+    } catch (error) {
+      console.error(
+        'Forgot password request failed:',
+        error
+      );
+
+      setError(
+        'Failed to send reset link. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const CardContent = () => (
-    <>
-      <div className="flex items-center justify-center mb-8">
-        <img
-          src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png"
-          alt="Logo"
-          className="h-12 sm:h-14 w-auto object-contain"
-        />
-      </div>
+  const resetForm = () => {
+    setIsSuccess(false);
+    setEmail('');
+    setError('');
+  };
 
-      {!isSuccess ? (
+  const renderContent = () => {
+    if (isSuccess) {
+      return (
         <>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center">
-            Forgot Password?
-          </h1>
-
-          <p className="text-gray-500 mb-8 text-sm text-center">
-            Enter your email address and we'll send you a link to reset your password
-          </p>
-
-          {error && (
-            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-center">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="email"
-                placeholder="Enter your email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#0081d1] focus:ring-2 focus:ring-[#0081d1]/20 outline-none text-sm transition-all text-gray-900"
-                style={{ backgroundColor: '#f9fafb', color: '#000000' }}
-                disabled={isLoading}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed font-medium"
-            >
-              {isLoading ? (
-                <>
-                  <Loader className="animate-spin w-5 h-5" />
-                  Sending...
-                </>
-              ) : (
-                <>Send Reset Link</>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#0081d1] font-medium transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Login
-            </button>
+          <div className="flex items-center justify-center mb-8">
+            <img
+              src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png"
+              alt="Logo"
+              className="h-12 sm:h-14 w-auto object-contain"
+            />
           </div>
-        </>
-      ) : (
-        <>
+
           <div className="text-center">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -126,24 +97,22 @@ const ForgotPassword: React.FC = () => {
             </p>
 
             <p className="text-gray-500 text-xs mb-8">
-              Click the link in the email to reset your password. If you don't see the email, check your spam folder.
+              Click the link in the email to reset your password.
+              If you don't see the email, check your spam folder.
             </p>
 
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => navigate("/login")}
-                className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 font-medium"
+                onClick={() => navigate('/login')}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 font-medium"
               >
                 Back to Login
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  setIsSuccess(false);
-                  setEmail("");
-                }}
+                onClick={resetForm}
                 className="w-full text-sm text-gray-600 hover:text-[#0081d1] font-medium transition-all"
               >
                 Didn't receive email? Try again
@@ -151,30 +120,109 @@ const ForgotPassword: React.FC = () => {
             </div>
           </div>
         </>
-      )}
-    </>
-  );
+      );
+    }
+
+    return (
+      <>
+        <div className="flex items-center justify-center mb-8">
+          <img
+            src="/WhatsApp_Image_2026-03-13_at_12.13.36_PM-removebg-preview.png"
+            alt="Logo"
+            className="h-12 sm:h-14 w-auto object-contain"
+          />
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center">
+          Forgot Password?
+        </h1>
+
+        <p className="text-gray-500 mb-8 text-sm text-center">
+          Enter your email address and we'll send you a link
+          to reset your password
+        </p>
+
+        {error && (
+          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-center">
+            {error}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#0081d1] focus:ring-2 focus:ring-[#0081d1]/20 outline-none text-sm transition-all text-gray-900"
+              style={{
+                backgroundColor: '#f9fafb',
+                color: '#000000',
+              }}
+              disabled={isLoading}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#0081d1] to-[#0057a8] text-white py-3.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed font-medium"
+          >
+            {isLoading ? (
+              <>
+                <Loader className="animate-spin w-5 h-5" />
+                Sending...
+              </>
+            ) : (
+              <>Send Reset Link</>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#0081d1] font-medium transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Login
+          </button>
+        </div>
+      </>
+    );
+  };
 
   return (
-    <div className="auth-page-container min-h-screen w-full bg-linear-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center p-4">
-
-      {/* DESKTOP VIEW */}
+    <div className="auth-page-container min-h-screen w-full bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300 flex items-center justify-center p-4">
+      {/* DESKTOP */}
       <div className="hidden lg:block relative w-full max-w-362.5 h-185 mx-auto">
         <img
           src="/fg4.png"
           alt="background"
           className="w-full h-full object-cover rounded-3xl shadow-2xl"
         />
-        <div className="absolute inset-0 bg-linear-to-r from-black/20 via-transparent to-black/10 rounded-3xl" />
+
+        <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/10 rounded-3xl" />
 
         <div className="auth-card absolute right-8 lg:right-16 top-1/2 -translate-y-1/2 w-full max-w-100 bg-white/98 backdrop-blur-xl rounded-3xl p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
-          <CardContent />
+          {renderContent()}
         </div>
       </div>
 
-      {/* MOBILE VIEW */}
+      {/* MOBILE */}
       <div className="lg:hidden auth-card w-full max-w-100 bg-white/98 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/50">
-        <CardContent />
+        {renderContent()}
       </div>
     </div>
   );
