@@ -10,7 +10,6 @@ import { getTeacherAssignmentsApi, getAssignmentSubmissionsApi, gradeSubmissionA
 const GradeAssignment: React.FC = () => {
   const { showToast } = useToast();
 
-  const [assignments, setAssignments] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +29,6 @@ const GradeAssignment: React.FC = () => {
     try {
       const assignRes = await getTeacherAssignmentsApi();
       const allAssignments = assignRes.data?.assignments || [];
-      setAssignments(allAssignments);
 
       const allSubmissions: any[] = [];
       await Promise.all(

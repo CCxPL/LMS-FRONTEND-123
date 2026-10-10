@@ -507,6 +507,109 @@ export const DataProvider: React.FC<{
       );
     }, [user?.role]);
 
+  const loadFeedbacks =
+    useCallback(async () => {
+      try {
+        const endpoint = user?.role === 'student' ? '/feedback/my' : '/feedback';
+        const response = await axiosInstance.get(endpoint);
+        const data = response.data?.data?.feedbacks || response.data?.feedbacks || [];
+        const mapped = (Array.isArray(data) ? data : []).map((f: any) => ({
+          ...f,
+          id: f.id || f._id,
+          _id: f._id || f.id,
+        }));
+        setFeedbacks(mapped);
+      } catch (error) {
+        console.error('Failed to load feedbacks:', error);
+        setFeedbacks([]);
+      }
+    }, [user?.role]);
+
+  const loadLeaves =
+    useCallback(async () => {
+      try {
+        const endpoint = user?.role === 'student' ? '/leaves/my' : '/leaves';
+        const response = await axiosInstance.get(endpoint);
+        const data = response.data?.data?.leaves || response.data?.leaves || [];
+        const mapped = (Array.isArray(data) ? data : []).map((l: any) => {
+          const startStr = l.startDate ? new Date(l.startDate).toISOString().split('T')[0] : (l.start || '');
+          const endStr = l.endDate ? new Date(l.endDate).toISOString().split('T')[0] : (l.end || '');
+          return {
+            ...l,
+            id: l.id || l._id,
+            _id: l._id || l.id,
+            start: startStr,
+            end: endStr,
+            days: Array.isArray(l.days) ? l.days : [startStr],
+          };
+        });
+        setLeaves(mapped);
+      } catch (error) {
+        console.error('Failed to load leaves:', error);
+        setLeaves([]);
+      }
+    }, [user?.role]);
+
+  const loadAttendance =
+    useCallback(async () => {
+      try {
+        const endpoint = user?.role === 'student' ? '/attendance/student' : '/attendance/all';
+        const response = await axiosInstance.get(endpoint);
+        const data = response.data?.data?.attendance || response.data?.attendance || [];
+        const mapped = (Array.isArray(data) ? data : []).map((a: any) => ({
+          ...a,
+          id: a.id || a._id,
+          _id: a._id || a.id,
+          studentId: a.userId || a.studentId,
+          studentName: a.userName || a.studentName,
+          studentEmail: a.userEmail || a.studentEmail,
+          isPresent: a.isPresent !== undefined ? a.isPresent : (a.status === 'present' || a.status === 'late'),
+          joinTime: a.joinedAt ? new Date(a.joinedAt).toISOString() : (a.joinTime || null),
+          leaveTime: a.leftAt ? new Date(a.leftAt).toISOString() : (a.leaveTime || null),
+        }));
+        setAttendanceRecords(mapped);
+      } catch (error) {
+        console.error('Failed to load attendance:', error);
+        setAttendanceRecords([]);
+      }
+    }, [user?.role]);
+
+  const loadClassSummaries =
+    useCallback(async () => {
+      try {
+        const response = await axiosInstance.get('/attendance/summary');
+        const data = response.data?.data?.summaries || response.data?.summaries || [];
+        setClassSummaries(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to load class summaries:', error);
+        setClassSummaries([]);
+      }
+    }, []);
+
+  const loadStudentActivities =
+    useCallback(async () => {
+      try {
+        const response = await axiosInstance.get('/attendance/student-activity');
+        const data = response.data?.data?.activities || response.data?.activities || [];
+        setStudentActivities(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to load student activities:', error);
+        setStudentActivities([]);
+      }
+    }, []);
+
+  const loadActivities =
+    useCallback(async () => {
+      try {
+        const response = await axiosInstance.get('/activity');
+        const data = response.data?.data?.activities || response.data?.activities || [];
+        setActivities(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to load activities:', error);
+        setActivities([]);
+      }
+    }, []);
+
   /* =======================================================
      INITIAL LOAD
   ======================================================= */
@@ -530,86 +633,18 @@ export const DataProvider: React.FC<{
     }
 
     const loadData = async () => {
-      try {
-        await loadMessages();
-      } catch (error) {
-        console.error(
-          'Failed to load messages:',
-          error
-        );
-
-        setMessages([]);
-      }
-
-      try {
-        await loadNotifications();
-      } catch (error) {
-        console.error(
-          'Failed to load notifications:',
-          error
-        );
-
-        setNotifications([]);
-      }
-
-      try {
-        await loadTasks();
-      } catch (error) {
-        console.error(
-          'Failed to load tasks:',
-          error
-        );
-
-        setTasks([]);
-      }
-
-      try {
-        await loadCertificates();
-      } catch (error) {
-        console.error(
-          'Failed to load certificates:',
-          error
-        );
-
-        setCertificates([]);
-      }
-
-      /*
-       * Feedback backend is currently unavailable.
-       * Do NOT call /feedback/my until backend
-       * route is implemented.
-       */
-      setFeedbacks([]);
-
-      /*
-       * Leave backend is currently unavailable.
-       * Do NOT call /leaves/my until backend
-       * route is implemented.
-       */
-      setLeaves([]);
-
-      /*
-       * Attendance backend is currently unavailable.
-       */
-      setAttendanceRecords([]);
-
-      /*
-       * Class summaries are currently not persisted
-       * in backend.
-       */
-      setClassSummaries([]);
-
-      /*
-       * Student activity backend is currently
-       * not available.
-       */
-      setStudentActivities([]);
-
-      /*
-       * General activity backend is currently
-       * not available.
-       */
-      setActivities([]);
+      await Promise.allSettled([
+        loadMessages(),
+        loadNotifications(),
+        loadTasks(),
+        loadCertificates(),
+        loadFeedbacks(),
+        loadLeaves(),
+        loadAttendance(),
+        loadClassSummaries(),
+        loadStudentActivities(),
+        loadActivities(),
+      ]);
     };
 
     void loadData();
@@ -619,47 +654,90 @@ export const DataProvider: React.FC<{
     loadNotifications,
     loadTasks,
     loadCertificates,
+    loadFeedbacks,
+    loadLeaves,
+    loadAttendance,
+    loadClassSummaries,
+    loadStudentActivities,
+    loadActivities,
   ]);
 
   /* =======================================================
      ATTENDANCE
-     Disabled until real backend API exists.
+     Backend / MySQL backed via Prisma.
   ======================================================= */
 
   const addAttendanceRecord =
     useCallback(
-      (_record: AttendanceRecord) => {
-        console.warn(
-          'Attendance API is not implemented. Attendance was not saved.'
-        );
+      async (record: AttendanceRecord) => {
+        try {
+          const res = await axiosInstance.post('/attendance/join', { eventId: record.eventId });
+          const newRecord = res.data?.data?.attendance || res.data?.attendance;
+          if (newRecord) {
+            setAttendanceRecords((prev) => [
+              { ...newRecord, isPresent: true },
+              ...prev.filter((r) => r.id !== newRecord.id),
+            ]);
+          }
+          await loadAttendance();
+        } catch (error) {
+          console.error('Failed to add attendance record:', error);
+          setAttendanceRecords((prev) => [record, ...prev.filter((r) => r.id !== record.id)]);
+        }
       },
-      []
+      [loadAttendance]
     );
 
   const updateAttendanceRecord =
     useCallback(
-      (
-        _id: string,
-        _updates: Partial<AttendanceRecord>
-      ) => {
-        console.warn(
-          'Attendance API is not implemented. Attendance was not updated.'
-        );
+      async (id: string, updates: Partial<AttendanceRecord>) => {
+        try {
+          if (updates.leftAt || updates.leaveTime) {
+            const res = await axiosInstance.post('/attendance/leave', { eventId: updates.eventId || id });
+            const updated = res.data?.data?.attendance || res.data?.attendance;
+            if (updated) {
+              setAttendanceRecords((prev) =>
+                prev.map((r) => (r.id === (updated.id || id) ? { ...r, ...updated } : r))
+              );
+            }
+          } else {
+            setAttendanceRecords((prev) =>
+              prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+            );
+          }
+          await loadAttendance();
+        } catch (error) {
+          console.error('Failed to update attendance record:', error);
+          setAttendanceRecords((prev) =>
+            prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+          );
+        }
       },
-      []
+      [loadAttendance]
     );
 
   /* =======================================================
      CLASS SUMMARIES
-     Disabled until backend API exists.
+     Backend / MySQL backed via Prisma.
   ======================================================= */
 
   const addClassSummary =
     useCallback(
-      (_summary: ClassSummary) => {
-        console.warn(
-          'Class Summary API is not implemented. Summary was not saved.'
-        );
+      async (summary: ClassSummary) => {
+        try {
+          const res = await axiosInstance.post('/attendance/summary', summary);
+          const saved = res.data?.data?.summary || res.data?.summary || summary;
+          setClassSummaries((prev) => [
+            saved,
+            ...prev.filter((s) => s.id !== saved.id && s.eventId !== saved.eventId),
+          ]);
+        } catch (error) {
+          console.error('Failed to save class summary:', error);
+          setClassSummaries((prev) => [
+            summary,
+            ...prev.filter((s) => s.id !== summary.id && s.eventId !== summary.eventId),
+          ]);
+        }
       },
       []
     );
@@ -679,15 +757,20 @@ export const DataProvider: React.FC<{
 
   /* =======================================================
      STUDENT ACTIVITIES
-     Disabled until backend API exists.
+     Backend / MySQL backed via Prisma.
   ======================================================= */
 
   const addStudentActivity =
     useCallback(
-      (_activity: StudentActivity) => {
-        console.warn(
-          'Student Activity API is not implemented. Activity was not saved.'
-        );
+      async (activity: StudentActivity) => {
+        try {
+          const res = await axiosInstance.post('/attendance/student-activity', activity);
+          const saved = res.data?.data?.activity || res.data?.activity || activity;
+          setStudentActivities((prev) => [saved, ...prev]);
+        } catch (error) {
+          console.error('Failed to save student activity:', error);
+          setStudentActivities((prev) => [activity, ...prev]);
+        }
       },
       []
     );
@@ -707,15 +790,26 @@ export const DataProvider: React.FC<{
 
   /* =======================================================
      GENERAL ACTIVITIES
-     Disabled until backend API exists.
+     Backend / MySQL backed via Prisma.
   ======================================================= */
 
   const addActivity =
     useCallback(
-      (_activity: Activity) => {
-        console.warn(
-          'Activity API is not implemented. Activity was not saved.'
-        );
+      async (activity: Activity) => {
+        try {
+          const res = await axiosInstance.post('/activity', {
+            type: activity.type,
+            action: (activity as any).action || activity.type,
+            details: activity.metadata ? JSON.stringify(activity.metadata) : (activity.targetName || ''),
+          });
+          const saved = res.data?.data?.activity || res.data?.activity;
+          if (saved) {
+            setActivities((prev) => [saved, ...prev]);
+          }
+        } catch (error) {
+          console.error('Failed to save activity:', error);
+          setActivities((prev) => [activity, ...prev]);
+        }
       },
       []
     );
@@ -969,27 +1063,37 @@ export const DataProvider: React.FC<{
 
   /* =======================================================
      FEEDBACK
-     Backend route not implemented yet.
-     No local fake data.
+     Backend / MySQL backed via Prisma.
   ======================================================= */
 
   const submitFeedback =
     useCallback(
       async (
-        _fb: Omit<
+        fb: Omit<
           FeedbackType,
           'id' | 'createdAt' | 'updatedAt'
         >
       ) => {
-        console.error(
-          'Feedback API is not implemented yet.'
-        );
+        try {
+          await axiosInstance.post('/feedback', {
+            recipientId: fb.recipientId,
+            recipientType: fb.recipientType,
+            recipientName: fb.recipientName,
+            feedbackText: fb.feedbackText,
+            rating: fb.rating,
+            category: fb.category,
+          });
 
-        throw new Error(
-          'Feedback service is currently unavailable.'
-        );
+          await loadFeedbacks();
+        } catch (error) {
+          console.error(
+            'Failed to submit feedback:',
+            error
+          );
+          throw error;
+        }
       },
-      []
+      [loadFeedbacks]
     );
 
   const getFeedbackByStudent =
@@ -1025,37 +1129,50 @@ export const DataProvider: React.FC<{
   const updateFeedback =
     useCallback(
       async (
-        _id: string,
-        _updates: Partial<
+        id: string,
+        updates: Partial<
           Omit<
             FeedbackType,
             'id' | 'createdAt' | 'createdBy'
           >
         >
       ) => {
-        console.error(
-          'Feedback API is not implemented yet.'
-        );
+        try {
+          await axiosInstance.put(
+            `/feedback/${id}`,
+            updates
+          );
 
-        throw new Error(
-          'Feedback service is currently unavailable.'
-        );
+          await loadFeedbacks();
+        } catch (error) {
+          console.error(
+            'Failed to update feedback:',
+            error
+          );
+          throw error;
+        }
       },
-      []
+      [loadFeedbacks]
     );
 
   const deleteFeedback =
     useCallback(
-      async (_id: string) => {
-        console.error(
-          'Feedback API is not implemented yet.'
-        );
+      async (id: string) => {
+        try {
+          await axiosInstance.delete(
+            `/feedback/${id}`
+          );
 
-        throw new Error(
-          'Feedback service is currently unavailable.'
-        );
+          await loadFeedbacks();
+        } catch (error) {
+          console.error(
+            'Failed to delete feedback:',
+            error
+          );
+          throw error;
+        }
       },
-      []
+      [loadFeedbacks]
     );
 
   /* =======================================================
@@ -1408,24 +1525,29 @@ export const DataProvider: React.FC<{
 
   /* =======================================================
      LEAVES
-     Backend route not implemented yet.
-     No local fake save.
+     Backend / MySQL backed via Prisma.
   ======================================================= */
 
   const addLeave =
     useCallback(
-      async (
-        _leave: LeaveRequest
-      ) => {
-        console.error(
-          'Leave API is not implemented yet.'
-        );
+      async (leave: LeaveRequest) => {
+        try {
+          await axiosInstance.post('/leaves/apply', {
+            reason: leave.reason,
+            startDate: leave.start,
+            endDate: leave.end,
+          });
 
-        throw new Error(
-          'Leave service is currently unavailable.'
-        );
+          await loadLeaves();
+        } catch (error) {
+          console.error(
+            'Failed to apply for leave:',
+            error
+          );
+          throw error;
+        }
       },
-      []
+      [loadLeaves]
     );
 
   const getStudentLeaves =

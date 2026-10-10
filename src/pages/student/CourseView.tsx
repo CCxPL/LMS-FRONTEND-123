@@ -82,7 +82,7 @@ const CourseView: React.FC = () => {
       // ✅ FIX: DB se completed videos fetch karo
       let completedVideoIds: string[] = [];
       try {
-        const progressRes = await getCourseProgressApi(id);
+        await getCourseProgressApi(id);
         // Backend returns watched video ids or we match by count
         // progressRes.data.progress.videos.completed = count
         // We need to get which specific videos are completed

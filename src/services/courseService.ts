@@ -37,6 +37,11 @@ export const courseService = {
     return true;
   },
 
+  duplicateCourse: async (id: string): Promise<Course | null> => {
+    const res = await axiosInstance.post(`/courses/${id}/duplicate`);
+    return res.data?.data?.course || null;
+  },
+
   // Assignments
   getAssignments: async (): Promise<Assignment[]> => {
     const res = await axiosInstance.get('/assignments');

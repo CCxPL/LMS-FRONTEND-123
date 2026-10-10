@@ -51,3 +51,8 @@ export const getMyTeachingCoursesApi = async () => {
     const res = await axiosInstance.get("/courses/my-teaching");
     return res.data;
 };
+
+export const duplicateCourseApi = async (id: string) => {
+    const res = await axiosInstance.post(`/courses/${id}/duplicate`);
+    return res.data;
+};

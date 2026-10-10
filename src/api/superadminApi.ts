@@ -34,6 +34,16 @@ export const createAdminApi = async (data: {
     return res.data;
 };
 
+export const updateAdminApi = async (id: string, data: {
+    name?: string;
+    email?: string;
+    password?: string;
+}) => {
+    const res = await axiosInstance.put(`/users/${id}`, data);
+    return res.data;
+};
+
+
 export const getPlatformStatsApi = async () => {
     const res = await axiosInstance.get("/superadmin/platform-stats");
     return res.data;

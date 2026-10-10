@@ -415,6 +415,8 @@ const Messages: React.FC = () => {
                   }`}
               >
                 {tab}
+                {tab === 'inbox' && unreadCount > 0 && ` (${unreadCount})`}
+                {tab === 'sent' && sentUnreadCount > 0 && ` (${sentUnreadCount})`}
               </button>
             ))}
           </div>

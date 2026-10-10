@@ -1,14 +1,12 @@
 // src/pages/teacher/TeacherLeaves.tsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { Umbrella, User, Calendar, Filter, Search, RefreshCw } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../context/ToastContext';
 import CourseFilter from '../../components/calendar/CourseFilter';
 import Loader from '../../components/common/Loader';
 import { getAllLeavesApi } from '../../api/leaveApi';
 
 const TeacherLeaves: React.FC = () => {
-  const { user } = useAuth();
   const { showToast } = useToast();
 
   const [leaves, setLeaves] = useState<any[]>([]);

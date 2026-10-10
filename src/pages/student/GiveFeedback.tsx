@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Send, MessageSquare } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../context/ToastContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { getMyEnrolledCoursesApi, addCourseReviewApi, getMyReviewsApi } from '../../api/studentApi';
 
 const GiveFeedback: React.FC = () => {
-  const { user } = useAuth();
   const { showToast } = useToast();
 
   const [courses, setCourses] = useState<any[]>([]);

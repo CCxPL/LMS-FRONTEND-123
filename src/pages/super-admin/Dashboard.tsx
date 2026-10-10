@@ -108,29 +108,26 @@ const SuperAdminDashboard: React.FC = () => {
     if (!u) return;
     try {
       await toggleUserStatusApi(userId);
-      setRecentUsers(prev => prev.map(u => {
-        if (u.id === userId) {
-          const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-          showToast(`User ${u.name} ${newStatus === 'Active' ? 'activated' : 'suspended'}`, 'success');
-          return { ...u, status: newStatus };
-        }
-        return u;
-      }));
+      const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
+      setRecentUsers(prev => prev.map(item =>
+        item.id === userId ? { ...item, status: newStatus } : item
+      ));
+      showToast(`User ${u.name} ${newStatus === 'Active' ? 'activated' : 'suspended'}`, 'success');
     } catch (error) {
       showToast('Failed to update user status', 'error');
     }
   };
 
   const handleApproveUser = async (userId: string) => {
+    const u = recentUsers.find(item => item.id === userId);
     try {
       await toggleUserStatusApi(userId);
-      setRecentUsers(prev => prev.map(u => {
-        if (u.id === userId && u.status === 'Pending') {
-          showToast(`User ${u.name} approved successfully`, 'success');
-          return { ...u, status: 'Active' };
-        }
-        return u;
-      }));
+      setRecentUsers(prev => prev.map(item =>
+        item.id === userId ? { ...item, status: 'Active' } : item
+      ));
+      if (u) {
+        showToast(`User ${u.name} approved successfully`, 'success');
+      }
     } catch (error) {
       showToast('Failed to approve user', 'error');
     }

@@ -25,3 +25,9 @@ export const getSuperAdminDashboardApi = async () => {
     const res = await axiosInstance.get("/dashboard/superadmin");
     return res.data;
 };
+
+// ─── GLOBAL SEARCH ────────────────────────────────────────────────────────────
+export const globalSearchApi = async (query: string) => {
+    const res = await axiosInstance.get("/dashboard/search", { params: { q: query } });
+    return res.data;
+};

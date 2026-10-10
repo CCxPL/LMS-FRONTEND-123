@@ -8,7 +8,7 @@ import { FestivalProvider } from './context/FestivalContext';
 import AppRoutes from './routes/AppRoutes';
 import './App.css';
 import Toast from './components/common/Toast';
-import AIChatBot from './components/common/AIChatBot';
+// import AIChatBot from './components/common/AIChatBot';
 import GlobalFestivalBanner from './components/festival/GlobalFestivalBanner';
 import logo from '../public/coding-freak.gif';
 import SocketListener from './components/common/SocketListener';

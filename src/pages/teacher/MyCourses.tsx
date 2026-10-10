@@ -8,7 +8,7 @@ import Loader from '../../components/common/Loader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useToast } from '../../context/ToastContext';
 import { getTeacherCoursesApi } from '../../api/teacherApi';
-import { deleteCourseApi } from '../../api/courseApi';
+import { deleteCourseApi, duplicateCourseApi } from '../../api/courseApi';
 
 const TeacherMyCourses: React.FC = () => {
   const navigate = useNavigate();
@@ -64,10 +64,19 @@ const TeacherMyCourses: React.FC = () => {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  // TODO: wire real duplicateCourseApi when backend ready
-  const handleDuplicate = (course: any) => {
-    showToast('Duplicate feature coming soon', 'info');
+  const handleDuplicate = async (course: any) => {
     setActiveDropdown(null);
+    try {
+      const res = await duplicateCourseApi(course._id || course.id);
+      if (res?.success) {
+        showToast(`Course "${course.title}" duplicated successfully`, 'success');
+        await loadCourses();
+      } else {
+        showToast(res?.message || 'Failed to duplicate course', 'error');
+      }
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to duplicate course', 'error');
+    }
   };
 
   const filtered = courses.filter(c => {

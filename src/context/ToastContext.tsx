@@ -23,7 +23,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = `${Date.now()}-${++toastCount}-${Math.random().toString(36).slice(2, 7)}`;
-    setToasts(prev => [...prev, { id, message, type }]);
+    
+    // Defer state update to next macrotask to prevent "Cannot update a component while rendering a different component"
+    setTimeout(() => {
+      setToasts(prev => [...prev, { id, message, type }]);
+    }, 0);
     
     // Auto remove after 4 seconds
     setTimeout(() => {

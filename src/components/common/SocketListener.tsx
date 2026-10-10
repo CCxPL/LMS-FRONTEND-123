@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { getSocket, onSocketReady } from '../../services/socketService';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,7 +8,6 @@ import { messageApi } from '../../api/messageApi';
 const SocketListener: React.FC = () => {
     const { showToast } = useToast();
     const { user } = useAuth();
-    const navigate = useNavigate();
     const location = useLocation();
 
     const locationRef = useRef(location.pathname);
@@ -31,15 +30,6 @@ const SocketListener: React.FC = () => {
             listenersAttached.current = false;
         }
     }, [user?.id]);
-
-    const getMessagesPath = () => {
-        const role = userRoleRef.current;
-        if (role === 'super-admin') return '/super-admin/messages';
-        if (role === 'admin') return '/admin/messages';
-        if (role === 'teacher') return '/teacher/messages';
-        if (role === 'student') return '/student/messages';
-        return '/student/messages';
-    };
 
     // ✅ Login ke baad sirf ek baar unread fetch karo
     useEffect(() => {
@@ -81,12 +71,11 @@ const SocketListener: React.FC = () => {
                         if (!user?.id) return;
                         if (locationRef.current.includes('/messages')) return;
 
-                        const path = getMessagesPath();
                         const label = m._notifType === 'sent'
                             ? `💬 ${m.replies?.[m.replies.length - 1]?.fromName ?? 'Someone'}: "${m.replies?.[m.replies.length - 1]?.body ?? ''}"`
                             : `📩 ${m.fromName}: "${m.body}"`;
 
-                        showToast(label, 'info', () => navigate(`${path}?msgId=${m._id}`));
+                        showToast(label, 'info');
                     }, i * 800);
                 });
             } catch { }
@@ -112,23 +101,19 @@ const SocketListener: React.FC = () => {
             const handleNewMessage = ({ message }: any) => {
                 if (!user?.id) return;
                 if (locationRef.current.includes('/messages')) return;
-                const path = getMessagesPath();
                 showToast(
                     `📩 ${message.fromName}: "${message.body}"`,
-                    'info',
-                    () => navigate(`${path}?msgId=${message._id}`)
+                    'info'
                 );
             };
 
             const handleReplyNotification = ({ fromName, message }: any) => {
                 if (!user?.id) return;
                 if (locationRef.current.includes('/messages')) return;
-                const path = getMessagesPath();
                 const lastReply = message.replies?.[message.replies.length - 1]?.body ?? '';
                 showToast(
                     `💬 ${fromName}: "${lastReply}"`,
-                    'info',
-                    () => navigate(`${path}?msgId=${message._id}`)
+                    'info'
                 );
             };
 

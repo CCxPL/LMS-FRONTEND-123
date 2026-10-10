@@ -8,7 +8,7 @@ import Loader from '../../components/common/Loader';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import type { Admin } from '../../types/user.types';
 import { useToast } from '../../context/ToastContext';
-import { getSuperAdminUsersApi, createAdminApi, removeUserApi, toggleUserStatusApi } from '../../api/superadminApi';
+import { getSuperAdminUsersApi, createAdminApi, updateAdminApi, removeUserApi, toggleUserStatusApi } from '../../api/superadminApi';
 
 const PERMISSIONS_LIST = [
   { key: 'manage-teachers', label: 'Manage Teachers' },
@@ -87,17 +87,34 @@ const ManageAdmins: React.FC = () => {
     }
   };
 
-  const handleEditAdmin = (e: React.FormEvent) => {
+  const handleEditAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editAdmin) return;
-    setAdmins(prev => prev.map(a =>
-      a.id === editAdmin.id
-        ? { ...a, name: formData.name, email: formData.email, permissions: formData.permissions }
-        : a
-    ));
-    showToast('Admin updated successfully!', 'success');
-    setEditAdmin(null);
-    resetForm();
+    if (!formData.name || !formData.email) {
+      showToast('Name and email are required', 'error');
+      return;
+    }
+    try {
+      const payload: { name: string; email: string; password?: string } = {
+        name: formData.name,
+        email: formData.email,
+      };
+      if (formData.password && formData.password.trim()) {
+        if (formData.password.trim().length < 6) {
+          showToast('Password must be at least 6 characters long', 'error');
+          return;
+        }
+        payload.password = formData.password.trim();
+      }
+
+      await updateAdminApi(editAdmin.id, payload);
+      showToast('Admin updated successfully!', 'success');
+      setEditAdmin(null);
+      resetForm();
+      await loadAdmins();
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Failed to update admin', 'error');
+    }
   };
 
   const handleDelete = async () => {

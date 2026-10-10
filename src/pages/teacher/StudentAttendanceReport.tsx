@@ -5,7 +5,7 @@ import { useData } from '../../context/DataContext';
 import AttendanceFilters from '../../components/reports/AttendanceFilters';
 import AttendanceTable from '../../components/reports/AttendanceTable';
 import { generateAttendancePDF } from '../../utils/pdfGenerator';
-import type { AttendanceFilter, AttendanceRecord, AttendanceStats } from '../../types/attendance.types';
+import type { AttendanceFilter, AttendanceStats } from '../../types/attendance.types';
 import { getCourseAttendanceApi } from '../../api/attendanceApi';
 import { getTeacherCoursesApi } from '../../api/teacherApi';
 import { getAllCoursesApi } from '../../api/courseApi';

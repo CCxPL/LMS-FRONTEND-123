@@ -1,34 +1,34 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from './useAuth';
+import axiosInstance from '../api/axiosInstance';
 
 export const useAttendance = (eventId: string) => {
   const { user } = useAuth();
-
-  const {
-    attendanceRecords,
-  } = useData();
+  const { attendanceRecords, addAttendanceRecord, updateAttendanceRecord } = useData();
 
   const [isJoined, setIsJoined] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const eventAttendance = useMemo(() => {
-    return attendanceRecords.filter(
-      (record) => record.eventId === eventId
-    );
+    return attendanceRecords.filter((record) => record.eventId === eventId);
   }, [attendanceRecords, eventId]);
 
   const currentUserAttendance = useMemo(() => {
-    if (!user) {
-      return undefined;
-    }
-
-    return eventAttendance.find(
-      (record) =>
-        record.studentId === user.id
-    );
+    if (!user) return undefined;
+    return eventAttendance.find((record) => record.studentId === user.id);
   }, [eventAttendance, user]);
+
+  // Sync isJoined status if active record exists
+  useEffect(() => {
+    if (currentUserAttendance) {
+      const active = Boolean(currentUserAttendance.isPresent && !currentUserAttendance.leaveTime && !currentUserAttendance.leftAt);
+      setIsJoined(active);
+    } else {
+      setIsJoined(false);
+    }
+  }, [currentUserAttendance]);
 
   const joinClass = useCallback(async () => {
     if (!user) {
@@ -49,51 +49,20 @@ export const useAttendance = (eventId: string) => {
     setError(null);
 
     try {
-      /*
-       * IMPORTANT:
-       *
-       * Attendance backend API is not implemented yet.
-       *
-       * Do NOT create fake attendance records here.
-       * Do NOT use Date.now() as database ID.
-       * Do NOT add dummy course/teacher values.
-       *
-       * When backend attendance API is ready,
-       * replace this block with:
-       *
-       * const response = await axiosInstance.post(
-       *   '/attendance/join',
-       *   {
-       *     eventId,
-       *   }
-       * );
-       *
-       * const attendance =
-       *   response.data?.data?.attendance;
-       *
-       * Then refresh attendance from backend.
-       */
+      const response = await axiosInstance.post('/attendance/join', { eventId });
+      const attendance = response.data?.data?.attendance || response.data?.attendance;
 
-      console.warn(
-        'Attendance join API is not implemented yet. Nothing was saved to MySQL.'
-      );
-
-      setError(
-        'Attendance service is not available yet.'
-      );
-    } catch (err) {
-      console.error(
-        'Failed to join class:',
-        err
-      );
-
-      setError(
-        'Unable to mark attendance. Please try again.'
-      );
+      setIsJoined(true);
+      if (attendance) {
+        addAttendanceRecord(attendance);
+      }
+    } catch (err: any) {
+      console.error('Failed to join class:', err);
+      setError(err?.response?.data?.message || 'Unable to mark attendance. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [user, eventId, isJoined]);
+  }, [user, eventId, isJoined, addAttendanceRecord]);
 
   const leaveClass = useCallback(async () => {
     if (!user) {
@@ -114,40 +83,20 @@ export const useAttendance = (eventId: string) => {
     setError(null);
 
     try {
-      /*
-       * IMPORTANT:
-       *
-       * When backend API is ready,
-       * replace this block with:
-       *
-       * await axiosInstance.patch(
-       *   '/attendance/leave',
-       *   {
-       *     eventId,
-       *   }
-       * );
-       */
+      const response = await axiosInstance.post('/attendance/leave', { eventId });
+      const attendance = response.data?.data?.attendance || response.data?.attendance;
 
-      console.warn(
-        'Attendance leave API is not implemented yet. Nothing was updated in MySQL.'
-      );
-
-      setError(
-        'Attendance service is not available yet.'
-      );
-    } catch (err) {
-      console.error(
-        'Failed to leave class:',
-        err
-      );
-
-      setError(
-        'Unable to update attendance. Please try again.'
-      );
+      setIsJoined(false);
+      if (attendance) {
+        updateAttendanceRecord(attendance.id || eventId, attendance);
+      }
+    } catch (err: any) {
+      console.error('Failed to leave class:', err);
+      setError(err?.response?.data?.message || 'Unable to update attendance. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [user, eventId, isJoined]);
+  }, [user, eventId, isJoined, updateAttendanceRecord]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -165,9 +114,6 @@ export const useAttendance = (eventId: string) => {
     eventAttendance,
     currentUserAttendance,
 
-    presentCount:
-      eventAttendance.filter(
-        (record) => record.isPresent
-      ).length,
+    presentCount: eventAttendance.filter((record) => record.isPresent).length,
   };
 };
